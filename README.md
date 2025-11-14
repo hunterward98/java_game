@@ -1,4 +1,4 @@
-# Inheritance
+## Java Framework
 
 A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff).
 
@@ -9,6 +9,8 @@ This project was generated with a template including simple application launcher
 I've always wanted to make a game in Java. This is mostly because two of my favorite and most influential games in my life were developed in this programming language (RuneScape and Minecraft). For some reason, I notice the majority of jobs I am applying to ask for experience in Java, and I figured now would be a great time to hop on the opportunity to try.
 This "game" is relatively simple at the moment. It is currently just a character that moves around a background. I'm sure if you dig around, you can see what my goal is - a procedurally generated 2D top-down dungeon crawler, which will feel similar to an Action-RolePlaying-Game.
 This is something I have never done before, so I am trying to figure out the fundamentals myself and I am currently in the process of trying to remove the movement base I created outside of the Main game loop.
+
+# The following was auto-generated, but is very useful.
 
 ## Platforms
 

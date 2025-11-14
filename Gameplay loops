@@ -1,0 +1,47 @@
+TUTORIAL
+Player begins with cutscene, arriving at the town of Minnehaha.
+Greeted by old seer, the old seer shows him around.
+He directs the player along the river that runs through the town, and informs the player of the fish.
+The old seer gives the player a rod. He tells the player to catch their first fish!
+The player instead gets lucky, and reels in their first weapon, which was a happy surprise.
+The player tries again, gets a fish, and the seer informs the player they can cook it later and eat it for supper.
+He shows the player the farms that are near the river, which take water from it.
+The old seer shows the player an abandonded shack with a small plot that they may have, as he instructs the player that the town needs people. This shack belonged to an adventurer who has recently passed.
+The old seer starts becoming more somber and serious, and leads the player to a cliffside that the town sits up against. There appears to be a small outcropping of iron, copper, and tin. He hands the player an iron pickaxe, and says the player may mine as they wish.
+As they approach the end of the town, the old seer shows the player what appears to be an old mineshaft.
+The seer informs the player that this is where we used to find our resources to trade with nearby towns and gain economic security. But a dark magic has been uncovered within the mine - a seemingly endless dungeon filled with creatures. They have to continuously defend the town from them, and don't have the resources to patch it. The citizens and kingdom believes it would be best to just kill them all. There are rumors that the old adventurer whose place you take was on the brink of fighting the one behind all this magic on the X level.
+The old seer informs you that if you wish to enter, you must meet with the head blacksmith to craft your first armor.
+
+MINING AND SMITHING LOOP
+Mine ores from cliffside and natural outcroppings
+Smelt into bars, using fuels
+If available
+    use molds
+else
+    hammer on anvil
+    reheat, hammer
+    reheat, hammer
+    reheat, quench
+finish product
+    sharpen or polish
+    gain experience
+
+FISHING LOOP
+Obtain fishing equipment
+Cast into water, or lower net
+Gather fish
+Cook fish for buffs, heals, etc
+
+FARMING LOOP
+WIP - maybe one day
+
+GAMEPLAY LOOP
+Find up to 4 quests in town
+Dungeon
+Fight enemies, gather loot, gather resources
+Inventory full?
+    return to town
+    OR if lucky, sell goods
+Return to quest people
+Receive rewards
+Process other goods

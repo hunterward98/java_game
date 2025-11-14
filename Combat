@@ -1,0 +1,37 @@
+Three styles, like triangle
+Ranged, Magic, Melee
+Magic weak to ranged, strong against Melee
+Melee weak to Magic, strong against Ranged
+Range weak to melee, strong against magic
+
+Player levels up, gains 3 trait points
+
+MELEE TRAITS
+short/longswords
+clubs and maces
+spears and halberds
+
+MAGIC TRAITS
+enchantments (healing, boosts)
+purple aura (defensive magics like summoning, repelling)
+dismemberment (offensive spells)
+
+RANGE TRAITS
+thrown weapons (knives, darts, javelins)
+bows
+crossbows, ballistae
+
+GENERAL TRAITS
+blocking
+critical strikes
+duel-wielding
+
+SKILLS
+Fishing
+Mining
+Strength
+Vitality
+Magic
+Dexterity
+Crafting
+Blacksmithing

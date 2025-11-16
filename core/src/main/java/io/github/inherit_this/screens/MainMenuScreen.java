@@ -19,10 +19,10 @@ public class MainMenuScreen extends BaseScreen {
         float centerX = Gdx.graphics.getWidth() / 2f;
 
         newGameButton = new MenuButton("menu/new_game.png",
-                centerX - 100, 250);  // adjust based on your asset sizes
+                centerX - 300, 250);
 
         exitButton = new MenuButton("menu/exit.png",
-                centerX - 100, 150);
+                centerX - 300, 200);
     }
 
     @Override

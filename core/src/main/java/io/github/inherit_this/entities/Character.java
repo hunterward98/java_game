@@ -1,4 +1,4 @@
-package io.github.inherit_this.classes;
+package io.github.inherit_this.entities;
 import com.badlogic.gdx.math.Vector2;
 
 public class Character extends Entity {

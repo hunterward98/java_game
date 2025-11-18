@@ -9,8 +9,8 @@ public class Entity {
     protected float width;
     protected float height;
 
-    public Entity(String texturePath, float x, float y) {
-        this.texture = new Texture(texturePath);
+    public Entity(Texture texture, float x, float y) {
+        this.texture = texture;
         this.position = new Vector2(x, y);
 
         this.width = texture.getWidth();

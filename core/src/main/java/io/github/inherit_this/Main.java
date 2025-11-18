@@ -13,10 +13,15 @@ public class Main extends Game {
         setScreen(new MainMenuScreen(this));
     }
 
+    public SpriteBatch getBatch() {
+        return batch;
+    }
+
     @Override
     public void render() {
         super.render();
     }
+    
     @Override
     public void dispose() {
         batch.dispose();

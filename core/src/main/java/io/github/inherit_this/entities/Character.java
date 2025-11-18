@@ -1,4 +1,5 @@
 package io.github.inherit_this.entities;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.Vector2;
 
 public class Character extends Entity {
@@ -17,8 +18,8 @@ public class Character extends Entity {
     protected int direction_faced; // 0 (right), 1 (bottom), 2 (left), 3 (top)
     protected Vector2 velocity;
 
-    public Character(String texturePath, float x, float y) {
-        super(texturePath, x, y);
+    public Character(Texture texture, float x, float y) {
+        super(texture, x, y);
         this.health = 20;
         this.max_health = 20;
         this.stamina = 1000;

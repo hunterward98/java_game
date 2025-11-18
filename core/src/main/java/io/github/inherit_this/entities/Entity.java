@@ -21,6 +21,16 @@ public class Entity {
         batch.draw(texture, position.x, position.y, width, height);
     }
 
+    public Vector2 getPosition() {
+        return position;
+    }
+
+    public Texture getTexture() {
+        return texture;
+    }
+
+    // public abstract void update(float delta);
+
     public void dispose() {
         texture.dispose();
     }

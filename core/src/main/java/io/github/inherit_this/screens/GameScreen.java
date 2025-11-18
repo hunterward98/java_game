@@ -10,7 +10,7 @@ import io.github.inherit_this.Main;
 import io.github.inherit_this.world.World;
 import io.github.inherit_this.world.Chunk;
 import io.github.inherit_this.world.Tile;
-
+import io.github.inherit_this.entities.*;
 
 public class GameScreen extends ScreenAdapter {
 
@@ -20,15 +20,13 @@ public class GameScreen extends ScreenAdapter {
     private SpriteBatch batch;
 
     private Texture playerTex;
-    private Vector2 playerPos;
+    private Player player;
     private float playerSpeed = 200f;
     private World world = new World();
 
     private static final int TILE_SIZE = 32;
     private static final int CHUNK_SIZE = 8;
     private static final int CHUNK_PIXEL_SIZE = TILE_SIZE * CHUNK_SIZE;
-
-    private Texture tileTex;
 
     public GameScreen(Main game) {
         this.game = game;
@@ -38,7 +36,7 @@ public class GameScreen extends ScreenAdapter {
         camera.setToOrtho(false);
 
         playerTex = new Texture("character.png");
-        playerPos = new Vector2(0, 0);
+        player = new Player(0, 0, playerTex, game); // TODO: load position from save state
     }
 
     @Override
@@ -46,14 +44,14 @@ public class GameScreen extends ScreenAdapter {
         handleMovement(delta);
         handlePause();
 
-        camera.position.set(playerPos.x, playerPos.y, 0);
+        camera.position.set(player.getPosition().x, player.getPosition().y, 0);
         camera.update();
 
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
 
         renderVisibleChunks();
-        renderPlayer();
+        player.renderPlayer();
 
         batch.end();
     }
@@ -61,10 +59,10 @@ public class GameScreen extends ScreenAdapter {
     private void handleMovement(float delta) {
         float move = playerSpeed * delta;
 
-        if (Gdx.input.isKeyPressed(Input.Keys.W)) playerPos.y += move;
-        if (Gdx.input.isKeyPressed(Input.Keys.S)) playerPos.y -= move;
-        if (Gdx.input.isKeyPressed(Input.Keys.A)) playerPos.x -= move;
-        if (Gdx.input.isKeyPressed(Input.Keys.D)) playerPos.x += move;
+        if (Gdx.input.isKeyPressed(Input.Keys.W)) player.getPosition().y += move;
+        if (Gdx.input.isKeyPressed(Input.Keys.S)) player.getPosition().y -= move;
+        if (Gdx.input.isKeyPressed(Input.Keys.A)) player.getPosition().x -= move;
+        if (Gdx.input.isKeyPressed(Input.Keys.D)) player.getPosition().x += move;
     }
 
     private void handlePause() {
@@ -168,14 +166,6 @@ public class GameScreen extends ScreenAdapter {
                 }
             }
         }
-    }
-
-
-
-    private void renderPlayer() {
-        float px = playerPos.x - playerTex.getWidth() / 2f;
-        float py = playerPos.y - playerTex.getHeight() / 2f;
-        batch.draw(playerTex, px, py);
     }
 
     @Override

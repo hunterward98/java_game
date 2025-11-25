@@ -3,6 +3,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import io.github.inherit_this.items.Equipment;
 import io.github.inherit_this.items.Inventory;
 import io.github.inherit_this.util.Constants;
 import io.github.inherit_this.world.World;
@@ -15,15 +16,21 @@ public class Player extends Entity {
     private SpriteBatch batch;
     private World world;
     private Inventory inventory;
+    private Equipment equipment;
+    private PlayerStats stats;
 
     public Player(float x, float y, Texture texture, Main game, World world) {
         super(texture, x, y);
         this.batch = game.getBatch();
         this.world = world;
         this.inventory = new Inventory(8, 6); // 8 columns x 6 rows grid
+        this.equipment = new Equipment();
+        this.stats = new PlayerStats();
     }
 
     public void update(float delta) {
+        // Regenerate stamina over time
+        stats.regenerateStamina(delta);
 
         float dx = 0;
         float dy = 0;
@@ -100,6 +107,14 @@ public class Player extends Entity {
 
     public Inventory getInventory() {
         return inventory;
+    }
+
+    public Equipment getEquipment() {
+        return equipment;
+    }
+
+    public PlayerStats getStats() {
+        return stats;
     }
 
 }

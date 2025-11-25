@@ -2,12 +2,14 @@ package io.github.inherit_this.ui;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import io.github.inherit_this.items.Inventory;
 import io.github.inherit_this.items.ItemStack;
+import io.github.inherit_this.util.FontManager;
 
 /**
  * FATE-style grid-based inventory UI with drag-and-drop support.
@@ -16,6 +18,8 @@ public class InventoryUI {
     private final Inventory inventory;
     private final ShapeRenderer shapeRenderer;
     private final BitmapFont font;
+    private final ItemTooltip tooltip;
+    private final OrthographicCamera camera;
 
     // UI Layout
     private static final int CELL_SIZE = 40;
@@ -24,7 +28,6 @@ public class InventoryUI {
     private static final Color GRID_COLOR = new Color(0.3f, 0.3f, 0.3f, 0.9f);
     private static final Color CELL_COLOR = new Color(0.1f, 0.1f, 0.1f, 0.9f);
     private static final Color CELL_HOVER_COLOR = new Color(0.2f, 0.4f, 0.6f, 0.9f);
-    private static final Color CELL_SELECTED_COLOR = new Color(0.4f, 0.6f, 1.0f, 0.9f);
 
     // Drag and drop state
     private ItemStack draggedItem;
@@ -41,10 +44,27 @@ public class InventoryUI {
     public InventoryUI(Inventory inventory) {
         this.inventory = inventory;
         this.shapeRenderer = new ShapeRenderer();
-        this.font = new BitmapFont();
-        this.font.getData().setScale(1.0f);
+        this.font = FontManager.getInstance().getUIFont();
+        this.tooltip = new ItemTooltip();
+
+        // Screen-space camera to prevent UI from following player
+        this.camera = new OrthographicCamera();
+        updateCameraProjection();
 
         calculateUIBounds();
+    }
+
+    /** Update camera projection to match screen dimensions. */
+    private void updateCameraProjection() {
+        int w = Gdx.graphics.getWidth();
+        int h = Gdx.graphics.getHeight();
+        camera.setToOrtho(false, w, h);
+        camera.update();
+    }
+
+    /** Public method to update camera on window resize. */
+    public void updateCamera() {
+        updateCameraProjection();
     }
 
     private void calculateUIBounds() {
@@ -65,10 +85,12 @@ public class InventoryUI {
      * Render the inventory UI.
      */
     public void render(SpriteBatch batch) {
-        batch.end(); // End sprite batch to use shape renderer
+        // Update camera and set projection matrices to use screen-space coordinates
+        camera.update();
+        batch.setProjectionMatrix(camera.combined);
+        shapeRenderer.setProjectionMatrix(camera.combined);
 
         // Draw background panel
-        shapeRenderer.setProjectionMatrix(batch.getProjectionMatrix());
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(GRID_COLOR);
         shapeRenderer.rect(uiX, uiY, uiWidth, uiHeight);
@@ -105,8 +127,6 @@ public class InventoryUI {
         }
         shapeRenderer.end();
 
-        batch.begin(); // Resume sprite batch for items and text
-
         // Draw items
         for (int x = 0; x < inventory.getGridWidth(); x++) {
             for (int y = 0; y < inventory.getGridHeight(); y++) {
@@ -128,14 +148,37 @@ public class InventoryUI {
         font.setColor(Color.WHITE);
         font.draw(batch, "Inventory", uiX + UI_PADDING, uiY + uiHeight - UI_PADDING);
         font.draw(batch, "Gold: " + inventory.getGold(), uiX + uiWidth - 100, uiY + uiHeight - UI_PADDING);
+
+        // Draw tooltip for hovered item (if not dragging)
+        if (draggedItem == null) {
+            float mouseX = Gdx.input.getX();
+            float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
+            Vector2 gridPos = screenToGrid(mouseX, mouseY);
+
+            if (gridPos != null) {
+                int gridX = (int)gridPos.x;
+                int gridY = (int)gridPos.y;
+                ItemStack hoveredStack = inventory.getItemAt(gridX, gridY);
+
+                if (hoveredStack != null) {
+                    tooltip.render(batch, hoveredStack.getItem(), mouseX, mouseY);
+                }
+            }
+        }
     }
 
     private void drawItemStack(SpriteBatch batch, ItemStack stack, int gridX, int gridY) {
         float cellX = uiX + UI_PADDING + gridX * (CELL_SIZE + CELL_PADDING);
         float cellY = uiY + UI_PADDING + gridY * (CELL_SIZE + CELL_PADDING);
 
-        // Draw item icon
-        batch.draw(stack.getItem().getIcon(), cellX + 4, cellY + 4, CELL_SIZE - 8, CELL_SIZE - 8);
+        // Calculate render dimensions based on item size
+        int itemWidth = stack.getItem().getWidth();
+        int itemHeight = stack.getItem().getHeight();
+        float renderWidth = itemWidth * CELL_SIZE + (itemWidth - 1) * CELL_PADDING - 8;
+        float renderHeight = itemHeight * CELL_SIZE + (itemHeight - 1) * CELL_PADDING - 8;
+
+        // Draw item icon across all cells it occupies
+        batch.draw(stack.getItem().getIcon(), cellX + 4, cellY + 4, renderWidth, renderHeight);
 
         // Draw quantity if stackable
         if (stack.getItem().isStackable() && stack.getQuantity() > 1) {
@@ -145,10 +188,16 @@ public class InventoryUI {
     }
 
     private void drawDraggedItem(SpriteBatch batch, ItemStack stack, float x, float y) {
+        // Calculate render dimensions based on item size
+        int itemWidth = stack.getItem().getWidth();
+        int itemHeight = stack.getItem().getHeight();
+        float renderWidth = itemWidth * CELL_SIZE + (itemWidth - 1) * CELL_PADDING - 8;
+        float renderHeight = itemHeight * CELL_SIZE + (itemHeight - 1) * CELL_PADDING - 8;
+
         // Draw semi-transparent item being dragged
         Color oldColor = batch.getColor();
         batch.setColor(1, 1, 1, 0.7f);
-        batch.draw(stack.getItem().getIcon(), x, y, CELL_SIZE - 8, CELL_SIZE - 8);
+        batch.draw(stack.getItem().getIcon(), x, y, renderWidth, renderHeight);
         batch.setColor(oldColor);
 
         // Draw quantity
@@ -228,7 +277,8 @@ public class InventoryUI {
 
     public void dispose() {
         shapeRenderer.dispose();
-        font.dispose();
+        // Don't dispose font - it's owned by FontManager singleton
+        tooltip.dispose();
     }
 
     public float getWidth() {

@@ -26,7 +26,7 @@ public class ReloadChunkCommand implements DebugCommand {
 
     @Override
     public void execute(String[] args, DebugConsole console) {
-        Chunk c = world.getActiveChunk(0,0); // TODO: register commands to get current world and player
+        Chunk c = world.getActiveChunk(0,0);
         if (c == null) {
             console.log("No active chunk to reload.");
             return;

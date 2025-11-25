@@ -24,8 +24,8 @@ public class TeleportCommand implements DebugCommand {
             int tx = Integer.parseInt(args[0]);
             int ty = Integer.parseInt(args[1]);
 
-            // player.setTilePosition(tx, ty);
-            console.log("Teleported to " + tx + ", " + ty);
+            player.setTilePosition(tx, ty);
+            console.log("Teleported to tile position (" + tx + ", " + ty + ")");
         } catch (Exception e) {
             console.log("Invalid coordinates. Not integer or out of bounds.");
         }

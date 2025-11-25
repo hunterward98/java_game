@@ -28,7 +28,6 @@ public class GiveCommand implements DebugCommand {
         String itemId = args[0];
         int amount = 1;
 
-        // Parse amount if provided
         if (args.length >= 2) {
             try {
                 amount = Integer.parseInt(args[1]);
@@ -38,7 +37,6 @@ public class GiveCommand implements DebugCommand {
             }
         }
 
-        // Get item from registry
         Item item = ItemRegistry.getInstance().getItem(itemId);
         if (item == null) {
             console.log("Unknown item: " + itemId);
@@ -46,7 +44,6 @@ public class GiveCommand implements DebugCommand {
             return;
         }
 
-        // Add to player inventory
         boolean success = player.getInventory().addItem(item, amount);
         if (success) {
             console.log("Gave " + amount + "x " + item.getName() + " to player.");

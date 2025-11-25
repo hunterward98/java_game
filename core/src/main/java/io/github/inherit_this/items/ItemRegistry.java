@@ -2,7 +2,6 @@ package io.github.inherit_this.items;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
-import io.github.inherit_this.util.PlaceholderTextureGenerator;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,8 +12,11 @@ import java.util.Map;
 public class ItemRegistry {
     private static ItemRegistry instance;
     private final Map<String, Item> items = new HashMap<>();
+    private Texture placeholderTexture;
 
     private ItemRegistry() {
+        // Load placeholder texture once
+        placeholderTexture = new Texture("items/placeholder.png");
         registerItems();
     }
 
@@ -26,14 +28,33 @@ public class ItemRegistry {
     }
 
     /**
-     * Loads a texture, falling back to placeholder if file doesn't exist.
+     * Loads a texture, falling back to placeholder.png if file doesn't exist or size is incorrect.
+     * @param path The path to the texture file
+     * @param expectedWidth Expected width in grid cells (will be multiplied by 32)
+     * @param expectedHeight Expected height in grid cells (will be multiplied by 32)
      */
-    private Texture loadTexture(String itemId, String path) {
+    private Texture loadTexture(String path, int expectedWidth, int expectedHeight) {
         if (Gdx.files.internal(path).exists()) {
-            return new Texture(path);
+            Texture tex = new Texture(path);
+            tex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+
+            // Verify texture dimensions match expected size
+            int expectedPixelWidth = expectedWidth * 32;
+            int expectedPixelHeight = expectedHeight * 32;
+
+            if (tex.getWidth() != expectedPixelWidth || tex.getHeight() != expectedPixelHeight) {
+                Gdx.app.log("ItemRegistry", "Asset size mismatch for " + path +
+                    ": expected " + expectedPixelWidth + "x" + expectedPixelHeight +
+                    ", got " + tex.getWidth() + "x" + tex.getHeight() +
+                    ". Using placeholder.png");
+                tex.dispose();
+                return placeholderTexture;
+            }
+
+            return tex;
         } else {
-            Gdx.app.log("ItemRegistry", "Asset not found: " + path + ", using placeholder");
-            return PlaceholderTextureGenerator.getPlaceholderForItem(itemId);
+            Gdx.app.log("ItemRegistry", "Asset not found: " + path + ", using placeholder.png");
+            return placeholderTexture;
         }
     }
 
@@ -48,7 +69,7 @@ public class ItemRegistry {
             "A sturdy sword forged from iron.",
             ItemType.WEAPON,
             ItemRarity.COMMON,
-            loadTexture("iron_sword", "items/iron_sword.png"),
+            loadTexture("items/iron_sword.png", 1, 2),
             1, 2, // 1 wide, 2 tall
             1,    // Not stackable
             100   // Worth 100 gold
@@ -60,7 +81,7 @@ public class ItemRegistry {
             "A heavy axe made of tempered steel.",
             ItemType.WEAPON,
             ItemRarity.UNCOMMON,
-            loadTexture("steel_axe", "items/steel_axe.png"),
+            loadTexture("items/steel_axe.png", 1, 2),
             1, 2,
             1,
             250
@@ -73,7 +94,7 @@ public class ItemRegistry {
             "Basic head protection made from leather.",
             ItemType.ARMOR,
             ItemRarity.COMMON,
-            loadTexture("leather_helmet", "items/leather_helmet.png"),
+            loadTexture("items/leather_helmet.png", 1, 1),
             1, 1,
             1,
             50
@@ -85,7 +106,7 @@ public class ItemRegistry {
             "Solid iron armor for the torso.",
             ItemType.ARMOR,
             ItemRarity.UNCOMMON,
-            loadTexture("iron_chestplate", "items/iron_chestplate.png"),
+            loadTexture("items/iron_chestplate.png", 1, 1),
             1, 1,
             1,
             200
@@ -98,7 +119,7 @@ public class ItemRegistry {
             "Restores 50 health points.",
             ItemType.CONSUMABLE,
             ItemRarity.COMMON,
-            loadTexture("health_potion", "items/health_potion.png"),
+            loadTexture("items/health_potion.png", 1, 1),
             1, 1,
             10, // Stack up to 10
             25
@@ -110,7 +131,7 @@ public class ItemRegistry {
             "A simple loaf of bread. Restores some stamina.",
             ItemType.CONSUMABLE,
             ItemRarity.COMMON,
-            loadTexture("bread", "items/bread.png"),
+            loadTexture("items/bread.png", 1, 1),
             1, 1,
             20,
             5
@@ -123,7 +144,7 @@ public class ItemRegistry {
             "Raw iron ore. Can be smelted into bars.",
             ItemType.MATERIAL,
             ItemRarity.COMMON,
-            loadTexture("iron_ore", "items/iron_ore.png"),
+            loadTexture("items/iron_ore.png", 1, 1),
             1, 1,
             99,
             10
@@ -135,7 +156,7 @@ public class ItemRegistry {
             "Sturdy wooden planks for crafting.",
             ItemType.MATERIAL,
             ItemRarity.COMMON,
-            loadTexture("wood", "items/wood.png"),
+            loadTexture("items/wood.png", 1, 1),
             1, 1,
             99,
             5
@@ -147,7 +168,7 @@ public class ItemRegistry {
             "Precious gold ore. Valuable for crafting.",
             ItemType.MATERIAL,
             ItemRarity.RARE,
-            loadTexture("gold_ore", "items/gold_ore.png"),
+            loadTexture("items/gold_ore.png", 1, 1),
             1, 1,
             99,
             50
@@ -160,7 +181,7 @@ public class ItemRegistry {
             "Used for mining stone and ore.",
             ItemType.TOOL,
             ItemRarity.COMMON,
-            loadTexture("pickaxe", "items/pickaxe.png"),
+            loadTexture("items/pickaxe.png", 1, 2),
             1, 2,
             1,
             80
@@ -172,7 +193,7 @@ public class ItemRegistry {
             "Used to catch fish from water.",
             ItemType.TOOL,
             ItemRarity.COMMON,
-            loadTexture("fishing_rod", "items/fishing_rod.png"),
+            loadTexture("items/fishing_rod.png", 1, 2),
             1, 2,
             1,
             60
@@ -211,8 +232,14 @@ public class ItemRegistry {
      * Dispose all item textures.
      */
     public void dispose() {
+        if (placeholderTexture != null) {
+            placeholderTexture.dispose();
+        }
         for (Item item : items.values()) {
-            item.getIcon().dispose();
+            // Only dispose non-placeholder textures
+            if (item.getIcon() != placeholderTexture) {
+                item.getIcon().dispose();
+            }
         }
         items.clear();
     }

@@ -18,32 +18,27 @@ public class InspectCommand implements DebugCommand {
 
     @Override
     public void execute(String[] args, DebugConsole console) {
-        // TODO: implement when other entities can spawn or be interacted with
-        // if (args.length != 2) {
-        //     console.log("Usage: inspect x y");
-        //     return;
-        // }
-        // try {
-        //     int x = Integer.parseInt(args[0]);
-        //     int y = Integer.parseInt(args[1]);
+        if (args.length != 2) {
+            console.log("Usage: inspect x y");
+            return;
+        }
+        try {
+            int x = Integer.parseInt(args[0]);
+            int y = Integer.parseInt(args[1]);
 
-        //     Tile tile = world.getTile(x, y);
-        //     WorldEntity ent = world.getEntity(x, y);
+            Tile tile = world.getTileAtWorldCoords(x, y);
 
-        //     if (tile == null) {
-        //         console.log("No tile at " + x + "," + y);
-        //         return;
-        //     }
+            if (tile == null) {
+                console.log("No tile at world coords (" + x + "," + y + ")");
+                return;
+            }
 
-        //     console.log("-- Inspection at (" + x + "," + y + ")");
-        //     console.log("Tile: type=" + tile.getType() + ", orient=" + tile.getOrientation() + ", solid=" + tile.isSolid());
-        //     if (ent != null) {
-        //         console.log("Entity: " + ent.getClass().getSimpleName());
-        //     } else {
-        //         console.log("Entity: none");
-        //     }
-        // } catch (NumberFormatException e) {
-        //     console.log("Invalid coordinates. Use integers.");
-        // }
+            console.log("-- Inspection at world coords (" + x + "," + y + ")");
+            console.log("Tile: type=" + tile.getType() + ", solid=" + tile.isSolid());
+            // TODO: Add entity inspection when entities system is implemented
+            console.log("Entity: none (not yet implemented)");
+        } catch (NumberFormatException e) {
+            console.log("Invalid coordinates. Use integers.");
+        }
     }
 }

@@ -4,11 +4,13 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ObjectMap;
 import com.badlogic.gdx.utils.Array;
+import io.github.inherit_this.util.FontManager;
 
 import java.util.Arrays;
 
@@ -24,6 +26,7 @@ public class DebugConsole implements InputProcessor {
     private final BitmapFont font;
     private final ShapeRenderer shape;
     private final SpriteBatch batch;
+    private final OrthographicCamera camera;
 
     // Visual config
     private final int height = 240;
@@ -31,18 +34,26 @@ public class DebugConsole implements InputProcessor {
     private final float backgroundAlpha = 0.82f;
 
     public DebugConsole() {
-        font = new BitmapFont();
+        font = FontManager.getInstance().getConsoleFont();
         shape = new ShapeRenderer();
         batch = new SpriteBatch();
 
-        // welcome message
+        camera = new OrthographicCamera();
+        updateCamera();
+
         log.add("Debug Console initialized. Type 'help' for commands.");
     }
 
-    /** Toggle the console open/closed. Caller should update input processors accordingly. */
+    /** Update camera to match screen dimensions (call on resize). */
+    public void updateCamera() {
+        int w = Gdx.graphics.getWidth();
+        int h = Gdx.graphics.getHeight();
+        camera.setToOrtho(false, w, h);
+        camera.update();
+    }
+
     public void toggle() {
         open = !open;
-        // Optionally show/hide mouse cursor handled by caller if needed
     }
 
     public boolean isOpen() {
@@ -65,7 +76,7 @@ public class DebugConsole implements InputProcessor {
     }
 
     /**
-     * Call each frame (if you prefer handling keyboard polling here). If using InputMultiplexer,
+     * Call each frame (if handling keyboard polling preferred). If using InputMultiplexer,
      * ensure this object is added as an InputProcessor so keyTyped/keyDown handlers below run.
      */
     public void update() {
@@ -97,12 +108,17 @@ public class DebugConsole implements InputProcessor {
         }
     }
 
-    public void render() { 
+    public void render() {
         // TODO: call in main render
         if (!open) return;
 
         int w = Gdx.graphics.getWidth();
         int h = height;
+
+        // Use screen-space camera to prevent font stretching
+        camera.update();
+        shape.setProjectionMatrix(camera.combined);
+        batch.setProjectionMatrix(camera.combined);
 
         Gdx.gl.glEnable(GL20.GL_BLEND);
         shape.begin(ShapeRenderer.ShapeType.Filled);
@@ -175,12 +191,13 @@ public class DebugConsole implements InputProcessor {
     public boolean keyTyped(char character) {
         if (!open) return false;
 
-        if (character == '\r' || character == '\n') return true;
-        if (character == '\b') return true;
+        if (character == '\r' || character == '\n') return false;
+        if (character == '\b') return false;
         if (character >= 32 && character < 127) {
             input.append(character);
+            return true;
         }
-        return true;
+        return false;
     }
 
     @Override public boolean touchDown(int screenX, int screenY, int pointer, int button) { return false; }
@@ -191,7 +208,6 @@ public class DebugConsole implements InputProcessor {
 
     @Override
     public boolean touchCancelled(int screenX, int screenY, int pointer, int button) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'touchCancelled'");
+        return false;
     }
 }

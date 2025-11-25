@@ -10,6 +10,8 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import io.github.inherit_this.Main;
 import io.github.inherit_this.items.ItemRegistry;
+import io.github.inherit_this.ui.EquipmentUI;
+import io.github.inherit_this.ui.HotbarUI;
 import io.github.inherit_this.ui.InventoryUI;
 import io.github.inherit_this.world.World;
 import io.github.inherit_this.world.Chunk;
@@ -17,6 +19,7 @@ import io.github.inherit_this.world.Tile;
 import io.github.inherit_this.world.TileTextureManager;
 import io.github.inherit_this.entities.*;
 import io.github.inherit_this.util.Constants;
+import io.github.inherit_this.util.FontManager;
 import io.github.inherit_this.debug.*;
 
 public class GameScreen extends ScreenAdapter {
@@ -33,8 +36,10 @@ public class GameScreen extends ScreenAdapter {
     private DebugConsole debugConsole;
     private InputMultiplexer inputMultiplexer;
 
-    // Inventory system
+    // Inventory and equipment system
     private InventoryUI inventoryUI;
+    private EquipmentUI equipmentUI;
+    private HotbarUI hotbarUI;
     private boolean inventoryOpen = false;
 
     public GameScreen(Main game) {
@@ -62,15 +67,30 @@ public class GameScreen extends ScreenAdapter {
 
         player = new Player(0, 0, playerTex, game, world); // TODO: load position from save state
 
-        // Initialize inventory UI
+        // Initialize inventory, equipment, and hotbar UI
         inventoryUI = new InventoryUI(player.getInventory());
+        equipmentUI = new EquipmentUI(player.getEquipment());
+        hotbarUI = new HotbarUI(player.getInventory(), player.getStats());
 
         debugConsole = new DebugConsole();
         debugConsole.registerCommand(new HelpCommand(debugConsole.getCommands()));
+
+        // Player commands
         debugConsole.registerCommand(new NoClipCommand(player));
+        debugConsole.registerCommand(new TeleportCommand(player));
+        debugConsole.registerCommand(new SetHealthCommand(player));
+        debugConsole.registerCommand(new SetLevelCommand(player));
+        debugConsole.registerCommand(new AddXPCommand(player));
+        debugConsole.registerCommand(new SetGoldCommand(player));
+
+        // Inventory commands
+        debugConsole.registerCommand(new GiveCommand(player));
+        debugConsole.registerCommand(new ClearInventoryCommand(player));
+
+        // World commands
+        debugConsole.registerCommand(new InspectCommand(world));
         debugConsole.registerCommand(new RegenWorldCommand(world));
         debugConsole.registerCommand(new ReloadChunkCommand(world, player));
-        debugConsole.registerCommand(new GiveCommand(player));
 
         inputMultiplexer = new InputMultiplexer();
         inputMultiplexer.addProcessor(debugConsole);
@@ -94,10 +114,36 @@ public class GameScreen extends ScreenAdapter {
         renderVisibleChunks();
         player.renderPlayer();
 
-        // Render inventory UI if open
+        batch.end();
+
+        // Begin batch for UI rendering (all UIs will use their own screen-space cameras)
+        batch.begin();
+
+        // Render inventory and equipment UI if open (they use screen-space cameras)
         if (inventoryOpen) {
+            // Calculate total width of both UIs side by side
+            float spacing = 20; // Space between inventory and equipment
+            float totalWidth = inventoryUI.getWidth() + spacing + equipmentUI.getWidth();
+
+            // Center both UIs on screen using pixel coordinates
+            int screenWidth = Gdx.graphics.getWidth();
+            int screenHeight = Gdx.graphics.getHeight();
+
+            float inventoryX = (screenWidth - totalWidth) / 2;
+            float inventoryY = (screenHeight - inventoryUI.getHeight()) / 2;
+            inventoryUI.setPosition(inventoryX, inventoryY);
             inventoryUI.render(batch);
+
+            // Position equipment UI to the right of inventory, centered vertically
+            float equipmentX = inventoryX + inventoryUI.getWidth() + spacing;
+            float equipmentY = (screenHeight - equipmentUI.getHeight()) / 2;
+            equipmentUI.setPosition(equipmentX, equipmentY);
+            equipmentUI.render(batch);
         }
+
+        // Always render hotbar at bottom of screen
+        hotbarUI.updatePosition(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        hotbarUI.render(batch);
 
         batch.end();
 
@@ -122,9 +168,33 @@ public class GameScreen extends ScreenAdapter {
             inventoryUI.handleClick(mouseX, mouseY);
         }
 
+        // Handle hotbar F1-F5 keys
+        if (!debugConsole.isOpen() && !inventoryOpen) {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
+                useHotbarSlot(0);
+            } else if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) {
+                useHotbarSlot(1);
+            } else if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) {
+                useHotbarSlot(2);
+            } else if (Gdx.input.isKeyJustPressed(Input.Keys.F4)) {
+                useHotbarSlot(3);
+            } else if (Gdx.input.isKeyJustPressed(Input.Keys.F5)) {
+                useHotbarSlot(4);
+            }
+        }
+
         if (!debugConsole.isOpen() && !inventoryOpen && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.setScreen(new PauseScreen(game, this));
         }
+    }
+
+    /**
+     * Use an item from the hotbar.
+     */
+    private void useHotbarSlot(int slotIndex) {
+        // TODO: Implement item usage logic
+        // For now, just log that the key was pressed
+        System.out.println("Hotbar slot " + (slotIndex + 1) + " pressed");
     }
 
     private void renderVisibleChunks() {
@@ -228,6 +298,12 @@ public class GameScreen extends ScreenAdapter {
         // Update viewport when window is resized
         // FitViewport will maintain aspect ratio and add black bars if needed
         viewport.update(width, height);
+
+        // Update UI cameras to prevent stretching
+        debugConsole.updateCamera();
+        hotbarUI.updateCamera();
+        inventoryUI.updateCamera();
+        equipmentUI.updateCamera();
     }
 
     @Override
@@ -235,6 +311,9 @@ public class GameScreen extends ScreenAdapter {
         playerTex.dispose();
         TileTextureManager.getInstance().dispose();
         ItemRegistry.getInstance().dispose();
+        FontManager.getInstance().dispose();
         inventoryUI.dispose();
+        equipmentUI.dispose();
+        hotbarUI.dispose();
     }
 }

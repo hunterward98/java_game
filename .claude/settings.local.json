@@ -6,7 +6,10 @@
       "Bash(python3:*)",
       "Bash(for item in iron_sword steel_axe leather_helmet iron_chestplate health_potion bread iron_ore wood gold_ore pickaxe fishing_rod)",
       "Bash(do echo \"Creating $item.png\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(bash ./gradlew build:*)",
+      "Bash(bash -c \"./gradlew clean build --info 2>&1 | head -100\")",
+      "Bash(bash -c:*)"
     ],
     "deny": [],
     "ask": []

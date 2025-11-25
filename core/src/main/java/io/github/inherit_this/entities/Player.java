@@ -1,22 +1,23 @@
 package io.github.inherit_this.entities;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
-import io.github.inherit_this.world.Tile;
+import io.github.inherit_this.util.Constants;
+import io.github.inherit_this.world.World;
 import io.github.inherit_this.Main;
 
 public class Player extends Entity {
 
     private float speed = 120f;
     private boolean noClip = false;
-    private Vector2 position = new Vector2();
     private SpriteBatch batch;
+    private World world;
 
-    public Player(float x, float y, Texture texture, Main game) {
+    public Player(float x, float y, Texture texture, Main game, World world) {
         super(texture, x, y);
         this.batch = game.getBatch();
+        this.world = world;
     }
 
     public void update(float delta) {
@@ -34,19 +35,47 @@ public class Player extends Entity {
             dx /= length;
             dy /= length;
 
-            setPosition(dx * speed * delta, dy * speed * delta);
+            float moveX = dx * speed * delta;
+            float moveY = dy * speed * delta;
+
+            if (noClip) {
+                position.x += moveX;
+                position.y += moveY;
+            } else {
+                float newX = position.x + moveX;
+                float newY = position.y + moveY;
+
+                if (!isColliding(newX, newY)) {
+                    position.x = newX;
+                    position.y = newY;
+                } else {
+                    if (!isColliding(newX, position.y)) {
+                        position.x = newX;
+                    }
+                    if (!isColliding(position.x, newY)) {
+                        position.y = newY;
+                    }
+                }
+            }
         }
     }
 
-    // move to player class
-    public void renderPlayer() {
-        float px = this.getPosition().x - 32 / 2f;
-        float py = this.getPosition().y - 32 / 2f;
-        batch.draw(this.texture, px, py);
+    private boolean isColliding(float x, float y) {
+        float halfWidth = width / 2f;
+        float halfHeight = height / 2f;
+
+        boolean topLeft = world.isSolidAtPosition(x - halfWidth, y + halfHeight);
+        boolean topRight = world.isSolidAtPosition(x + halfWidth, y + halfHeight);
+        boolean bottomLeft = world.isSolidAtPosition(x - halfWidth, y - halfHeight);
+        boolean bottomRight = world.isSolidAtPosition(x + halfWidth, y - halfHeight);
+
+        return topLeft || topRight || bottomLeft || bottomRight;
     }
 
-    public Vector2 getPosition() {
-        return position;
+    public void renderPlayer() {
+        float px = position.x - 32 / 2f;
+        float py = position.y - 32 / 2f;
+        batch.draw(this.texture, px, py);
     }
 
     public void setPosition(float x, float y) {
@@ -54,8 +83,8 @@ public class Player extends Entity {
     }
 
     public void setTilePosition(int x, int y) {
-        position.x = x * Tile.TILE_SIZE;
-        position.y = y * Tile.TILE_SIZE;
+        position.x = x * Constants.TILE_SIZE;
+        position.y = y * Constants.TILE_SIZE;
     }
     
     public void setNoClip(boolean enabled) {

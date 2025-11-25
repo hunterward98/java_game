@@ -2,6 +2,7 @@ package io.github.inherit_this.world;
 
 import java.util.HashMap;
 import java.util.Map;
+import io.github.inherit_this.util.Constants;
 
 public class World {
 
@@ -19,14 +20,25 @@ public class World {
     }
 
     public Tile getTileAtWorldCoords(int worldTileX, int worldTileY) {
-        int chunkX = Math.floorDiv(worldTileX, Chunk.CHUNK_SIZE);
-        int chunkY = Math.floorDiv(worldTileY, Chunk.CHUNK_SIZE);
+        int chunkX = Math.floorDiv(worldTileX, Constants.CHUNK_SIZE);
+        int chunkY = Math.floorDiv(worldTileY, Constants.CHUNK_SIZE);
         Chunk chunk = getOrCreateChunk(chunkX, chunkY);
-        
-        int localX = Math.floorMod(worldTileX, Chunk.CHUNK_SIZE);
-        int localY = Math.floorMod(worldTileY, Chunk.CHUNK_SIZE);
-        
+
+        int localX = Math.floorMod(worldTileX, Constants.CHUNK_SIZE);
+        int localY = Math.floorMod(worldTileY, Constants.CHUNK_SIZE);
+
         return chunk.getTile(localX, localY);
+    }
+
+    public Tile getTileAtPosition(float worldX, float worldY) {
+        int tileX = (int) Math.floor(worldX / Constants.TILE_SIZE);
+        int tileY = (int) Math.floor(worldY / Constants.TILE_SIZE);
+        return getTileAtWorldCoords(tileX, tileY);
+    }
+
+    public boolean isSolidAtPosition(float worldX, float worldY) {
+        Tile tile = getTileAtPosition(worldX, worldY);
+        return tile != null && tile.isSolid();
     }
 
     public void reloadChunk(int chunkX, int chunkY) {
@@ -36,8 +48,8 @@ public class World {
     }
 
     public Chunk getActiveChunk(int worldTileX, int worldTileY) {
-        int chunkX = Math.floorDiv(worldTileX, Chunk.CHUNK_SIZE);
-        int chunkY = Math.floorDiv(worldTileY, Chunk.CHUNK_SIZE);
+        int chunkX = Math.floorDiv(worldTileX, Constants.CHUNK_SIZE);
+        int chunkY = Math.floorDiv(worldTileY, Constants.CHUNK_SIZE);
         return chunks.get(pack(chunkX, chunkY));
     }
 

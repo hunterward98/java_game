@@ -1,14 +1,12 @@
 package io.github.inherit_this.world;
 
 import java.util.Random;
-import com.badlogic.gdx.Gdx;
-
 import com.badlogic.gdx.graphics.Texture;
+import io.github.inherit_this.util.Constants;
 
 public class Chunk {
-    public static final int CHUNK_SIZE = 8;
 
-    private Tile[][] tiles = new Tile[CHUNK_SIZE][CHUNK_SIZE];
+    private Tile[][] tiles = new Tile[Constants.CHUNK_SIZE][Constants.CHUNK_SIZE];
     private int chunkX;
     private int chunkY;
     private String biome;
@@ -22,33 +20,39 @@ public class Chunk {
     }
 
     private void generateTiles() {
-        for (int x = 0; x < CHUNK_SIZE; x++) {
-            for (int y = 0; y < CHUNK_SIZE; y++) {
-                Random rand = new Random();
-                int num = rand.nextInt(30) + 1;
-                // alternate between biome textures
-                if (num < 9) {
-                    num = 1; 
-                } else if (num < 15) {
-                    num = 2;
-                } else if (num < 16) {
-                    num = 3;
-                } else if (num < 20) {
-                    num = 4;
-                } else if (num < 24) {
-                    num = 5;
+        Random rand = new Random();
+        for (int x = 0; x < Constants.CHUNK_SIZE; x++) {
+            for (int y = 0; y < Constants.CHUNK_SIZE; y++) {
+                int roll = rand.nextInt(100);
+
+                if (roll < 10) {
+                    int stoneType = rand.nextInt(2) + 1;
+                    Texture tex = new Texture("tiles/stone_" + stoneType + ".png");
+                    tiles[x][y] = new Tile(tex, true);
                 } else {
-                    num = 6;
+                    int num = rand.nextInt(30) + 1;
+                    if (num < 9) {
+                        num = 1;
+                    } else if (num < 15) {
+                        num = 2;
+                    } else if (num < 16) {
+                        num = 3;
+                    } else if (num < 20) {
+                        num = 4;
+                    } else if (num < 24) {
+                        num = 5;
+                    } else {
+                        num = 6;
+                    }
+                    Texture tex = new Texture("tiles/" + biome + "_" + num + ".png");
+                    tiles[x][y] = new Tile(tex, false);
                 }
-                Gdx.app.debug("Num", Integer.toString(num));
-                Texture tex = new Texture("tiles/" + biome + "_" + Integer.toString(num) + ".png");
-                tiles[x][y] = new Tile(tex);
             }
         }
     }
 
     public Tile getTile(int x, int y) {
-        if (x < 0 || y < 0 || x >= CHUNK_SIZE || y >= CHUNK_SIZE) {
+        if (x < 0 || y < 0 || x >= Constants.CHUNK_SIZE || y >= Constants.CHUNK_SIZE) {
             throw new IndexOutOfBoundsException("Tile coords out of bounds");
         }
         return tiles[x][y];

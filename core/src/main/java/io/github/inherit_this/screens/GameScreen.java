@@ -1,16 +1,18 @@
 package io.github.inherit_this.screens;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.Input;
 import io.github.inherit_this.Main;
 import io.github.inherit_this.world.World;
 import io.github.inherit_this.world.Chunk;
 import io.github.inherit_this.world.Tile;
 import io.github.inherit_this.entities.*;
+import io.github.inherit_this.util.Constants;
+import io.github.inherit_this.debug.*;
 
 public class GameScreen extends ScreenAdapter {
 
@@ -21,12 +23,9 @@ public class GameScreen extends ScreenAdapter {
 
     private Texture playerTex;
     private Player player;
-    private float playerSpeed = 200f;
     private World world = new World();
-
-    private static final int TILE_SIZE = 32;
-    private static final int CHUNK_SIZE = 8;
-    private static final int CHUNK_PIXEL_SIZE = TILE_SIZE * CHUNK_SIZE;
+    private DebugConsole debugConsole;
+    private InputMultiplexer inputMultiplexer;
 
     public GameScreen(Main game) {
         this.game = game;
@@ -36,13 +35,26 @@ public class GameScreen extends ScreenAdapter {
         camera.setToOrtho(false);
 
         playerTex = new Texture("character.png");
-        player = new Player(0, 0, playerTex, game); // TODO: load position from save state
+        player = new Player(0, 0, playerTex, game, world); // TODO: load position from save state
+
+        debugConsole = new DebugConsole();
+        debugConsole.registerCommand(new HelpCommand(debugConsole.getCommands()));
+        debugConsole.registerCommand(new NoClipCommand(player));
+        debugConsole.registerCommand(new RegenWorldCommand(world));
+        debugConsole.registerCommand(new ReloadChunkCommand(world, player));
+
+        inputMultiplexer = new InputMultiplexer();
+        inputMultiplexer.addProcessor(debugConsole);
+        Gdx.input.setInputProcessor(inputMultiplexer);
     }
 
     @Override
     public void render(float delta) {
-        handleMovement(delta);
-        handlePause();
+        handleInput();
+
+        if (!debugConsole.isOpen()) {
+            player.update(delta);
+        }
 
         camera.position.set(player.getPosition().x, player.getPosition().y, 0);
         camera.update();
@@ -54,19 +66,16 @@ public class GameScreen extends ScreenAdapter {
         player.renderPlayer();
 
         batch.end();
+
+        debugConsole.render();
     }
 
-    private void handleMovement(float delta) {
-        float move = playerSpeed * delta;
+    private void handleInput() {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.GRAVE)) {
+            debugConsole.toggle();
+        }
 
-        if (Gdx.input.isKeyPressed(Input.Keys.W)) player.getPosition().y += move;
-        if (Gdx.input.isKeyPressed(Input.Keys.S)) player.getPosition().y -= move;
-        if (Gdx.input.isKeyPressed(Input.Keys.A)) player.getPosition().x -= move;
-        if (Gdx.input.isKeyPressed(Input.Keys.D)) player.getPosition().x += move;
-    }
-
-    private void handlePause() {
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+        if (!debugConsole.isOpen() && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.setScreen(new PauseScreen(game, this));
         }
     }
@@ -77,10 +86,10 @@ public class GameScreen extends ScreenAdapter {
         float bottom = camera.position.y - camera.viewportHeight / 2f;
         float top = camera.position.y + camera.viewportHeight / 2f;
 
-        int chunkXStart = (int) Math.floor(left / CHUNK_PIXEL_SIZE);
-        int chunkXEnd   = (int) Math.floor(right / CHUNK_PIXEL_SIZE);
-        int chunkYStart = (int) Math.floor(bottom / CHUNK_PIXEL_SIZE);
-        int chunkYEnd   = (int) Math.floor(top / CHUNK_PIXEL_SIZE);
+        int chunkXStart = (int) Math.floor(left / Constants.CHUNK_PIXEL_SIZE);
+        int chunkXEnd   = (int) Math.floor(right / Constants.CHUNK_PIXEL_SIZE);
+        int chunkYStart = (int) Math.floor(bottom / Constants.CHUNK_PIXEL_SIZE);
+        int chunkYEnd   = (int) Math.floor(top / Constants.CHUNK_PIXEL_SIZE);
 
         for (int cx = chunkXStart; cx <= chunkXEnd; cx++) {
             for (int cy = chunkYStart; cy <= chunkYEnd; cy++) {
@@ -89,25 +98,23 @@ public class GameScreen extends ScreenAdapter {
         }
     }
 
-    private static final float EDGE_BLEND_SIZE = 4f;
-
     private void renderChunk(int cx, int cy) {
         Chunk chunk = world.getOrCreateChunk(cx, cy);
-        float baseX = cx * CHUNK_PIXEL_SIZE;
-        float baseY = cy * CHUNK_PIXEL_SIZE;
+        float baseX = cx * Constants.CHUNK_PIXEL_SIZE;
+        float baseY = cy * Constants.CHUNK_PIXEL_SIZE;
 
-        for (int x = 0; x < CHUNK_SIZE; x++) {
-            for (int y = 0; y < CHUNK_SIZE; y++) {
+        for (int x = 0; x < Constants.CHUNK_SIZE; x++) {
+            for (int y = 0; y < Constants.CHUNK_SIZE; y++) {
                 Tile tile = chunk.getTile(x, y);
-                float tileScreenX = baseX + x * TILE_SIZE;
-                float tileScreenY = baseY + y * TILE_SIZE;
+                float tileScreenX = baseX + x * Constants.TILE_SIZE;
+                float tileScreenY = baseY + y * Constants.TILE_SIZE;
 
                 batch.enableBlending();
 
-                batch.draw(tile.getTexture(), tileScreenX, tileScreenY, TILE_SIZE, TILE_SIZE);
+                batch.draw(tile.getTexture(), tileScreenX, tileScreenY, Constants.TILE_SIZE, Constants.TILE_SIZE);
 
-                int worldTileX = cx * CHUNK_SIZE + x;
-                int worldTileY = cy * CHUNK_SIZE + y;
+                int worldTileX = cx * Constants.CHUNK_SIZE + x;
+                int worldTileY = cy * Constants.CHUNK_SIZE + y;
 
                 Tile leftNeighbor = world.getTileAtWorldCoords(worldTileX - 1, worldTileY);
                 if (leftNeighbor != null) {
@@ -115,9 +122,9 @@ public class GameScreen extends ScreenAdapter {
                     batch.draw(
                         leftNeighbor.getTexture(),
                         tileScreenX, tileScreenY,
-                        EDGE_BLEND_SIZE, TILE_SIZE,
-                        TILE_SIZE - (int) EDGE_BLEND_SIZE, 0,
-                        (int) EDGE_BLEND_SIZE, TILE_SIZE,
+                        Constants.EDGE_BLEND_SIZE, Constants.TILE_SIZE,
+                        Constants.TILE_SIZE - (int) Constants.EDGE_BLEND_SIZE, 0,
+                        (int) Constants.EDGE_BLEND_SIZE, Constants.TILE_SIZE,
                         false, false
                     );
                     batch.setColor(1, 1, 1, 1f);
@@ -128,10 +135,10 @@ public class GameScreen extends ScreenAdapter {
                     batch.setColor(1, 1, 1, 0.5f);
                     batch.draw(
                         rightNeighbor.getTexture(),
-                        tileScreenX + TILE_SIZE - EDGE_BLEND_SIZE, tileScreenY,
-                        EDGE_BLEND_SIZE, TILE_SIZE,
+                        tileScreenX + Constants.TILE_SIZE - Constants.EDGE_BLEND_SIZE, tileScreenY,
+                        Constants.EDGE_BLEND_SIZE, Constants.TILE_SIZE,
                         0, 0,
-                        (int) EDGE_BLEND_SIZE, TILE_SIZE,
+                        (int) Constants.EDGE_BLEND_SIZE, Constants.TILE_SIZE,
                         false, false
                     );
                     batch.setColor(1, 1, 1, 1f);
@@ -143,9 +150,9 @@ public class GameScreen extends ScreenAdapter {
                     batch.draw(
                         bottomNeighbor.getTexture(),
                         tileScreenX, tileScreenY,
-                        TILE_SIZE, EDGE_BLEND_SIZE,
-                        0, TILE_SIZE - (int) EDGE_BLEND_SIZE,
-                        TILE_SIZE, (int) EDGE_BLEND_SIZE,
+                        Constants.TILE_SIZE, Constants.EDGE_BLEND_SIZE,
+                        0, Constants.TILE_SIZE - (int) Constants.EDGE_BLEND_SIZE,
+                        Constants.TILE_SIZE, (int) Constants.EDGE_BLEND_SIZE,
                         false, false
                     );
                     batch.setColor(1, 1, 1, 1f);
@@ -156,10 +163,10 @@ public class GameScreen extends ScreenAdapter {
                     batch.setColor(1, 1, 1, 0.5f);
                     batch.draw(
                         topNeighbor.getTexture(),
-                        tileScreenX, tileScreenY + TILE_SIZE - EDGE_BLEND_SIZE,
-                        TILE_SIZE, EDGE_BLEND_SIZE,
+                        tileScreenX, tileScreenY + Constants.TILE_SIZE - Constants.EDGE_BLEND_SIZE,
+                        Constants.TILE_SIZE, Constants.EDGE_BLEND_SIZE,
                         0, 0,
-                        TILE_SIZE, (int) EDGE_BLEND_SIZE,
+                        Constants.TILE_SIZE, (int) Constants.EDGE_BLEND_SIZE,
                         false, false
                     );
                     batch.setColor(1, 1, 1, 1f);

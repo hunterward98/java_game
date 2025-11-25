@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(./gradlew build:*)",
-      "Bash(./gradlew:*)"
+      "Bash(./gradlew:*)",
+      "Bash(python3:*)",
+      "Bash(for item in iron_sword steel_axe leather_helmet iron_chestplate health_potion bread iron_ore wood gold_ore pickaxe fishing_rod)",
+      "Bash(do echo \"Creating $item.png\")",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

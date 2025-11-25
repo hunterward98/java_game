@@ -3,6 +3,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import io.github.inherit_this.items.Inventory;
 import io.github.inherit_this.util.Constants;
 import io.github.inherit_this.world.World;
 import io.github.inherit_this.Main;
@@ -13,11 +14,13 @@ public class Player extends Entity {
     private boolean noClip = false;
     private SpriteBatch batch;
     private World world;
+    private Inventory inventory;
 
     public Player(float x, float y, Texture texture, Main game, World world) {
         super(texture, x, y);
         this.batch = game.getBatch();
         this.world = world;
+        this.inventory = new Inventory(8, 6); // 8 columns x 6 rows grid
     }
 
     public void update(float delta) {
@@ -90,8 +93,13 @@ public class Player extends Entity {
     public void setNoClip(boolean enabled) {
         this.noClip = enabled;
     }
+
     public boolean isNoClip() {
         return noClip;
+    }
+
+    public Inventory getInventory() {
+        return inventory;
     }
 
 }

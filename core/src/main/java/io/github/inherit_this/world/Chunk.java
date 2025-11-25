@@ -10,6 +10,7 @@ public class Chunk {
     private int chunkX;
     private int chunkY;
     private String biome;
+    private static final TileTextureManager textureManager = TileTextureManager.getInstance();
 
     public Chunk(int chunkX, int chunkY, String biome) {
         this.chunkX = chunkX;
@@ -20,15 +21,18 @@ public class Chunk {
     }
 
     private void generateTiles() {
-        Random rand = new Random();
+        // Use chunk coordinates as seed for consistent, reproducible generation
+        long seed = ((long) chunkX << 32) | (chunkY & 0xFFFFFFFFL);
+        Random rand = new Random(seed);
+
         for (int x = 0; x < Constants.CHUNK_SIZE; x++) {
             for (int y = 0; y < Constants.CHUNK_SIZE; y++) {
                 int roll = rand.nextInt(100);
 
                 if (roll < 10) {
                     int stoneType = rand.nextInt(2) + 1;
-                    Texture tex = new Texture("tiles/stone_" + stoneType + ".png");
-                    tiles[x][y] = new Tile(tex, true);
+                    Texture tex = textureManager.getTexture("tiles/stone_" + stoneType + ".png");
+                    tiles[x][y] = new Tile(tex, true, TileType.STONE);
                 } else {
                     int num = rand.nextInt(30) + 1;
                     if (num < 9) {
@@ -44,8 +48,8 @@ public class Chunk {
                     } else {
                         num = 6;
                     }
-                    Texture tex = new Texture("tiles/" + biome + "_" + num + ".png");
-                    tiles[x][y] = new Tile(tex, false);
+                    Texture tex = textureManager.getTexture("tiles/" + biome + "_" + num + ".png");
+                    tiles[x][y] = new Tile(tex, false, TileType.GRASS);
                 }
             }
         }

@@ -6,10 +6,15 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
 import io.github.inherit_this.Main;
+import io.github.inherit_this.items.ItemRegistry;
+import io.github.inherit_this.ui.InventoryUI;
 import io.github.inherit_this.world.World;
 import io.github.inherit_this.world.Chunk;
 import io.github.inherit_this.world.Tile;
+import io.github.inherit_this.world.TileTextureManager;
 import io.github.inherit_this.entities.*;
 import io.github.inherit_this.util.Constants;
 import io.github.inherit_this.debug.*;
@@ -19,6 +24,7 @@ public class GameScreen extends ScreenAdapter {
     private final Main game;
 
     private OrthographicCamera camera;
+    private Viewport viewport;
     private SpriteBatch batch;
 
     private Texture playerTex;
@@ -27,21 +33,44 @@ public class GameScreen extends ScreenAdapter {
     private DebugConsole debugConsole;
     private InputMultiplexer inputMultiplexer;
 
+    // Inventory system
+    private InventoryUI inventoryUI;
+    private boolean inventoryOpen = false;
+
     public GameScreen(Main game) {
         this.game = game;
         this.batch = game.getBatch();
 
-        camera = new OrthographicCamera(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        camera.setToOrtho(false);
+        // Preload all tile textures to prevent stuttering when loading chunks
+        TileTextureManager textureManager = TileTextureManager.getInstance();
+        textureManager.preloadCommonTextures();
 
+        // Initialize item registry
+        ItemRegistry.getInstance();
+
+        // Set up viewport with fixed zoom - assets always same size regardless of window size
+        camera = new OrthographicCamera();
+        viewport = new ScreenViewport(camera);
+        viewport.apply();
+        camera.zoom = 1f / Constants.PIXEL_SCALE; // Scale everything by PIXEL_SCALE
+        camera.position.set(0, 0, 0);
+        camera.update();
+
+        // Enable pixel-perfect rendering (no texture filtering)
         playerTex = new Texture("character.png");
+        playerTex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+
         player = new Player(0, 0, playerTex, game, world); // TODO: load position from save state
+
+        // Initialize inventory UI
+        inventoryUI = new InventoryUI(player.getInventory());
 
         debugConsole = new DebugConsole();
         debugConsole.registerCommand(new HelpCommand(debugConsole.getCommands()));
         debugConsole.registerCommand(new NoClipCommand(player));
         debugConsole.registerCommand(new RegenWorldCommand(world));
         debugConsole.registerCommand(new ReloadChunkCommand(world, player));
+        debugConsole.registerCommand(new GiveCommand(player));
 
         inputMultiplexer = new InputMultiplexer();
         inputMultiplexer.addProcessor(debugConsole);
@@ -52,7 +81,7 @@ public class GameScreen extends ScreenAdapter {
     public void render(float delta) {
         handleInput();
 
-        if (!debugConsole.isOpen()) {
+        if (!debugConsole.isOpen() && !inventoryOpen) {
             player.update(delta);
         }
 
@@ -65,6 +94,11 @@ public class GameScreen extends ScreenAdapter {
         renderVisibleChunks();
         player.renderPlayer();
 
+        // Render inventory UI if open
+        if (inventoryOpen) {
+            inventoryUI.render(batch);
+        }
+
         batch.end();
 
         debugConsole.render();
@@ -75,7 +109,20 @@ public class GameScreen extends ScreenAdapter {
             debugConsole.toggle();
         }
 
-        if (!debugConsole.isOpen() && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+        // Toggle inventory with 'I' key
+        if (!debugConsole.isOpen() && Gdx.input.isKeyJustPressed(Input.Keys.I)) {
+            inventoryOpen = !inventoryOpen;
+        }
+
+        // Handle inventory clicks when open
+        if (inventoryOpen && Gdx.input.justTouched()) {
+            float mouseX = Gdx.input.getX();
+            float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
+            // Convert to world coordinates
+            inventoryUI.handleClick(mouseX, mouseY);
+        }
+
+        if (!debugConsole.isOpen() && !inventoryOpen && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.setScreen(new PauseScreen(game, this));
         }
     }
@@ -116,8 +163,9 @@ public class GameScreen extends ScreenAdapter {
                 int worldTileX = cx * Constants.CHUNK_SIZE + x;
                 int worldTileY = cy * Constants.CHUNK_SIZE + y;
 
+                // Only blend tiles of different types (grass-stone, not grass-grass)
                 Tile leftNeighbor = world.getTileAtWorldCoords(worldTileX - 1, worldTileY);
-                if (leftNeighbor != null) {
+                if (leftNeighbor != null && leftNeighbor.getType() != tile.getType()) {
                     batch.setColor(1, 1, 1, 0.5f);
                     batch.draw(
                         leftNeighbor.getTexture(),
@@ -131,7 +179,7 @@ public class GameScreen extends ScreenAdapter {
                 }
 
                 Tile rightNeighbor = world.getTileAtWorldCoords(worldTileX + 1, worldTileY);
-                if (rightNeighbor != null) {
+                if (rightNeighbor != null && rightNeighbor.getType() != tile.getType()) {
                     batch.setColor(1, 1, 1, 0.5f);
                     batch.draw(
                         rightNeighbor.getTexture(),
@@ -145,7 +193,7 @@ public class GameScreen extends ScreenAdapter {
                 }
 
                 Tile bottomNeighbor = world.getTileAtWorldCoords(worldTileX, worldTileY - 1);
-                if (bottomNeighbor != null) {
+                if (bottomNeighbor != null && bottomNeighbor.getType() != tile.getType()) {
                     batch.setColor(1, 1, 1, 0.5f);
                     batch.draw(
                         bottomNeighbor.getTexture(),
@@ -159,7 +207,7 @@ public class GameScreen extends ScreenAdapter {
                 }
 
                 Tile topNeighbor = world.getTileAtWorldCoords(worldTileX, worldTileY + 1);
-                if (topNeighbor != null) {
+                if (topNeighbor != null && topNeighbor.getType() != tile.getType()) {
                     batch.setColor(1, 1, 1, 0.5f);
                     batch.draw(
                         topNeighbor.getTexture(),
@@ -176,7 +224,17 @@ public class GameScreen extends ScreenAdapter {
     }
 
     @Override
+    public void resize(int width, int height) {
+        // Update viewport when window is resized
+        // FitViewport will maintain aspect ratio and add black bars if needed
+        viewport.update(width, height);
+    }
+
+    @Override
     public void dispose() {
         playerTex.dispose();
+        TileTextureManager.getInstance().dispose();
+        ItemRegistry.getInstance().dispose();
+        inventoryUI.dispose();
     }
 }

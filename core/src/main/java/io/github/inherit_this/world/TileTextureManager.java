@@ -24,10 +24,14 @@ public class TileTextureManager {
 
     /**
      * Gets a texture from cache, or loads it if not cached.
+     * Applies pixel-perfect filtering (Nearest neighbor) for crisp pixel art.
      */
     public Texture getTexture(String path) {
         if (!textureCache.containsKey(path)) {
-            textureCache.put(path, new Texture(path));
+            Texture texture = new Texture(path);
+            // Use nearest neighbor filtering for crisp pixel art (no blurriness when scaled)
+            texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            textureCache.put(path, texture);
         }
         return textureCache.get(path);
     }

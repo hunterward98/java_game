@@ -1,6 +1,8 @@
-## Java Framework
+## Setup
 
-A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff). Gradle will manage all dependencies. This was generated with a libGDX template.
+Pull the repository.
+Download Java 8.
+Use `gradlew run` to run the game.
 
 ## About the project
 
@@ -9,6 +11,11 @@ I've always wanted to make a game in Java. This is mostly because two of my favo
 ## Project updates
 
 Navigate to the [dev log](dev_stories/README.md) to monitor each large update. I am slowly working towards many core game functions, from things like saving game states, loading a font, and generating the world.
+
+## Java Framework
+
+A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff). Gradle will manage all dependencies. This was generated with a libGDX template.
+
 
 ## Platforms
 

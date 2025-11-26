@@ -63,6 +63,34 @@ public class World {
         chunks = newChunks;
     }
 
+    /**
+     * Preloads chunks in a radius around the spawn point (0,0).
+     * This is useful for creating a static world and avoiding runtime generation lag.
+     * IMPORTANT: This also builds the cached 3D models for each chunk to prevent
+     * lag when chunks are first rendered.
+     * @param radius Number of chunks to preload in each direction from center
+     * @return Number of chunks preloaded
+     */
+    public int preloadChunks(int radius) {
+        int count = 0;
+        for (int cx = -radius; cx <= radius; cx++) {
+            for (int cy = -radius; cy <= radius; cy++) {
+                Chunk chunk = getOrCreateChunk(cx, cy);
+                // Force build cached models now instead of on first render
+                chunk.getCachedModels();
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Gets the number of currently loaded chunks.
+     */
+    public int getLoadedChunkCount() {
+        return chunks.size();
+    }
+
     private long pack(int x, int y) {
         return (((long)x) << 32) | (y & 0xffffffffL);
     }

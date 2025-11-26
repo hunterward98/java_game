@@ -1,7 +1,5 @@
 package io.github.inherit_this.debug;
 
-import io.github.inherit_this.debug.DebugCommand;
-import io.github.inherit_this.debug.DebugConsole;
 import io.github.inherit_this.world.*;
 import io.github.inherit_this.entities.*;
 

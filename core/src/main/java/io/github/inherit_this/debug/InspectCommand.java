@@ -1,10 +1,7 @@
 package io.github.inherit_this.debug;
 
-import io.github.inherit_this.debug.DebugCommand;
-import io.github.inherit_this.debug.DebugConsole;
 import io.github.inherit_this.world.World;
 import io.github.inherit_this.world.Tile;
-import io.github.inherit_this.entities.*;
 
 public class InspectCommand implements DebugCommand {
     private final World world;

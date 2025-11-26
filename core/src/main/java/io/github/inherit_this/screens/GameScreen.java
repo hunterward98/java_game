@@ -1,15 +1,28 @@
 package io.github.inherit_this.screens;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.ScreenAdapter;
-import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g3d.ModelBatch;
+import com.badlogic.gdx.graphics.g3d.ModelInstance;
+import com.badlogic.gdx.graphics.g3d.Environment;
+import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
+import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import io.github.inherit_this.Main;
 import io.github.inherit_this.items.ItemRegistry;
+
+import java.util.List;
 import io.github.inherit_this.ui.EquipmentUI;
 import io.github.inherit_this.ui.HotbarUI;
 import io.github.inherit_this.ui.InventoryUI;
@@ -17,6 +30,7 @@ import io.github.inherit_this.world.World;
 import io.github.inherit_this.world.Chunk;
 import io.github.inherit_this.world.Tile;
 import io.github.inherit_this.world.TileTextureManager;
+import io.github.inherit_this.world.TileMesh3D;
 import io.github.inherit_this.entities.*;
 import io.github.inherit_this.util.Constants;
 import io.github.inherit_this.util.FontManager;
@@ -26,9 +40,23 @@ public class GameScreen extends ScreenAdapter {
 
     private final Main game;
 
-    private OrthographicCamera camera;
+    private PerspectiveCamera camera;
     private Viewport viewport;
     private SpriteBatch batch;
+    private ModelBatch modelBatch;
+    private Environment environment;
+
+    // Camera rotation controls
+    private float cameraAngle = 0f; // Rotation around Y axis (in degrees)
+    private float cameraTilt = 45f;  // Tilt angle (30-70 degrees to prevent going under world)
+    private float cameraDistance = 300f; // Distance from player
+
+    // Camera limits
+    private static final float MIN_CAMERA_DISTANCE = 200f;
+    private static final float MAX_CAMERA_DISTANCE = 400f;
+    private static final float MIN_CAMERA_TILT = 15f;
+    private static final float MAX_CAMERA_TILT = 65f;
+    private static final float ZOOM_SPEED = 25f; // Distance change per scroll notch
 
     private Texture playerTex;
     private Player player;
@@ -42,6 +70,16 @@ public class GameScreen extends ScreenAdapter {
     private HotbarUI hotbarUI;
     private boolean inventoryOpen = false;
 
+    // Fixed time step for game logic
+    private static final float FIXED_TIME_STEP = 1f / 60f; // 60 ticks per second
+    private float accumulator = 0f;
+
+    // Performance tracking
+    private BitmapFont fpsFont;
+    private int frameCount = 0;
+    private float fpsTimer = 0f;
+    private int currentFPS = 0;
+
     public GameScreen(Main game) {
         this.game = game;
         this.batch = game.getBatch();
@@ -53,20 +91,28 @@ public class GameScreen extends ScreenAdapter {
         // Initialize item registry
         ItemRegistry.getInstance();
 
-        // Set up viewport with fixed zoom - assets always same size regardless of window size
-        camera = new OrthographicCamera();
+        // Set up 3D perspective camera
+        camera = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        camera.near = 1f;
+        camera.far = 2000f; // Increased from 1000 to help with distant chunk rendering
         viewport = new ScreenViewport(camera);
         viewport.apply();
-        camera.zoom = 1f / Constants.PIXEL_SCALE; // Scale everything by PIXEL_SCALE
-        camera.position.set(0, 0, 0);
-        camera.update();
+
+        // Initialize 3D rendering
+        modelBatch = new ModelBatch();
+
+        // Set up lighting environment
+        environment = new Environment();
+        environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.6f, 0.6f, 0.6f, 1f));
+        environment.add(new DirectionalLight().set(0.8f, 0.8f, 0.8f, -1f, -0.8f, -0.2f));
 
         // Enable pixel-perfect rendering (no texture filtering)
         playerTex = new Texture("character.png");
         playerTex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
 
-        player = new Player(0, 0, playerTex, game, world); // TODO: load position from save state
-
+        player = new Player(0, 0, playerTex, world);
+         world.preloadChunks(20);
+        
         // Initialize inventory, equipment, and hotbar UI
         inventoryUI = new InventoryUI(player.getInventory());
         equipmentUI = new EquipmentUI(player.getEquipment());
@@ -92,29 +138,70 @@ public class GameScreen extends ScreenAdapter {
         debugConsole.registerCommand(new RegenWorldCommand(world));
         debugConsole.registerCommand(new ReloadChunkCommand(world, player));
 
+        // Set up input handling with scroll wheel support
         inputMultiplexer = new InputMultiplexer();
+        inputMultiplexer.addProcessor(new ScrollInputProcessor());
         inputMultiplexer.addProcessor(debugConsole);
         Gdx.input.setInputProcessor(inputMultiplexer);
+
+        // Initialize FPS font (use default libGDX font for now)
+        fpsFont = new BitmapFont();
+
+        // Enable VSync to prevent screen tearing
+        Gdx.graphics.setVSync(true);
+    }
+
+    /**
+     * Custom input processor to handle scroll wheel zoom.
+     */
+    private class ScrollInputProcessor extends InputAdapter {
+        @Override
+        public boolean scrolled(float amountX, float amountY) {
+            if (!debugConsole.isOpen() && !inventoryOpen) {
+                // Scroll up (negative) = zoom in, scroll down (positive) = zoom out
+                cameraDistance += amountY * ZOOM_SPEED;
+                cameraDistance = Math.max(MIN_CAMERA_DISTANCE, Math.min(MAX_CAMERA_DISTANCE, cameraDistance));
+                return true;
+            }
+            return false;
+        }
     }
 
     @Override
     public void render(float delta) {
-        handleInput();
+        // Clear screen - any void will be sky blue
+        ScreenUtils.clear(0.53f, 0.81f, 0.92f, 1f);
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 
-        if (!debugConsole.isOpen() && !inventoryOpen) {
-            player.update(delta);
+        // updateFPSCounter(delta);
+
+        handleInput();
+        handleCameraRotation(delta);
+
+        // Fixed time step for consistent game logic
+        accumulator += Math.min(delta, 0.25f); // Cap delta to prevent spiral of death
+
+        while (accumulator >= FIXED_TIME_STEP) {
+            // Update game logic at fixed rate
+            if (!debugConsole.isOpen() && !inventoryOpen) {
+                player.update(FIXED_TIME_STEP);
+            }
+            accumulator -= FIXED_TIME_STEP;
         }
 
-        camera.position.set(player.getPosition().x, player.getPosition().y, 0);
-        camera.update();
+        updateCameraPosition();
 
-        batch.setProjectionMatrix(camera.combined);
-        batch.begin();
+        // Enable depth testing for 3D rendering
+        Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
 
-        renderVisibleChunks();
-        player.renderPlayer();
+        // Render 3D world and player
+        modelBatch.begin(camera);
+        renderVisibleChunks3D();
+        player.renderPlayer(modelBatch, camera);
+        modelBatch.end();
 
-        batch.end();
+        // Disable depth test for UI rendering
+        Gdx.gl.glDisable(GL20.GL_DEPTH_TEST);
 
         // Begin batch for UI rendering (all UIs will use their own screen-space cameras)
         batch.begin();
@@ -141,13 +228,100 @@ public class GameScreen extends ScreenAdapter {
             equipmentUI.render(batch);
         }
 
-        // Always render hotbar at bottom of screen
         hotbarUI.updatePosition(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         hotbarUI.render(batch);
 
-        batch.end();
+        // Render performance info
+        fpsFont.draw(batch, "FPS: " + currentFPS, 10, Gdx.graphics.getHeight() - 10);
+        fpsFont.draw(batch, "Frame Time: " + String.format("%.2f", delta * 1000) + "ms", 10, Gdx.graphics.getHeight() - 30);
+        fpsFont.draw(batch, "Zoom: " + (int)cameraDistance, 10, Gdx.graphics.getHeight() - 50);
+        fpsFont.draw(batch, "Pos: (" + (int)player.getPosition().x + ", " + (int)player.getBillboardZ() + ", " + (int)player.getPosition().y + ")", 10, Gdx.graphics.getHeight() - 70);
+
+        // Calculate render radius (matches renderVisibleChunks3D calculation) (this is for speed improvements)
+        // int renderRadius = (int) Math.ceil(cameraDistance / 100f);
+        // renderRadius = Math.max(6, Math.min(renderRadius, 10));
+        // int totalInRadius = (renderRadius * 2 + 1) * (renderRadius * 2 + 1);
+        // fpsFont.draw(batch, "Chunks: " + chunksRenderedLastFrame + "/" + totalInRadius + " (R:" + renderRadius + ")", 10, Gdx.graphics.getHeight() - 90);
+        // fpsFont.draw(batch, "Culled: " + chunksCulledLastFrame + " | Loaded: " + world.getLoadedChunkCount(), 10, Gdx.graphics.getHeight() - 110);
 
         debugConsole.render();
+        batch.end();
+
+    }
+
+    /**
+     * Updates the FPS counter.
+     */
+    private void updateFPSCounter(float delta) {
+        frameCount++;
+        fpsTimer += delta;
+
+        if (fpsTimer >= 1.0f) {
+            currentFPS = frameCount;
+            frameCount = 0;
+            fpsTimer = 0f;
+        }
+    }
+
+    /**
+     * Updates camera position based on player position and rotation angles.
+     */
+    private void updateCameraPosition() {
+        float playerX = player.getPosition().x;
+        float playerY = player.getPosition().y;
+
+        // Calculate camera position using spherical coordinates
+        // Convert angles to radians
+        float angleRad = (float) Math.toRadians(cameraAngle);
+        float tiltRad = (float) Math.toRadians(cameraTilt);
+
+        // Calculate camera offset from player
+        float offsetX = cameraDistance * (float) Math.sin(angleRad) * (float) Math.cos(tiltRad);
+        float offsetZ = cameraDistance * (float) Math.cos(angleRad) * (float) Math.cos(tiltRad);
+        float offsetY = cameraDistance * (float) Math.sin(tiltRad);
+
+        // Position camera
+        camera.position.set(
+            playerX + offsetX,
+            offsetY,
+            playerY + offsetZ
+        );
+
+        // Look at player (y=0 in 3D world space is ground level)
+        camera.lookAt(playerX, 0, playerY);
+        camera.up.set(0, 1, 0);
+        camera.update();
+    }
+
+    /**
+     * Handles arrow key camera rotation (scroll wheel zoom is handled by ScrollInputProcessor).
+     */
+    private void handleCameraRotation(float delta) {
+        if (debugConsole.isOpen() || inventoryOpen) {
+            return; // Don't rotate camera when UI is open
+        }
+
+        float rotationSpeed = 90f; // degrees per second
+
+        // Rotate around player with arrow keys
+        if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
+            cameraAngle -= rotationSpeed * delta;
+        }
+        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+            cameraAngle += rotationSpeed * delta;
+        }
+
+        // Tilt camera up/down (with constraints to prevent going under world)
+        if (Gdx.input.isKeyPressed(Input.Keys.UP)) {
+            cameraTilt = Math.min(MAX_CAMERA_TILT, cameraTilt + rotationSpeed * delta);
+        }
+        if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
+            cameraTilt = Math.max(MIN_CAMERA_TILT, cameraTilt - rotationSpeed * delta);
+        }
+
+        // Keep angle in 0-360 range
+        if (cameraAngle >= 360f) cameraAngle -= 360f;
+        if (cameraAngle < 0f) cameraAngle += 360f;
     }
 
     private void handleInput() {
@@ -164,8 +338,19 @@ public class GameScreen extends ScreenAdapter {
         if (inventoryOpen && Gdx.input.justTouched()) {
             float mouseX = Gdx.input.getX();
             float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
-            // Convert to world coordinates
             inventoryUI.handleClick(mouseX, mouseY);
+        }
+
+        // Handle hold-to-move (like FATE/Diablo)
+        if (!debugConsole.isOpen() && !inventoryOpen && Gdx.input.isButtonPressed(Input.Buttons.LEFT)) {
+            // Get mouse position and raycast to ground
+            Vector3 groundPosition = getGroundPositionFromMouse();
+            if (groundPosition != null) {
+                player.setTargetPosition(groundPosition.x, groundPosition.z);
+            }
+        } else if (!Gdx.input.isButtonPressed(Input.Buttons.LEFT)) {
+            // Stop moving when mouse button is released
+            player.stopMoving();
         }
 
         // Handle hotbar F1-F5 keys
@@ -197,101 +382,114 @@ public class GameScreen extends ScreenAdapter {
         System.out.println("Hotbar slot " + (slotIndex + 1) + " pressed");
     }
 
-    private void renderVisibleChunks() {
-        float left = camera.position.x - camera.viewportWidth / 2f;
-        float right = camera.position.x + camera.viewportWidth / 2f;
-        float bottom = camera.position.y - camera.viewportHeight / 2f;
-        float top = camera.position.y + camera.viewportHeight / 2f;
+    /**
+     * Raycasts from the mouse position to the ground plane (y=0) and returns the intersection point.
+     * This is used for accurate click-to-move in 3D space.
+     */
+    private Vector3 getGroundPositionFromMouse() {
+        int screenX = Gdx.input.getX();
+        int screenY = Gdx.input.getY();
 
-        int chunkXStart = (int) Math.floor(left / Constants.CHUNK_PIXEL_SIZE);
-        int chunkXEnd   = (int) Math.floor(right / Constants.CHUNK_PIXEL_SIZE);
-        int chunkYStart = (int) Math.floor(bottom / Constants.CHUNK_PIXEL_SIZE);
-        int chunkYEnd   = (int) Math.floor(top / Constants.CHUNK_PIXEL_SIZE);
+        // Create a ray from the camera through the mouse position
+        Vector3 near = camera.unproject(new Vector3(screenX, screenY, 0));
+        Vector3 far = camera.unproject(new Vector3(screenX, screenY, 1));
+        Vector3 rayDirection = far.sub(near).nor();
 
-        for (int cx = chunkXStart; cx <= chunkXEnd; cx++) {
-            for (int cy = chunkYStart; cy <= chunkYEnd; cy++) {
-                renderChunk(cx, cy);
-            }
+        // Ground plane is at y = 0
+        float groundY = 0f;
+
+        // Calculate intersection with ground plane
+        // Ray equation: point = origin + t * direction
+        // Plane equation: y = groundY
+        // Solve for t: origin.y + t * direction.y = groundY
+        float t = (groundY - near.y) / rayDirection.y;
+
+        if (t < 0) {
+            // Intersection is behind the camera
+            return null;
         }
+
+        // Calculate intersection point
+        Vector3 intersection = new Vector3(
+            near.x + t * rayDirection.x,
+            groundY,
+            near.z + t * rayDirection.z
+        );
+
+        return intersection;
     }
 
-    private void renderChunk(int cx, int cy) {
+    /**
+     * Renders visible chunks in 3D with frustum culling.
+     * Only renders chunks that are actually visible in the camera's view frustum.
+     * This provides massive performance improvement over rendering all chunks in radius.
+     */
+    private void renderVisibleChunks3D() {
+        float playerX = player.getPosition().x;
+        float playerY = player.getPosition().y;
+
+        // Dynamic render radius based on camera distance
+        // More zoom out = render more chunks to fill screen
+        // Reduced max from 16 to 10 to prevent FPS drops
+        int renderRadius = (int) Math.ceil(cameraDistance / 100f);
+        renderRadius = Math.max(6, Math.min(renderRadius, 10)); // Clamp between 6-10 chunks
+
+        int playerChunkX = (int) Math.floor(playerX / Constants.CHUNK_PIXEL_SIZE);
+        int playerChunkY = (int) Math.floor(playerY / Constants.CHUNK_PIXEL_SIZE);
+
+        int chunksRendered = 0;
+        int chunksCulled = 0;
+
+        for (int cx = playerChunkX - renderRadius; cx <= playerChunkX + renderRadius; cx++) {
+            for (int cy = playerChunkY - renderRadius; cy <= playerChunkY + renderRadius; cy++) {
+                // Calculate chunk bounds in world space
+                float chunkWorldX = cx * Constants.CHUNK_PIXEL_SIZE;
+                float chunkWorldZ = cy * Constants.CHUNK_PIXEL_SIZE;
+                float chunkSize = Constants.CHUNK_PIXEL_SIZE;
+
+                // Create a simple bounding box for the chunk
+                // Center point of the chunk
+                float centerX = chunkWorldX + chunkSize / 2f;
+                float centerZ = chunkWorldZ + chunkSize / 2f;
+                float centerY = 0f; // Chunks are flat on ground
+
+                // Radius that encompasses the entire chunk (diagonal)
+                float boundingSphereRadius = (float) Math.sqrt(chunkSize * chunkSize * 2) / 2f;
+
+                // Frustum culling: Check if chunk is visible
+                if (camera.frustum.sphereInFrustum(centerX, centerY, centerZ, boundingSphereRadius)) {
+                    renderChunk3D(cx, cy);
+                    chunksRendered++;
+                } else {
+                    chunksCulled++;
+                }
+            }
+        }
+
+        // Store for debug display
+        this.chunksRenderedLastFrame = chunksRendered;
+        this.chunksCulledLastFrame = chunksCulled;
+    }
+
+    private int chunksRenderedLastFrame = 0;
+    private int chunksCulledLastFrame = 0;
+
+    /**
+     * Renders a single chunk in 3D using cached ModelInstances.
+     * MASSIVE performance improvement - no object creation per frame!
+     */
+    private void renderChunk3D(int cx, int cy) {
         Chunk chunk = world.getOrCreateChunk(cx, cy);
-        float baseX = cx * Constants.CHUNK_PIXEL_SIZE;
-        float baseY = cy * Constants.CHUNK_PIXEL_SIZE;
 
-        for (int x = 0; x < Constants.CHUNK_SIZE; x++) {
-            for (int y = 0; y < Constants.CHUNK_SIZE; y++) {
-                Tile tile = chunk.getTile(x, y);
-                float tileScreenX = baseX + x * Constants.TILE_SIZE;
-                float tileScreenY = baseY + y * Constants.TILE_SIZE;
+        // Get cached models (created once, reused every frame)
+        List<ModelInstance> models = chunk.getCachedModels();
 
-                batch.enableBlending();
-
-                batch.draw(tile.getTexture(), tileScreenX, tileScreenY, Constants.TILE_SIZE, Constants.TILE_SIZE);
-
-                int worldTileX = cx * Constants.CHUNK_SIZE + x;
-                int worldTileY = cy * Constants.CHUNK_SIZE + y;
-
-                // Only blend tiles of different types (grass-stone, not grass-grass)
-                Tile leftNeighbor = world.getTileAtWorldCoords(worldTileX - 1, worldTileY);
-                if (leftNeighbor != null && leftNeighbor.getType() != tile.getType()) {
-                    batch.setColor(1, 1, 1, 0.5f);
-                    batch.draw(
-                        leftNeighbor.getTexture(),
-                        tileScreenX, tileScreenY,
-                        Constants.EDGE_BLEND_SIZE, Constants.TILE_SIZE,
-                        Constants.TILE_SIZE - (int) Constants.EDGE_BLEND_SIZE, 0,
-                        (int) Constants.EDGE_BLEND_SIZE, Constants.TILE_SIZE,
-                        false, false
-                    );
-                    batch.setColor(1, 1, 1, 1f);
-                }
-
-                Tile rightNeighbor = world.getTileAtWorldCoords(worldTileX + 1, worldTileY);
-                if (rightNeighbor != null && rightNeighbor.getType() != tile.getType()) {
-                    batch.setColor(1, 1, 1, 0.5f);
-                    batch.draw(
-                        rightNeighbor.getTexture(),
-                        tileScreenX + Constants.TILE_SIZE - Constants.EDGE_BLEND_SIZE, tileScreenY,
-                        Constants.EDGE_BLEND_SIZE, Constants.TILE_SIZE,
-                        0, 0,
-                        (int) Constants.EDGE_BLEND_SIZE, Constants.TILE_SIZE,
-                        false, false
-                    );
-                    batch.setColor(1, 1, 1, 1f);
-                }
-
-                Tile bottomNeighbor = world.getTileAtWorldCoords(worldTileX, worldTileY - 1);
-                if (bottomNeighbor != null && bottomNeighbor.getType() != tile.getType()) {
-                    batch.setColor(1, 1, 1, 0.5f);
-                    batch.draw(
-                        bottomNeighbor.getTexture(),
-                        tileScreenX, tileScreenY,
-                        Constants.TILE_SIZE, Constants.EDGE_BLEND_SIZE,
-                        0, Constants.TILE_SIZE - (int) Constants.EDGE_BLEND_SIZE,
-                        Constants.TILE_SIZE, (int) Constants.EDGE_BLEND_SIZE,
-                        false, false
-                    );
-                    batch.setColor(1, 1, 1, 1f);
-                }
-
-                Tile topNeighbor = world.getTileAtWorldCoords(worldTileX, worldTileY + 1);
-                if (topNeighbor != null && topNeighbor.getType() != tile.getType()) {
-                    batch.setColor(1, 1, 1, 0.5f);
-                    batch.draw(
-                        topNeighbor.getTexture(),
-                        tileScreenX, tileScreenY + Constants.TILE_SIZE - Constants.EDGE_BLEND_SIZE,
-                        Constants.TILE_SIZE, Constants.EDGE_BLEND_SIZE,
-                        0, 0,
-                        Constants.TILE_SIZE, (int) Constants.EDGE_BLEND_SIZE,
-                        false, false
-                    );
-                    batch.setColor(1, 1, 1, 1f);
-                }
-            }
+        // Render all tiles in this chunk
+        for (ModelInstance model : models) {
+            modelBatch.render(model, environment);
         }
     }
+
 
     @Override
     public void resize(int width, int height) {
@@ -309,6 +507,10 @@ public class GameScreen extends ScreenAdapter {
     @Override
     public void dispose() {
         playerTex.dispose();
+        player.dispose();
+        modelBatch.dispose();
+        fpsFont.dispose();
+        TileMesh3D.getInstance().dispose();
         TileTextureManager.getInstance().dispose();
         ItemRegistry.getInstance().dispose();
         FontManager.getInstance().dispose();

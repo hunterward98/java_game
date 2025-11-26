@@ -2,7 +2,10 @@ package io.github.inherit_this.world;
 
 import java.util.Random;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g3d.ModelInstance;
 import io.github.inherit_this.util.Constants;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Chunk {
 
@@ -11,6 +14,9 @@ public class Chunk {
     private int chunkY;
     private String biome;
     private static final TileTextureManager textureManager = TileTextureManager.getInstance();
+
+    // Cache 3D models for performance
+    private List<ModelInstance> cachedModels = null;
 
     public Chunk(int chunkX, int chunkY, String biome) {
         this.chunkX = chunkX;
@@ -32,7 +38,7 @@ public class Chunk {
                 if (roll < 10) {
                     int stoneType = rand.nextInt(2) + 1;
                     Texture tex = textureManager.getTexture("tiles/stone_" + stoneType + ".png");
-                    tiles[x][y] = new Tile(tex, true, TileType.STONE);
+                    tiles[x][y] = new Tile(tex, false, TileType.STONE); // Stone is not solid anymore
                 } else {
                     int num = rand.nextInt(30) + 1;
                     if (num < 9) {
@@ -68,6 +74,52 @@ public class Chunk {
 
     public int getChunkY() {
         return chunkY;
+    }
+
+    /**
+     * Gets cached 3D models for this chunk. Creates them if not already cached.
+     */
+    public List<ModelInstance> getCachedModels() {
+        if (cachedModels == null) {
+            buildCachedModels();
+        }
+        return cachedModels;
+    }
+
+    /**
+     * Builds and caches all tile ModelInstances for this chunk.
+     * This is done once per chunk instead of every frame.
+     */
+    private void buildCachedModels() {
+        cachedModels = new ArrayList<>();
+        TileMesh3D tileMesh = TileMesh3D.getInstance();
+
+        float baseX = chunkX * Constants.CHUNK_PIXEL_SIZE;
+        float baseY = chunkY * Constants.CHUNK_PIXEL_SIZE;
+
+        for (int x = 0; x < Constants.CHUNK_SIZE; x++) {
+            for (int y = 0; y < Constants.CHUNK_SIZE; y++) {
+                Tile tile = tiles[x][y];
+                float tileWorldX = baseX + x * Constants.TILE_SIZE;
+                float tileWorldY = baseY + y * Constants.TILE_SIZE;
+
+                ModelInstance tileInstance = tileMesh.createTileInstance(
+                    tile.getTexture(),
+                    tileWorldX,
+                    tileWorldY,
+                    0f  // z = 0 for flat terrain
+                );
+
+                cachedModels.add(tileInstance);
+            }
+        }
+    }
+
+    /**
+     * Clears cached models. Call this if chunk tiles change.
+     */
+    public void invalidateCache() {
+        cachedModels = null;
     }
     // reload idea
     // public void reloadChunk(int chunkX, int chunkY) {

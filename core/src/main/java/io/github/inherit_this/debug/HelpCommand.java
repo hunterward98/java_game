@@ -1,7 +1,5 @@
 package io.github.inherit_this.debug;
 
-import io.github.inherit_this.debug.DebugCommand;
-import io.github.inherit_this.debug.DebugConsole;
 import com.badlogic.gdx.utils.ObjectMap;
 
 public class HelpCommand implements DebugCommand {

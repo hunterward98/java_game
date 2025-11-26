@@ -26,9 +26,10 @@ public class EquipmentUI {
     private final BitmapFont font;
     private final ItemTooltip tooltip;
     private final OrthographicCamera camera;
+    private final SpriteBatch batch;  // Own batch like debug console
 
     // UI Layout
-    private static final int SLOT_SIZE = 48;
+    private static final int SLOT_SIZE = 56;
     private static final int SLOT_PADDING = 4;
     private static final int UI_PADDING = 10;
     private static final Color PANEL_COLOR = new Color(0.3f, 0.3f, 0.3f, 0.9f);
@@ -50,8 +51,9 @@ public class EquipmentUI {
     public EquipmentUI(Equipment equipment) {
         this.equipment = equipment;
         this.shapeRenderer = new ShapeRenderer();
-        this.font = FontManager.getInstance().getUIFont();
+        this.font = FontManager.getInstance().getUIFont(); // Keep large font for "Equipment" title
         this.tooltip = new ItemTooltip();
+        this.batch = new SpriteBatch();  // Create own batch like debug console
         this.placeholderTextures = new EnumMap<>(EquipmentSlot.class);
         this.slotPositions = new EnumMap<>(EquipmentSlot.class);
 
@@ -164,8 +166,8 @@ public class EquipmentUI {
     /**
      * Render the equipment UI.
      */
-    public void render(SpriteBatch batch) {
-        // Update camera and set projection matrices to use screen-space coordinates
+    public void render(SpriteBatch unusedBatch) {
+        // Update camera and set projection matrices to use screen-space coordinates (like debug console)
         camera.update();
         batch.setProjectionMatrix(camera.combined);
         shapeRenderer.setProjectionMatrix(camera.combined);
@@ -205,6 +207,9 @@ public class EquipmentUI {
         }
         shapeRenderer.end();
 
+        // Begin batch for drawing (like debug console)
+        batch.begin();
+
         // Draw placeholder textures and equipped items
         for (Map.Entry<EquipmentSlot, Vector2> entry : slotPositions.entrySet()) {
             EquipmentSlot slot = entry.getKey();
@@ -228,9 +233,9 @@ public class EquipmentUI {
             }
         }
 
-        // Draw title
+        // Draw title (use integer coordinates for pixel-perfect rendering)
         font.setColor(Color.WHITE);
-        font.draw(batch, "Equipment", uiX + UI_PADDING, uiY + uiHeight - UI_PADDING);
+        font.draw(batch, "Equipment", Math.round(uiX + UI_PADDING), Math.round(uiY + uiHeight - UI_PADDING));
 
         // Draw tooltip for hovered item
         float mouseX = Gdx.input.getX();
@@ -243,6 +248,8 @@ public class EquipmentUI {
                 tooltip.render(batch, equippedItem, mouseX, mouseY);
             }
         }
+
+        batch.end();
     }
 
     private boolean isMouseOverSlot(EquipmentSlot slot) {
@@ -287,6 +294,7 @@ public class EquipmentUI {
 
     public void dispose() {
         shapeRenderer.dispose();
+        batch.dispose();  // Dispose our own batch
         // Don't dispose font - it's owned by FontManager singleton
         tooltip.dispose();
 

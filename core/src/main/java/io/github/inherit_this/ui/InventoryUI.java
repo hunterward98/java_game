@@ -20,9 +20,10 @@ public class InventoryUI {
     private final BitmapFont font;
     private final ItemTooltip tooltip;
     private final OrthographicCamera camera;
+    private final SpriteBatch batch;  // Own batch like debug console
 
     // UI Layout
-    private static final int CELL_SIZE = 40;
+    private static final int CELL_SIZE = 48;
     private static final int CELL_PADDING = 2;
     private static final int UI_PADDING = 10;
     private static final Color GRID_COLOR = new Color(0.3f, 0.3f, 0.3f, 0.9f);
@@ -44,8 +45,9 @@ public class InventoryUI {
     public InventoryUI(Inventory inventory) {
         this.inventory = inventory;
         this.shapeRenderer = new ShapeRenderer();
-        this.font = FontManager.getInstance().getUIFont();
+        this.font = FontManager.getInstance().getInventoryFont(); // Use smaller font for inventory cells
         this.tooltip = new ItemTooltip();
+        this.batch = new SpriteBatch();  // Create own batch like debug console
 
         // Screen-space camera to prevent UI from following player
         this.camera = new OrthographicCamera();
@@ -84,8 +86,8 @@ public class InventoryUI {
     /**
      * Render the inventory UI.
      */
-    public void render(SpriteBatch batch) {
-        // Update camera and set projection matrices to use screen-space coordinates
+    public void render(SpriteBatch unusedBatch) {
+        // Update camera and set projection matrices to use screen-space coordinates (like debug console)
         camera.update();
         batch.setProjectionMatrix(camera.combined);
         shapeRenderer.setProjectionMatrix(camera.combined);
@@ -127,12 +129,15 @@ public class InventoryUI {
         }
         shapeRenderer.end();
 
+        // Begin batch for drawing (like debug console)
+        batch.begin();
+
         // Draw items
         for (int x = 0; x < inventory.getGridWidth(); x++) {
             for (int y = 0; y < inventory.getGridHeight(); y++) {
                 ItemStack stack = inventory.getItemAt(x, y);
                 if (stack != null && stack != draggedItem) {
-                    drawItemStack(batch, stack, x, y);
+                    drawItemStack(this.batch, stack, x, y);
                 }
             }
         }
@@ -141,13 +146,13 @@ public class InventoryUI {
         if (draggedItem != null) {
             float mouseX = Gdx.input.getX() + dragOffset.x;
             float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY() + dragOffset.y;
-            drawDraggedItem(batch, draggedItem, mouseX, mouseY);
+            drawDraggedItem(this.batch, draggedItem, mouseX, mouseY);
         }
 
-        // Draw title and gold
+        // Draw title and gold (use integer coordinates for pixel-perfect rendering)
         font.setColor(Color.WHITE);
-        font.draw(batch, "Inventory", uiX + UI_PADDING, uiY + uiHeight - UI_PADDING);
-        font.draw(batch, "Gold: " + inventory.getGold(), uiX + uiWidth - 100, uiY + uiHeight - UI_PADDING);
+        font.draw(batch, "Inventory", Math.round(uiX + UI_PADDING), Math.round(uiY + uiHeight - UI_PADDING));
+        font.draw(batch, "Gold: " + inventory.getGold(), Math.round(uiX + uiWidth - 100), Math.round(uiY + uiHeight - UI_PADDING));
 
         // Draw tooltip for hovered item (if not dragging)
         if (draggedItem == null) {
@@ -165,6 +170,8 @@ public class InventoryUI {
                 }
             }
         }
+
+        batch.end();
     }
 
     private void drawItemStack(SpriteBatch batch, ItemStack stack, int gridX, int gridY) {
@@ -180,10 +187,10 @@ public class InventoryUI {
         // Draw item icon across all cells it occupies
         batch.draw(stack.getItem().getIcon(), cellX + 4, cellY + 4, renderWidth, renderHeight);
 
-        // Draw quantity if stackable
+        // Draw quantity if stackable (use integer coordinates for pixel-perfect rendering)
         if (stack.getItem().isStackable() && stack.getQuantity() > 1) {
             font.setColor(Color.WHITE);
-            font.draw(batch, "" + stack.getQuantity(), cellX + CELL_SIZE - 15, cellY + 12);
+            font.draw(batch, "" + stack.getQuantity(), Math.round(cellX + CELL_SIZE - 15), Math.round(cellY + 12));
         }
     }
 
@@ -200,10 +207,10 @@ public class InventoryUI {
         batch.draw(stack.getItem().getIcon(), x, y, renderWidth, renderHeight);
         batch.setColor(oldColor);
 
-        // Draw quantity
+        // Draw quantity (use integer coordinates for pixel-perfect rendering)
         if (stack.getItem().isStackable() && stack.getQuantity() > 1) {
             font.setColor(Color.WHITE);
-            font.draw(batch, "" + stack.getQuantity(), x + CELL_SIZE - 23, y + 4);
+            font.draw(batch, "" + stack.getQuantity(), Math.round(x + CELL_SIZE - 23), Math.round(y + 4));
         }
     }
 
@@ -277,6 +284,7 @@ public class InventoryUI {
 
     public void dispose() {
         shapeRenderer.dispose();
+        batch.dispose();  // Dispose our own batch
         // Don't dispose font - it's owned by FontManager singleton
         tooltip.dispose();
     }

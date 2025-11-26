@@ -2,14 +2,17 @@ package io.github.inherit_this.screens;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import io.github.inherit_this.Main;
 import io.github.inherit_this.ui.MenuButton;
 import io.github.inherit_this.util.Constants;
+import io.github.inherit_this.util.FontManager;
 
 public class MainMenuScreen extends BaseScreen {
 
@@ -19,6 +22,8 @@ public class MainMenuScreen extends BaseScreen {
     private Vector3 touchPos = new Vector3();
     private OrthographicCamera menuCamera;
     private Viewport menuViewport;
+    private ShapeRenderer shapeRenderer;
+    private BitmapFont menuFont;
 
     public MainMenuScreen(Main game) {
         super(game);
@@ -32,16 +37,21 @@ public class MainMenuScreen extends BaseScreen {
         menuCamera.update();
 
         background = new Texture("background.jpg");
+        shapeRenderer = new ShapeRenderer();
 
-        // Position buttons in world coordinates (centered at origin)
-        newGameButton = new MenuButton("menu/new_game.png", 0, 0);
-        exitButton = new MenuButton("menu/exit.png", 0, 0);
+        // Get larger menu font for better visibility and testing
+        menuFont = FontManager.getInstance().getMenuFont();
 
-        newGameButton.bounds.x = -newGameButton.texture.getWidth() / 2f;
-        newGameButton.bounds.y = 20;
+        // Create text-based buttons centered at origin
+        newGameButton = new MenuButton("New Game", menuFont, 0, 0);
+        exitButton = new MenuButton("Exit", menuFont, 0, 0);
 
-        exitButton.bounds.x = -exitButton.texture.getWidth() / 2f;
-        exitButton.bounds.y = -exitButton.texture.getHeight() - 20;
+        // Center buttons horizontally and position vertically
+        newGameButton.bounds.x = -newGameButton.bounds.width / 2f;
+        newGameButton.bounds.y = 30;
+
+        exitButton.bounds.x = -exitButton.bounds.width / 2f;
+        exitButton.bounds.y = -exitButton.bounds.height - 30;
     }
 
     @Override
@@ -50,15 +60,25 @@ public class MainMenuScreen extends BaseScreen {
 
         menuCamera.update();
         batch.setProjectionMatrix(menuCamera.combined);
+        shapeRenderer.setProjectionMatrix(menuCamera.combined);
+
+        // Update hover state based on mouse position
+        touchPos.set(Gdx.input.getX(), Gdx.input.getY(), 0);
+        menuViewport.unproject(touchPos);
+        newGameButton.updateHover(touchPos.x, touchPos.y);
+        exitButton.updateHover(touchPos.x, touchPos.y);
 
         batch.begin();
         // Draw background to fill viewport
         float halfWidth = menuViewport.getWorldWidth() / 2;
         float halfHeight = menuViewport.getWorldHeight() / 2;
         batch.draw(background, -halfWidth, -halfHeight, menuViewport.getWorldWidth(), menuViewport.getWorldHeight());
+        batch.end();
 
-        batch.draw(newGameButton.texture, newGameButton.bounds.x, newGameButton.bounds.y);
-        batch.draw(exitButton.texture, exitButton.bounds.x, exitButton.bounds.y);
+        // Render buttons (they handle batch begin/end internally)
+        batch.begin();
+        newGameButton.render(batch, shapeRenderer);
+        exitButton.render(batch, shapeRenderer);
         batch.end();
 
         handleInput();
@@ -89,6 +109,7 @@ public class MainMenuScreen extends BaseScreen {
     @Override
     public void dispose() {
         background.dispose();
+        shapeRenderer.dispose();
         newGameButton.dispose();
         exitButton.dispose();
     }

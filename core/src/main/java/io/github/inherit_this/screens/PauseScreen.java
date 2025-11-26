@@ -3,25 +3,33 @@ package io.github.inherit_this.screens;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
-import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import io.github.inherit_this.Main;
+import io.github.inherit_this.ui.MenuButton;
 import io.github.inherit_this.util.Constants;
+import io.github.inherit_this.util.FontManager;
 
 public class PauseScreen extends BaseScreen {
 
-    private Stage stage;
     private Main game;
     private GameScreen gameScreen;
 
     private Texture bgTexture;
     private OrthographicCamera pauseCamera;
     private Viewport pauseViewport;
+    private ShapeRenderer shapeRenderer;
+    private BitmapFont menuFont;
+    private Vector3 touchPos = new Vector3();
+
+    private MenuButton resumeButton;
+    private MenuButton settingsButton;
+    private MenuButton saveExitButton;
 
     public PauseScreen(Main main, GameScreen gameScreen) {
         super(main);
@@ -36,53 +44,32 @@ public class PauseScreen extends BaseScreen {
         pauseCamera.position.set(0, 0, 0);
         pauseCamera.update();
 
-        stage = new Stage(pauseViewport);
-        Gdx.input.setInputProcessor(stage);
-
         bgTexture = new Texture("menu/pause_menu_background.png");
+        shapeRenderer = new ShapeRenderer();
+
+        // Get larger menu font for better visibility
+        menuFont = FontManager.getInstance().getMenuFont();
 
         setupUI();
     }
 
     private void setupUI() {
-        Texture resumeTex = new Texture("menu/resume.png");
-        Texture saveExitTex = new Texture("menu/save_exit.png");
-        Texture settingsTex = new Texture("menu/settings.png");
+        // Create font-based buttons
+        resumeButton = new MenuButton("Resume", menuFont, 0, 0);
+        settingsButton = new MenuButton("Settings", menuFont, 0, 0);
+        saveExitButton = new MenuButton("Save & Exit", menuFont, 0, 0);
 
-        ImageButton resumeBtn = new ImageButton(new TextureRegionDrawable(resumeTex));
-        ImageButton saveExitBtn = new ImageButton(new TextureRegionDrawable(saveExitTex));
-        ImageButton settingsBtn = new ImageButton(new TextureRegionDrawable(settingsTex));
+        // Center buttons horizontally and position vertically with spacing
+        float spacing = 15f;
 
-        // Center buttons at origin
-        float centerX = -resumeTex.getWidth() / 2f;
-        float spacing = 10f;
+        resumeButton.bounds.x = -resumeButton.bounds.width / 2f;
+        resumeButton.bounds.y = resumeButton.bounds.height + spacing;
 
-        resumeBtn.setPosition(centerX, resumeTex.getHeight() + spacing);
-        saveExitBtn.setPosition(centerX, 0);
-        settingsBtn.setPosition(centerX, -settingsTex.getHeight() - spacing);
+        settingsButton.bounds.x = -settingsButton.bounds.width / 2f;
+        settingsButton.bounds.y = 0;
 
-        resumeBtn.addListener(e -> {
-            if (!resumeBtn.isPressed()) return false;
-            game.setScreen(gameScreen);
-            return true;
-        });
-
-        saveExitBtn.addListener(e -> {
-            if (!saveExitBtn.isPressed()) return false;
-            // TODO: save
-            Gdx.app.exit();
-            return true;
-        });
-
-        settingsBtn.addListener(e -> {
-            if (!settingsBtn.isPressed()) return false;
-            // TODO later: main.setScreen(new SettingsScreen(main, this));
-            return true;
-        });
-
-        stage.addActor(resumeBtn);
-        stage.addActor(saveExitBtn);
-        stage.addActor(settingsBtn);
+        saveExitButton.bounds.x = -saveExitButton.bounds.width / 2f;
+        saveExitButton.bounds.y = -saveExitButton.bounds.height - spacing;
     }
 
     @Override
@@ -94,17 +81,52 @@ public class PauseScreen extends BaseScreen {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         pauseCamera.update();
-        game.batch.setProjectionMatrix(pauseCamera.combined);
+        batch.setProjectionMatrix(pauseCamera.combined);
+        shapeRenderer.setProjectionMatrix(pauseCamera.combined);
 
-        game.batch.begin();
+        // Update hover states based on mouse position
+        touchPos.set(Gdx.input.getX(), Gdx.input.getY(), 0);
+        pauseViewport.unproject(touchPos);
+        resumeButton.updateHover(touchPos.x, touchPos.y);
+        settingsButton.updateHover(touchPos.x, touchPos.y);
+        saveExitButton.updateHover(touchPos.x, touchPos.y);
+
+        batch.begin();
         // Draw background to fill viewport
         float halfWidth = pauseViewport.getWorldWidth() / 2;
         float halfHeight = pauseViewport.getWorldHeight() / 2;
-        game.batch.draw(bgTexture, -halfWidth, -halfHeight, pauseViewport.getWorldWidth(), pauseViewport.getWorldHeight());
-        game.batch.end();
+        batch.draw(bgTexture, -halfWidth, -halfHeight, pauseViewport.getWorldWidth(), pauseViewport.getWorldHeight());
+        batch.end();
 
-        stage.act(delta);
-        stage.draw();
+        // Render buttons
+        batch.begin();
+        resumeButton.render(batch, shapeRenderer);
+        settingsButton.render(batch, shapeRenderer);
+        saveExitButton.render(batch, shapeRenderer);
+        batch.end();
+
+        handleInput();
+    }
+
+    private void handleInput() {
+        if (Gdx.input.justTouched()) {
+            // Unproject screen coordinates to world coordinates
+            touchPos.set(Gdx.input.getX(), Gdx.input.getY(), 0);
+            pauseViewport.unproject(touchPos);
+
+            if (resumeButton.contains(touchPos.x, touchPos.y)) {
+                game.setScreen(gameScreen);
+            }
+
+            if (settingsButton.contains(touchPos.x, touchPos.y)) {
+                // TODO later: game.setScreen(new SettingsScreen(game, this));
+            }
+
+            if (saveExitButton.contains(touchPos.x, touchPos.y)) {
+                // TODO: save
+                Gdx.app.exit();
+            }
+        }
     }
 
     @Override
@@ -115,7 +137,10 @@ public class PauseScreen extends BaseScreen {
 
     @Override
     public void dispose() {
-        stage.dispose();
         bgTexture.dispose();
+        shapeRenderer.dispose();
+        resumeButton.dispose();
+        settingsButton.dispose();
+        saveExitButton.dispose();
     }
 }

@@ -18,7 +18,7 @@ public class Player extends Entity {
     private Equipment equipment;
     private PlayerStats stats;
     private Billboard billboard;
-    private float billboardZ = 1f;
+    private float billboardZ = 0f; // Height of billboard base above ground (0 = standing on ground)
 
     // Mouse-based movement
     private Vector2 targetPosition = null;
@@ -32,10 +32,10 @@ public class Player extends Entity {
         this.equipment = new Equipment();
         this.stats = new PlayerStats();
 
-        // Create billboard for 3D rendering (64x64 sprite)
-        this.billboard = new Billboard(texture, 22f, 56f);
-        // Position billboard at billboardZ height
-        this.billboard.setPosition(x, y, billboardZ);
+        // Create billboard for 3D rendering
+        this.billboard = new Billboard(texture, 64f, 64f);
+        // Y-up (Minecraft-style): X,Z are ground plane, Y is height
+        this.billboard.setPosition(x, billboardZ, y);
     }
 
     public void update(float delta) {
@@ -86,8 +86,8 @@ public class Player extends Entity {
             }
         }
 
-        // Update billboard position in 3D space (raised to stand on ground)
-        billboard.setPosition(position.x, position.y, billboardZ);
+        // Update billboard position: Y-up (Minecraft-style) - X,Z are ground plane, Y is height
+        billboard.setPosition(position.x, billboardZ, position.y);
     }
 
     /**

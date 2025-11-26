@@ -10,6 +10,8 @@ import com.badlogic.gdx.math.Vector2;
 import io.github.inherit_this.items.Inventory;
 import io.github.inherit_this.items.ItemStack;
 import io.github.inherit_this.util.FontManager;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * FATE-style grid-based inventory UI with drag-and-drop support.
@@ -105,9 +107,9 @@ public class InventoryUI {
                 float cellX = uiX + UI_PADDING + x * (CELL_SIZE + CELL_PADDING);
                 float cellY = uiY + UI_PADDING + y * (CELL_SIZE + CELL_PADDING);
 
-                // Determine cell color
+                // Determine cell color (only highlight if cell has an item)
                 Color cellColor = CELL_COLOR;
-                if (isMouseOverCell(x, y)) {
+                if (isMouseOverCell(x, y) && inventory.getItemAt(x, y) != null) {
                     cellColor = CELL_HOVER_COLOR;
                 }
 
@@ -129,15 +131,55 @@ public class InventoryUI {
         }
         shapeRenderer.end();
 
+        // Draw hover outline for multi-cell items (clean outline without middle lines)
+        if (draggedItem == null) {
+            float mouseX = com.badlogic.gdx.Gdx.input.getX();
+            float mouseY = com.badlogic.gdx.Gdx.graphics.getHeight() - com.badlogic.gdx.Gdx.input.getY();
+            Vector2 gridPos = screenToGrid(mouseX, mouseY);
+
+            if (gridPos != null) {
+                int gridX = (int)gridPos.x;
+                int gridY = (int)gridPos.y;
+                ItemStack hoveredStack = inventory.getItemAt(gridX, gridY);
+
+                if (hoveredStack != null) {
+                    // Find the top-left corner of this item
+                    int topLeftX = findItemTopLeftX(hoveredStack, gridX, gridY);
+                    int topLeftY = findItemTopLeftY(hoveredStack, gridX, gridY);
+
+                    // Calculate outline dimensions based on item size
+                    int itemWidth = hoveredStack.getItem().getWidth();
+                    int itemHeight = hoveredStack.getItem().getHeight();
+                    float outlineX = uiX + UI_PADDING + topLeftX * (CELL_SIZE + CELL_PADDING);
+                    float outlineY = uiY + UI_PADDING + topLeftY * (CELL_SIZE + CELL_PADDING);
+                    float outlineWidth = itemWidth * (CELL_SIZE + CELL_PADDING) - CELL_PADDING;
+                    float outlineHeight = itemHeight * (CELL_SIZE + CELL_PADDING) - CELL_PADDING;
+
+                    // Draw thick outline around entire item
+                    shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+                    com.badlogic.gdx.Gdx.gl.glLineWidth(3);
+                    shapeRenderer.setColor(new Color(0.9f, 0.9f, 0.3f, 1.0f)); // Yellow highlight
+                    shapeRenderer.rect(outlineX, outlineY, outlineWidth, outlineHeight);
+                    com.badlogic.gdx.Gdx.gl.glLineWidth(1); // Reset line width
+                    shapeRenderer.end();
+                }
+            }
+        }
+
         // Begin batch for drawing (like debug console)
         batch.begin();
 
-        // Draw items
+        // Reset batch color to white to prevent darkness from 3D rendering environment
+        batch.setColor(Color.WHITE);
+
+        // Draw items (use set to prevent drawing multi-cell items multiple times)
+        Set<ItemStack> drawnStacks = new HashSet<>();
         for (int x = 0; x < inventory.getGridWidth(); x++) {
             for (int y = 0; y < inventory.getGridHeight(); y++) {
                 ItemStack stack = inventory.getItemAt(x, y);
-                if (stack != null && stack != draggedItem) {
+                if (stack != null && stack != draggedItem && !drawnStacks.contains(stack)) {
                     drawItemStack(this.batch, stack, x, y);
+                    drawnStacks.add(stack);
                 }
             }
         }
@@ -202,10 +244,9 @@ public class InventoryUI {
         float renderHeight = itemHeight * CELL_SIZE + (itemHeight - 1) * CELL_PADDING - 8;
 
         // Draw semi-transparent item being dragged
-        Color oldColor = batch.getColor();
         batch.setColor(1, 1, 1, 0.7f);
         batch.draw(stack.getItem().getIcon(), x, y, renderWidth, renderHeight);
-        batch.setColor(oldColor);
+        batch.setColor(Color.WHITE);
 
         // Draw quantity (use integer coordinates for pixel-perfect rendering)
         if (stack.getItem().isStackable() && stack.getQuantity() > 1) {
@@ -295,5 +336,37 @@ public class InventoryUI {
 
     public float getHeight() {
         return uiHeight;
+    }
+
+    /**
+     * Finds the top-left X coordinate of a multi-cell item.
+     */
+    private int findItemTopLeftX(ItemStack stack, int currentX, int currentY) {
+        // Search left from current position to find the leftmost cell with this stack
+        for (int x = currentX; x >= 0; x--) {
+            if (inventory.getItemAt(x, currentY) != stack) {
+                return x + 1;
+            }
+            if (x == 0) {
+                return 0;
+            }
+        }
+        return currentX;
+    }
+
+    /**
+     * Finds the top-left Y coordinate of a multi-cell item.
+     */
+    private int findItemTopLeftY(ItemStack stack, int currentX, int currentY) {
+        // Search down from current position to find the bottommost cell with this stack
+        for (int y = currentY; y >= 0; y--) {
+            if (inventory.getItemAt(currentX, y) != stack) {
+                return y + 1;
+            }
+            if (y == 0) {
+                return 0;
+            }
+        }
+        return currentY;
     }
 }

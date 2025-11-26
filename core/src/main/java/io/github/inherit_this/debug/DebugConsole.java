@@ -193,6 +193,7 @@ public class DebugConsole implements InputProcessor {
 
         if (character == '\r' || character == '\n') return false;
         if (character == '\b') return false;
+        if (character == '`') return false; // Don't append the toggle key
         if (character >= 32 && character < 127) {
             input.append(character);
             return true;

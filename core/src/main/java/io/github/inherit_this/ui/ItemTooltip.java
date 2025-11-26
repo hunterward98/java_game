@@ -118,8 +118,8 @@ public class ItemTooltip {
 
         batch.begin(); // Resume sprite batch for text
 
-        // Draw text lines
-        float textY = tooltipY + tooltipHeight - PADDING - LINE_HEIGHT + 4;
+        // Draw text lines (vertically centered within each line)
+        float textY = tooltipY + tooltipHeight - PADDING - (LINE_HEIGHT / 2f) - (font.getCapHeight() / 2f);
         for (int i = 0; i < lines.size(); i++) {
             font.setColor(colors.get(i));
             font.draw(batch, lines.get(i), tooltipX + PADDING, textY);

@@ -35,10 +35,14 @@ import io.github.inherit_this.entities.*;
 import io.github.inherit_this.util.Constants;
 import io.github.inherit_this.util.FontManager;
 import io.github.inherit_this.debug.*;
+import io.github.inherit_this.save.SaveManager;
 
 public class GameScreen extends ScreenAdapter {
 
     private final Main game;
+    private String characterName;
+    private long playTimeMillis = 0;
+    private long sessionStartTime;
 
     private PerspectiveCamera camera;
     private Viewport viewport;
@@ -80,8 +84,10 @@ public class GameScreen extends ScreenAdapter {
     private float fpsTimer = 0f;
     private int currentFPS = 0;
 
-    public GameScreen(Main game) {
+    public GameScreen(Main game, String characterName) {
         this.game = game;
+        this.characterName = characterName;
+        this.sessionStartTime = System.currentTimeMillis();
         this.batch = game.getBatch();
 
         // Preload all tile textures to prevent stuttering when loading chunks
@@ -173,7 +179,10 @@ public class GameScreen extends ScreenAdapter {
         ScreenUtils.clear(0.53f, 0.81f, 0.92f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 
-        // updateFPSCounter(delta);
+        // Track play time
+        updatePlayTime();
+
+        updateFPSCounter(delta);
 
         handleInput();
         handleCameraRotation(delta);
@@ -264,32 +273,65 @@ public class GameScreen extends ScreenAdapter {
     }
 
     /**
+     * Updates total play time for this session.
+     */
+    private void updatePlayTime() {
+        playTimeMillis = System.currentTimeMillis() - sessionStartTime;
+    }
+
+    /**
+     * Saves the current game state to the specified slot.
+     */
+    public boolean saveGame(int slot) {
+        return SaveManager.saveGame(player, characterName, slot, playTimeMillis);
+    }
+
+    /**
+     * Gets the character name for this game session.
+     */
+    public String getCharacterName() {
+        return characterName;
+    }
+
+    /**
+     * Gets the player instance (used for loading saved games).
+     */
+    public Player getPlayer() {
+        return player;
+    }
+
+    /**
      * Updates camera position based on player position and rotation angles.
      */
     private void updateCameraPosition() {
         float playerX = player.getPosition().x;
         float playerY = player.getPosition().y;
 
-        // Calculate camera position using spherical coordinates
+        // Calculate camera position using spherical coordinates (Y-up system, Minecraft-style)
         // Convert angles to radians
         float angleRad = (float) Math.toRadians(cameraAngle);
         float tiltRad = (float) Math.toRadians(cameraTilt);
 
         // Calculate camera offset from player
-        float offsetX = cameraDistance * (float) Math.sin(angleRad) * (float) Math.cos(tiltRad);
-        float offsetZ = cameraDistance * (float) Math.cos(angleRad) * (float) Math.cos(tiltRad);
+        // In Y-up: XZ is ground plane, Y is vertical
+        float horizontalDist = cameraDistance * (float) Math.cos(tiltRad);
+        float offsetX = horizontalDist * (float) Math.sin(angleRad);
+        float offsetZ = horizontalDist * (float) Math.cos(angleRad);
         float offsetY = cameraDistance * (float) Math.sin(tiltRad);
 
-        // Position camera
+        // Position camera relative to player
         camera.position.set(
             playerX + offsetX,
             offsetY,
             playerY + offsetZ
         );
 
-        // Look at player (y=0 in 3D world space is ground level)
-        camera.lookAt(playerX, 0, playerY);
-        camera.up.set(0, 1, 0);
+        // Look at player billboard center (not the ground) to keep player centered on screen
+        // Y-up system: XZ are ground plane, Y is height
+        // Billboard is 64 units tall, base at billboardZ, so center is at billboardZ + 32
+        float billboardBase = player.getBillboardZ();
+        camera.lookAt(playerX, billboardBase + 32f, playerY);
+        camera.up.set(0, 1, 0); // Y-up: up vector is (0, 1, 0)
         camera.update();
     }
 
@@ -442,16 +484,16 @@ public class GameScreen extends ScreenAdapter {
 
         for (int cx = playerChunkX - renderRadius; cx <= playerChunkX + renderRadius; cx++) {
             for (int cy = playerChunkY - renderRadius; cy <= playerChunkY + renderRadius; cy++) {
-                // Calculate chunk bounds in world space
+                // Calculate chunk bounds in world space (Y-up system, Minecraft-style)
                 float chunkWorldX = cx * Constants.CHUNK_PIXEL_SIZE;
-                float chunkWorldZ = cy * Constants.CHUNK_PIXEL_SIZE;
+                float chunkWorldY = cy * Constants.CHUNK_PIXEL_SIZE;
                 float chunkSize = Constants.CHUNK_PIXEL_SIZE;
 
                 // Create a simple bounding box for the chunk
-                // Center point of the chunk
+                // Center point of the chunk (XZ is ground plane, Y is height)
                 float centerX = chunkWorldX + chunkSize / 2f;
-                float centerZ = chunkWorldZ + chunkSize / 2f;
-                float centerY = 0f; // Chunks are flat on ground
+                float centerY = 0f; // Chunks are flat on ground (Y=0)
+                float centerZ = chunkWorldY + chunkSize / 2f;
 
                 // Radius that encompasses the entire chunk (diagonal)
                 float boundingSphereRadius = (float) Math.sqrt(chunkSize * chunkSize * 2) / 2f;

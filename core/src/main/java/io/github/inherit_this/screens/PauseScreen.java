@@ -123,8 +123,13 @@ public class PauseScreen extends BaseScreen {
             }
 
             if (saveExitButton.contains(touchPos.x, touchPos.y)) {
-                // TODO: save
-                Gdx.app.exit();
+                // Save to slot 0 (for now - could add slot selection UI later)
+                if (gameScreen.saveGame(0)) {
+                    Gdx.app.log("PauseScreen", "Game saved successfully!");
+                } else {
+                    Gdx.app.error("PauseScreen", "Failed to save game!");
+                }
+                game.setScreen(new MainMenuScreen(game));
             }
         }
     }

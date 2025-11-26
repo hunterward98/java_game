@@ -58,9 +58,6 @@ public class ItemRegistry {
         }
     }
 
-    /**
-     * Register all game items here.
-     */
     private void registerItems() {
         // Weapons (1x2 size)
         register(new Item(
@@ -121,7 +118,7 @@ public class ItemRegistry {
             ItemRarity.COMMON,
             loadTexture("items/health_potion.png", 1, 1),
             1, 1,
-            10, // Stack up to 10
+            10,
             25
         ));
 
@@ -137,7 +134,6 @@ public class ItemRegistry {
             5
         ));
 
-        // Materials (1x1 size, highly stackable)
         register(new Item(
             "iron_ore",
             "Iron Ore",
@@ -174,15 +170,14 @@ public class ItemRegistry {
             50
         ));
 
-        // Tools (1x2 size)
         register(new Item(
             "pickaxe",
             "Pickaxe",
             "Used for mining stone and ore.",
             ItemType.TOOL,
             ItemRarity.COMMON,
-            loadTexture("items/pickaxe.png", 1, 2),
-            1, 2,
+            loadTexture("items/pickaxe.png", 1, 1),
+            1, 1,
             1,
             80
         ));

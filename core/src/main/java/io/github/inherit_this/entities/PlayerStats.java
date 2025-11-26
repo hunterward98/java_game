@@ -204,7 +204,7 @@ public class PlayerStats {
     public boolean isAlive() { return currentHealth > 0; }
     public boolean isMaxLevel() { return level >= MAX_LEVEL; }
 
-    // Setters for testing/debugging
+    // Setters for testing/debugging and save/load
     public void setLevel(int level) {
         this.level = Math.max(1, Math.min(MAX_LEVEL, level));
         this.currentXP = 0;
@@ -217,6 +217,28 @@ public class PlayerStats {
     public void setMaxHealth(float maxHealth) {
         this.maxHealth = Math.max(1, maxHealth);
         this.currentHealth = Math.min(currentHealth, maxHealth);
+    }
+
+    public void setMana(float mana) {
+        this.currentMana = Math.max(0, Math.min(maxMana, mana));
+    }
+
+    public void setMaxMana(float maxMana) {
+        this.maxMana = Math.max(0, maxMana);
+        this.currentMana = Math.min(currentMana, maxMana);
+    }
+
+    public void setStamina(float stamina) {
+        this.currentStamina = Math.max(0, Math.min(maxStamina, stamina));
+    }
+
+    public void setMaxStamina(float maxStamina) {
+        this.maxStamina = Math.max(0, maxStamina);
+        this.currentStamina = Math.min(currentStamina, maxStamina);
+    }
+
+    public void setCurrentXP(float xp) {
+        this.currentXP = Math.max(0, xp);
     }
 
     public void setGold(int gold) {

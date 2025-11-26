@@ -66,19 +66,20 @@ public class Billboard {
 
     /**
      * Renders the billboard, automatically rotating it to face the camera.
+     * In Y-up coordinate system: rotates around Y axis (vertical) to always face camera.
      */
     public void render(ModelBatch batch, Camera camera) {
         Vector3 camPos = camera.position;
 
+        // Calculate angle in the XZ plane (horizontal rotation around Y axis)
         float dx = camPos.x - position.x;
-        float dy = camPos.y - position.y;
+        float dz = camPos.z - position.z;
+        float angle = (float) Math.toDegrees(Math.atan2(dx, dz));
 
-        float angle = (float) Math.toDegrees(Math.atan2(dy, dx)) - 90f;
-
+        // Reset transform and apply position + rotation
         instance.transform.idt();
         instance.transform.setToTranslation(position);
-
-        instance.transform.rotate(0, 0, 1, angle);
+        instance.transform.rotate(0, 1, 0, angle); // Rotate around Y axis (vertical in Y-up)
 
         batch.render(instance);
     }

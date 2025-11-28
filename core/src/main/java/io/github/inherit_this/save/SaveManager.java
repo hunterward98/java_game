@@ -37,9 +37,9 @@ public class SaveManager {
         try {
             SaveData data = new SaveData();
             data.setCharacterName(characterName);
-            data.setPlayerX(player.getPosition().x);
-            data.setPlayerY(player.getPosition().y);
-            data.setBillboardZ(player.getBillboardZ());
+            // Save player position in tile coordinates
+            data.setPlayerX(player.getPosition().x);  // tiles, not pixels
+            data.setPlayerY(player.getPosition().y);  // tiles, not pixels
 
             // Save stats
             data.setHealth(player.getStats().getCurrentHealth());
@@ -52,7 +52,9 @@ public class SaveManager {
             data.setLevel(player.getStats().getLevel());
 
             // Save inventory
-            data.setGold(player.getInventory().getGold());
+            int goldAmount = player.getInventory().getGold();
+            data.setGold(goldAmount);
+            Gdx.app.log("SaveManager", "Saving gold: " + goldAmount);
             data.setInventoryItems(serializeInventory(player.getInventory()));
 
             // Save equipment
@@ -106,9 +108,8 @@ public class SaveManager {
      * Applies loaded save data to a player.
      */
     public static void applySaveDataToPlayer(SaveData data, Player player) {
-        // Apply position
-        player.setPosition(data.getPlayerX(), data.getPlayerY());
-        player.setBillboardZ(data.getBillboardZ());
+        // Apply position (saved as tile coordinates)
+        player.setPosition(data.getPlayerX(), data.getPlayerY());  // tiles, not pixels
 
         // Apply stats
         player.getStats().setHealth(data.getHealth());
@@ -123,7 +124,10 @@ public class SaveManager {
         // Apply inventory
         player.getInventory().clear();  // This also resets gold to 0
         deserializeInventory(data.getInventoryItems(), player.getInventory());
-        player.getInventory().addGold(data.getGold());  // Add gold AFTER deserializing items
+        int goldToRestore = data.getGold();
+        Gdx.app.log("SaveManager", "Restoring gold: " + goldToRestore);
+        player.getInventory().addGold(goldToRestore);  // Add gold AFTER deserializing items
+        Gdx.app.log("SaveManager", "Gold after restore: " + player.getInventory().getGold());
 
         // Apply equipment
         deserializeEquipment(data.getEquippedItems(), player.getEquipment());
@@ -174,6 +178,52 @@ public class SaveManager {
             Gdx.app.error("SaveManager", "Failed to delete save in slot " + slot, e);
         }
         return false;
+    }
+
+    /**
+     * Finds the appropriate save slot for a character.
+     * Logic:
+     * 1. If a save already exists for this character name, return that slot
+     * 2. If no save exists for this character, return the first empty slot
+     * 3. If all slots are full with different characters, return the oldest save slot
+     */
+    public static int findSlotForCharacter(String characterName) {
+        int firstEmptySlot = -1;
+        int oldestSlot = -1;
+        Date oldestDate = null;
+
+        for (int slot = 0; slot < MAX_SAVE_SLOTS; slot++) {
+            SaveSlotInfo info = getSaveSlotInfo(slot);
+
+            if (info == null) {
+                // Empty slot found
+                if (firstEmptySlot == -1) {
+                    firstEmptySlot = slot;
+                }
+            } else {
+                // Check if this save is for the same character
+                if (info.characterName.equals(characterName)) {
+                    Gdx.app.log("SaveManager", "Found existing save for " + characterName + " in slot " + slot);
+                    return slot;
+                }
+
+                // Track oldest save
+                if (oldestDate == null || info.lastSaved.before(oldestDate)) {
+                    oldestDate = info.lastSaved;
+                    oldestSlot = slot;
+                }
+            }
+        }
+
+        // No existing save for this character, use first empty slot
+        if (firstEmptySlot != -1) {
+            Gdx.app.log("SaveManager", "Using empty slot " + firstEmptySlot + " for " + characterName);
+            return firstEmptySlot;
+        }
+
+        // All slots full, overwrite oldest
+        Gdx.app.log("SaveManager", "All slots full, overwriting oldest save in slot " + oldestSlot);
+        return oldestSlot;
     }
 
     private static List<SavedItemStack> serializeInventory(Inventory inventory) {

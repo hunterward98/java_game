@@ -203,10 +203,9 @@ public class GameScreen extends ScreenAdapter {
         // Enable depth testing for 3D rendering
         Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
 
-        // Render 3D world and player
+        // Render 3D world (player will be rendered as 2D overlay later)
         modelBatch.begin(camera);
         renderVisibleChunks3D();
-        player.renderPlayer(modelBatch, camera);
         modelBatch.end();
 
         // Disable depth test for UI rendering
@@ -240,11 +239,24 @@ public class GameScreen extends ScreenAdapter {
         hotbarUI.updatePosition(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         hotbarUI.render(batch);
 
+        // Render player sprite at screen center (2D overlay, always visible)
+        float centerX = Gdx.graphics.getWidth() / 2f;
+        float centerY = Gdx.graphics.getHeight() / 2f;
+        Texture playerTexture = player.getTexture();
+        float spriteWidth = playerTexture.getWidth();
+        float spriteHeight = playerTexture.getHeight();
+        batch.draw(playerTexture,
+            centerX - spriteWidth / 2f,  // Center horizontally
+            centerY - spriteHeight / 2f,  // Center vertically
+            spriteWidth, spriteHeight
+        );
+
         // Render performance info
         fpsFont.draw(batch, "FPS: " + currentFPS, 10, Gdx.graphics.getHeight() - 10);
         fpsFont.draw(batch, "Frame Time: " + String.format("%.2f", delta * 1000) + "ms", 10, Gdx.graphics.getHeight() - 30);
         fpsFont.draw(batch, "Zoom: " + (int)cameraDistance, 10, Gdx.graphics.getHeight() - 50);
-        fpsFont.draw(batch, "Pos: (" + (int)player.getPosition().x + ", " + (int)player.getBillboardZ() + ", " + (int)player.getPosition().y + ")", 10, Gdx.graphics.getHeight() - 70);
+        // Display tile coordinates with 2 decimal places for precision
+        fpsFont.draw(batch, "Tile: (" + String.format("%.2f", player.getPosition().x) + ", " + String.format("%.2f", player.getPosition().y) + ")", 10, Gdx.graphics.getHeight() - 70);
 
         // Calculate render radius (matches renderVisibleChunks3D calculation) (this is for speed improvements)
         // int renderRadius = (int) Math.ceil(cameraDistance / 100f);
@@ -304,8 +316,9 @@ public class GameScreen extends ScreenAdapter {
      * Updates camera position based on player position and rotation angles.
      */
     private void updateCameraPosition() {
-        float playerX = player.getPosition().x;
-        float playerY = player.getPosition().y;
+        // Player position is in tiles, convert to pixels for 3D rendering
+        float playerX = player.getPosition().x * Constants.TILE_SIZE;
+        float playerY = player.getPosition().y * Constants.TILE_SIZE;
 
         // Calculate camera position using spherical coordinates (Y-up system, Minecraft-style)
         // Convert angles to radians
@@ -326,11 +339,9 @@ public class GameScreen extends ScreenAdapter {
             playerY + offsetZ
         );
 
-        // Look at player billboard center (not the ground) to keep player centered on screen
+        // Look at player position on the ground to keep world centered
         // Y-up system: XZ are ground plane, Y is height
-        // Billboard is 64 units tall, base at billboardZ, so center is at billboardZ + 32
-        float billboardBase = player.getBillboardZ();
-        camera.lookAt(playerX, billboardBase + 32f, playerY);
+        camera.lookAt(playerX, 0f, playerY);
         camera.up.set(0, 1, 0); // Y-up: up vector is (0, 1, 0)
         camera.update();
     }
@@ -385,10 +396,13 @@ public class GameScreen extends ScreenAdapter {
 
         // Handle hold-to-move (like FATE/Diablo)
         if (!debugConsole.isOpen() && !inventoryOpen && Gdx.input.isButtonPressed(Input.Buttons.LEFT)) {
-            // Get mouse position and raycast to ground
+            // Get mouse position and raycast to ground (returns pixel coordinates)
             Vector3 groundPosition = getGroundPositionFromMouse();
             if (groundPosition != null) {
-                player.setTargetPosition(groundPosition.x, groundPosition.z);
+                // Convert pixel coordinates to tile coordinates
+                float tileX = groundPosition.x / Constants.TILE_SIZE;
+                float tileZ = groundPosition.z / Constants.TILE_SIZE;
+                player.setTargetPosition(tileX, tileZ);
             }
         } else if (!Gdx.input.isButtonPressed(Input.Buttons.LEFT)) {
             // Stop moving when mouse button is released
@@ -467,6 +481,7 @@ public class GameScreen extends ScreenAdapter {
      * This provides massive performance improvement over rendering all chunks in radius.
      */
     private void renderVisibleChunks3D() {
+        // Player position is in tiles
         float playerX = player.getPosition().x;
         float playerY = player.getPosition().y;
 
@@ -476,8 +491,9 @@ public class GameScreen extends ScreenAdapter {
         int renderRadius = (int) Math.ceil(cameraDistance / 100f);
         renderRadius = Math.max(6, Math.min(renderRadius, 10)); // Clamp between 6-10 chunks
 
-        int playerChunkX = (int) Math.floor(playerX / Constants.CHUNK_PIXEL_SIZE);
-        int playerChunkY = (int) Math.floor(playerY / Constants.CHUNK_PIXEL_SIZE);
+        // Convert tile position to chunk position (each chunk is CHUNK_SIZE tiles)
+        int playerChunkX = (int) Math.floor(playerX / Constants.CHUNK_SIZE);
+        int playerChunkY = (int) Math.floor(playerY / Constants.CHUNK_SIZE);
 
         int chunksRendered = 0;
         int chunksCulled = 0;

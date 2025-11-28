@@ -1,41 +1,43 @@
 package io.github.inherit_this.entities;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.Camera;
-import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.math.Vector2;
 import io.github.inherit_this.items.Equipment;
 import io.github.inherit_this.items.Inventory;
-import io.github.inherit_this.rendering.Billboard;
 import io.github.inherit_this.util.Constants;
 import io.github.inherit_this.world.World;
 
 public class Player extends Entity {
 
-    private float speed = 200f;
+    // Movement speed in tiles per second (6.25 tiles/sec = 200 pixels/sec at 32px/tile)
+    private float speed = 6.25f;
     private boolean noClip = false;
     private World world;
     private Inventory inventory;
     private Equipment equipment;
     private PlayerStats stats;
-    private Billboard billboard;
-    private float billboardZ = 0f; // Height of billboard base above ground (0 = standing on ground)
 
     // Mouse-based movement
     private Vector2 targetPosition = null;
-    private static final float ARRIVAL_THRESHOLD = 5f; // How close to target before stopping
-    private float facingAngle = 0f; // Angle player is facing (in degrees)
+    // Arrival threshold in tiles (0.15625 tiles = 5 pixels at 32px/tile)
+    private static final float ARRIVAL_THRESHOLD = 0.15625f;
+    private float facingAngle = 0f; // Angle player is facing (in degrees, raw movement angle)
+    private int facingDirection = 0; // 8-directional facing: 0=S, 1=SW, 2=W, 3=NW, 4=N, 5=NE, 6=E, 7=SE
 
+    // Collision box size in tiles (player hitbox is about 1 tile)
+    private static final float COLLISION_HALF_WIDTH = 0.5f;  // 0.5 tiles = 16 pixels
+    private static final float COLLISION_HALF_HEIGHT = 0.5f; // 0.5 tiles = 16 pixels
+
+    /**
+     * Creates a new Player at the given tile coordinates.
+     * @param x X position in tiles
+     * @param y Y position in tiles
+     */
     public Player(float x, float y, Texture texture, World world) {
         super(texture, x, y);
         this.world = world;
         this.inventory = new Inventory(8, 6); // 8 columns x 6 rows grid
         this.equipment = new Equipment();
         this.stats = new PlayerStats();
-
-        // Create billboard for 3D rendering
-        this.billboard = new Billboard(texture, 64f, 64f);
-        // Y-up (Minecraft-style): X,Z are ground plane, Y is height
-        this.billboard.setPosition(x, billboardZ, y);
     }
 
     public void update(float delta) {
@@ -56,8 +58,15 @@ public class Player extends Entity {
                 dx /= distance;
                 dy /= distance;
 
-                // Update facing angle
+                // Update facing angle (raw angle in degrees)
                 facingAngle = (float)Math.toDegrees(Math.atan2(dy, dx));
+
+                // Calculate 8-directional facing for sprite rotation
+                // Convert angle to 8 directions: 0=S, 1=SW, 2=W, 3=NW, 4=N, 5=NE, 6=E, 7=SE
+                // Angle ranges: -180 to 180 degrees
+                // Adjust so 0 degrees = East, 90 = North, -90 = South, 180/-180 = West
+                float adjustedAngle = facingAngle + 180f; // Shift to 0-360 range
+                facingDirection = Math.round(adjustedAngle / 45f) % 8;
 
                 // Calculate movement
                 float moveX = dx * speed * delta;
@@ -85,13 +94,12 @@ public class Player extends Entity {
                 }
             }
         }
-
-        // Update billboard position: Y-up (Minecraft-style) - X,Z are ground plane, Y is height
-        billboard.setPosition(position.x, billboardZ, position.y);
     }
 
     /**
      * Sets the target position for the player to move toward.
+     * @param x Target X position in tiles
+     * @param y Target Y position in tiles
      */
     public void setTargetPosition(float x, float y) {
         if (targetPosition == null) {
@@ -114,37 +122,70 @@ public class Player extends Entity {
         return facingAngle;
     }
 
-    private boolean isColliding(float x, float y) {
-        float halfWidth = width / 2f;
-        float halfHeight = height / 2f;
+    /**
+     * Gets the 8-directional facing of the player.
+     * @return Direction index: 0=S, 1=SW, 2=W, 3=NW, 4=N, 5=NE, 6=E, 7=SE
+     */
+    public int getFacingDirection() {
+        return facingDirection;
+    }
 
-        boolean topLeft = world.isSolidAtPosition(x - halfWidth, y + halfHeight);
-        boolean topRight = world.isSolidAtPosition(x + halfWidth, y + halfHeight);
-        boolean bottomLeft = world.isSolidAtPosition(x - halfWidth, y - halfHeight);
-        boolean bottomRight = world.isSolidAtPosition(x + halfWidth, y - halfHeight);
+    /**
+     * Checks if the player collides with solid tiles at the given position.
+     * @param x X position in tiles
+     * @param y Y position in tiles
+     * @return true if colliding with any solid tile
+     */
+    private boolean isColliding(float x, float y) {
+        // Check collision at the four corners of the player's hitbox
+        // Positions are in tiles, world.isSolidAtPosition expects pixel coordinates
+        float pixelX = x * Constants.TILE_SIZE;
+        float pixelY = y * Constants.TILE_SIZE;
+        float halfWidthPixels = COLLISION_HALF_WIDTH * Constants.TILE_SIZE;
+        float halfHeightPixels = COLLISION_HALF_HEIGHT * Constants.TILE_SIZE;
+
+        boolean topLeft = world.isSolidAtPosition(pixelX - halfWidthPixels, pixelY + halfHeightPixels);
+        boolean topRight = world.isSolidAtPosition(pixelX + halfWidthPixels, pixelY + halfHeightPixels);
+        boolean bottomLeft = world.isSolidAtPosition(pixelX - halfWidthPixels, pixelY - halfHeightPixels);
+        boolean bottomRight = world.isSolidAtPosition(pixelX + halfWidthPixels, pixelY - halfHeightPixels);
 
         return topLeft || topRight || bottomLeft || bottomRight;
     }
 
+
     /**
-     * Renders the player as a billboard sprite in 3D space.
-     * The sprite always faces the camera.
+     * Sets the player's position in tile coordinates.
+     * @param x X position in tiles
+     * @param y Y position in tiles
      */
-    public void renderPlayer(ModelBatch batch, Camera camera) {
-        billboard.render(batch, camera);
-    }
-
-    public void dispose() {
-        billboard.dispose();
-    }
-
     public void setPosition(float x, float y) {
         position.set(x, y);
     }
 
+    /**
+     * Sets the player's position to the center of a specific tile.
+     * @param x Tile X coordinate
+     * @param y Tile Y coordinate
+     */
     public void setTilePosition(int x, int y) {
-        position.x = x * Constants.TILE_SIZE;
-        position.y = y * Constants.TILE_SIZE;
+        // Position is already in tiles, so just set it directly
+        // Add 0.5 to center the player on the tile
+        position.x = x + 0.5f;
+        position.y = y + 0.5f;
+    }
+
+    /**
+     * Gets the current tile X coordinate the player is on.
+     */
+    public int getTileX() {
+        return (int) Math.floor(position.x);
+    }
+
+    /**
+     * Gets the current tile Y coordinate the player is on.
+     */
+    public int getTileY() {
+        return (int) Math.floor(position.y);
     }
     
     public void setNoClip(boolean enabled) {
@@ -165,14 +206,6 @@ public class Player extends Entity {
 
     public PlayerStats getStats() {
         return stats;
-    }
-
-    public void setBillboardZ(float z) {
-        this.billboardZ = z;
-    }
-
-    public float getBillboardZ() {
-        return billboardZ;
     }
 
 }

@@ -14,8 +14,8 @@ import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
 import com.badlogic.gdx.math.Vector3;
 
 /**
- * A billboard sprite that always faces the camera in 3D space.
- * Useful for rendering 2D sprites (like the player) in a 3D world.
+ * A billboard sprite that can be rotated to face a specific direction in 3D space.
+ * Useful for rendering 2D sprites (like the player) in a 3D world with directional facing.
  */
 public class Billboard {
 
@@ -24,6 +24,7 @@ public class Billboard {
     private float width;
     private float height;
     private Vector3 position;
+    private float facingAngle = 0f; // Rotation angle in degrees (0 = facing north/+Z)
 
     public Billboard(Texture texture, float width, float height) {
         this.width = width;
@@ -65,23 +66,32 @@ public class Billboard {
     }
 
     /**
-     * Renders the billboard, automatically rotating it to face the camera.
-     * In Y-up coordinate system: rotates around Y axis (vertical) to always face camera.
+     * Renders the billboard at its current position and facing angle.
+     * In Y-up coordinate system: rotates around Y axis (vertical).
      */
     public void render(ModelBatch batch, Camera camera) {
-        Vector3 camPos = camera.position;
-
-        // Calculate angle in the XZ plane (horizontal rotation around Y axis)
-        float dx = camPos.x - position.x;
-        float dz = camPos.z - position.z;
-        float angle = (float) Math.toDegrees(Math.atan2(dx, dz));
-
         // Reset transform and apply position + rotation
         instance.transform.idt();
         instance.transform.setToTranslation(position);
-        instance.transform.rotate(0, 1, 0, angle); // Rotate around Y axis (vertical in Y-up)
+        instance.transform.rotate(0, 1, 0, facingAngle); // Rotate around Y axis to face direction
 
         batch.render(instance);
+    }
+
+    /**
+     * Sets the facing angle of the billboard.
+     * @param angle Rotation angle in degrees (0 = facing north/+Z, 90 = east/+X, etc.)
+     */
+    public void setFacingAngle(float angle) {
+        this.facingAngle = angle;
+    }
+
+    /**
+     * Gets the current facing angle of the billboard.
+     * @return Rotation angle in degrees
+     */
+    public float getFacingAngle() {
+        return facingAngle;
     }
 
 

@@ -11,6 +11,7 @@ import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import io.github.inherit_this.Main;
+import io.github.inherit_this.save.SaveManager;
 import io.github.inherit_this.ui.MenuButton;
 import io.github.inherit_this.util.Constants;
 import io.github.inherit_this.util.FontManager;
@@ -123,9 +124,10 @@ public class PauseScreen extends BaseScreen {
             }
 
             if (saveExitButton.contains(touchPos.x, touchPos.y)) {
-                // Save to slot 0 (for now - could add slot selection UI later)
-                if (gameScreen.saveGame(0)) {
-                    Gdx.app.log("PauseScreen", "Game saved successfully!");
+                // Auto-select appropriate save slot based on character name
+                int slot = SaveManager.findSlotForCharacter(gameScreen.getCharacterName());
+                if (gameScreen.saveGame(slot)) {
+                    Gdx.app.log("PauseScreen", "Game saved successfully to slot " + slot + "!");
                 } else {
                     Gdx.app.error("PauseScreen", "Failed to save game!");
                 }

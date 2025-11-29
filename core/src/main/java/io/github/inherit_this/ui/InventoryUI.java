@@ -10,6 +10,8 @@ import com.badlogic.gdx.math.Vector2;
 import io.github.inherit_this.items.Inventory;
 import io.github.inherit_this.items.ItemStack;
 import io.github.inherit_this.util.FontManager;
+import io.github.inherit_this.audio.SoundManager;
+import io.github.inherit_this.audio.SoundType;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -306,16 +308,19 @@ public class InventoryUI {
                 draggedFromX = gridX;
                 draggedFromY = gridY;
                 dragOffset.set(0, 0);
+                SoundManager.getInstance().play(SoundType.INVENTORY_PICKUP, 0.7f);
                 return true;
             }
         } else {
             // Drop item
             if (inventory.placeItem(draggedItem, gridX, gridY)) {
                 draggedItem = null;
+                SoundManager.getInstance().play(SoundType.INVENTORY_DROP, 0.7f);
             } else {
                 // Can't place here, return to original position
                 inventory.placeItem(draggedItem, draggedFromX, draggedFromY);
                 draggedItem = null;
+                SoundManager.getInstance().play(SoundType.INVENTORY_DROP, 0.5f, 0.8f); // Lower pitch for failed drop
             }
             return true;
         }

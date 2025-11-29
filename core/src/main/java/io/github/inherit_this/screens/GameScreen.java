@@ -21,16 +21,22 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import io.github.inherit_this.Main;
 import io.github.inherit_this.items.ItemRegistry;
+import io.github.inherit_this.audio.SoundManager;
+import io.github.inherit_this.audio.SoundType;
 
 import java.util.List;
 import io.github.inherit_this.ui.EquipmentUI;
 import io.github.inherit_this.ui.HotbarUI;
 import io.github.inherit_this.ui.InventoryUI;
 import io.github.inherit_this.world.World;
+import io.github.inherit_this.world.WorldProvider;
+import io.github.inherit_this.world.ProceduralWorld;
+import io.github.inherit_this.world.StaticWorld;
 import io.github.inherit_this.world.Chunk;
 import io.github.inherit_this.world.Tile;
 import io.github.inherit_this.world.TileTextureManager;
 import io.github.inherit_this.world.TileMesh3D;
+import io.github.inherit_this.world.TileLayer;
 import io.github.inherit_this.entities.*;
 import io.github.inherit_this.util.Constants;
 import io.github.inherit_this.util.FontManager;
@@ -64,7 +70,7 @@ public class GameScreen extends ScreenAdapter {
 
     private Texture playerTex;
     private Player player;
-    private World world = new World();
+    private WorldProvider world;  // Can be StaticWorld (town) or ProceduralWorld (dungeon)
     private DebugConsole debugConsole;
     private InputMultiplexer inputMultiplexer;
 
@@ -73,6 +79,12 @@ public class GameScreen extends ScreenAdapter {
     private EquipmentUI equipmentUI;
     private HotbarUI hotbarUI;
     private boolean inventoryOpen = false;
+
+    // Map editor
+    private io.github.inherit_this.world.MapEditor mapEditor;
+
+    // Breakable objects
+    private java.util.List<BreakableObject> breakableObjects;
 
     // Fixed time step for game logic
     private static final float FIXED_TIME_STEP = 1f / 60f; // 60 ticks per second
@@ -116,8 +128,21 @@ public class GameScreen extends ScreenAdapter {
         playerTex = new Texture("character.png");
         playerTex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
 
-        player = new Player(0, 0, playerTex, world);
-         world.preloadChunks(20);
+        // Initialize world - start with StaticWorld for map editing
+        // If map file doesn't exist, StaticWorld will create an empty default map
+        world = new StaticWorld("maps/default_map.json");
+        world.preloadChunks(20);
+
+        // Use spawn coordinates from map if available
+        int spawnX = 0;
+        int spawnY = 0;
+        if (world instanceof StaticWorld) {
+            StaticWorld staticWorld = (StaticWorld) world;
+            spawnX = staticWorld.getSpawnX();
+            spawnY = staticWorld.getSpawnY();
+            Gdx.app.log("GameScreen", "Using spawn coordinates: (" + spawnX + ", " + spawnY + ")");
+        }
+        player = new Player(spawnX, spawnY, playerTex, world);
         
         // Initialize inventory, equipment, and hotbar UI
         inventoryUI = new InventoryUI(player.getInventory());
@@ -143,6 +168,7 @@ public class GameScreen extends ScreenAdapter {
         debugConsole.registerCommand(new InspectCommand(world));
         debugConsole.registerCommand(new RegenWorldCommand(world));
         debugConsole.registerCommand(new ReloadChunkCommand(world, player));
+        debugConsole.registerCommand(new SwitchWorldCommand(this));
 
         // Set up input handling with scroll wheel support
         inputMultiplexer = new InputMultiplexer();
@@ -152,6 +178,41 @@ public class GameScreen extends ScreenAdapter {
 
         // Initialize FPS font (use default libGDX font for now)
         fpsFont = new BitmapFont();
+
+        // Initialize map editor
+        mapEditor = new io.github.inherit_this.world.MapEditor(fpsFont);
+        mapEditor.setWorld(world);
+
+        // Initialize breakable objects list
+        breakableObjects = new java.util.ArrayList<>();
+
+        // Set up map editor object placement callback
+        mapEditor.setObjectPlacementCallback((objectType, tileX, tileY) -> {
+            BreakableObject obj = null;
+            switch (objectType) {
+                case "Crate":
+                    obj = BreakableObjectFactory.createCrate(tileX, tileY);
+                    break;
+                case "Pot":
+                    obj = BreakableObjectFactory.createPot(tileX, tileY);
+                    break;
+                case "Barrel":
+                    obj = BreakableObjectFactory.createBarrel(tileX, tileY);
+                    break;
+                case "Chest":
+                    obj = BreakableObjectFactory.createChest(tileX, tileY);
+                    break;
+            }
+            if (obj != null) {
+                addBreakableObject(obj);
+            }
+        });
+
+        // Add some test breakable objects around spawn point
+        addBreakableObject(BreakableObjectFactory.createCrate(2, 2));
+        addBreakableObject(BreakableObjectFactory.createPot(4, 2));
+        addBreakableObject(BreakableObjectFactory.createBarrel(-2, 3));
+        addBreakableObject(BreakableObjectFactory.createChest(0, 5));
 
         // Enable VSync to prevent screen tearing
         Gdx.graphics.setVSync(true);
@@ -206,6 +267,12 @@ public class GameScreen extends ScreenAdapter {
         // Render 3D world (player will be rendered as 2D overlay later)
         modelBatch.begin(camera);
         renderVisibleChunks3D();
+
+        // Render map editor tile preview
+        if (mapEditor.isActive() && mapEditor.hasHoveredTile()) {
+            renderTilePreview();
+        }
+
         modelBatch.end();
 
         // Disable depth test for UI rendering
@@ -239,16 +306,30 @@ public class GameScreen extends ScreenAdapter {
         hotbarUI.updatePosition(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         hotbarUI.render(batch);
 
-        // Render player sprite at screen center (2D overlay, always visible)
+        // Render breakable objects (world to screen projection)
+        renderBreakableObjects(batch);
+
+        // Render player sprite with perspective scaling
+        // Scale inversely with camera distance for proper perspective
+        // Base scale multiplied by 1.15 to make player 15% larger relative to tiles
+        // At MIN distance (200): scale = 1.73x (closer = bigger)
+        // At default (300): scale = 1.15x (normal)
+        // At MAX distance (400): scale = 0.86x (farther = smaller)
+        float scale = (300f / cameraDistance) * 1.15f;
+
+        Texture playerTexture = player.getTexture();
+        float scaledWidth = playerTexture.getWidth() * scale;
+        float scaledHeight = playerTexture.getHeight() * scale;
+
+        // Center horizontally, offset vertically by 28px (scaled) so feet anchor to tile
         float centerX = Gdx.graphics.getWidth() / 2f;
         float centerY = Gdx.graphics.getHeight() / 2f;
-        Texture playerTexture = player.getTexture();
-        float spriteWidth = playerTexture.getWidth();
-        float spriteHeight = playerTexture.getHeight();
+        float yOffset = 28f * scale; // Scale the offset too for consistent positioning
+
         batch.draw(playerTexture,
-            centerX - spriteWidth / 2f,  // Center horizontally
-            centerY - spriteHeight / 2f,  // Center vertically
-            spriteWidth, spriteHeight
+            centerX - scaledWidth / 2f,      // Center horizontally
+            centerY - scaledHeight / 2f + yOffset,  // Center vertically + offset for feet
+            scaledWidth, scaledHeight
         );
 
         // Render performance info
@@ -264,6 +345,9 @@ public class GameScreen extends ScreenAdapter {
         // int totalInRadius = (renderRadius * 2 + 1) * (renderRadius * 2 + 1);
         // fpsFont.draw(batch, "Chunks: " + chunksRenderedLastFrame + "/" + totalInRadius + " (R:" + renderRadius + ")", 10, Gdx.graphics.getHeight() - 90);
         // fpsFont.draw(batch, "Culled: " + chunksCulledLastFrame + " | Loaded: " + world.getLoadedChunkCount(), 10, Gdx.graphics.getHeight() - 110);
+
+        // Render map editor UI
+        mapEditor.render(batch);
 
         debugConsole.render();
         batch.end();
@@ -310,6 +394,57 @@ public class GameScreen extends ScreenAdapter {
      */
     public Player getPlayer() {
         return player;
+    }
+
+    /**
+     * Adds a breakable object to the game world.
+     */
+    public void addBreakableObject(BreakableObject object) {
+        breakableObjects.add(object);
+    }
+
+    /**
+     * Switches to a different world type.
+     * @param worldType "static" for StaticWorld, "procedural" for ProceduralWorld
+     * @param mapPath For static worlds, the path to the map file (can be null for default)
+     */
+    public void switchWorld(String worldType, String mapPath) {
+        // Dispose old world
+        if (world != null) {
+            world.dispose();
+        }
+
+        // Clear breakable objects (they're world-specific)
+        breakableObjects.clear();
+
+        // Create new world
+        if (worldType.equalsIgnoreCase("static")) {
+            String path = (mapPath != null && !mapPath.isEmpty()) ? mapPath : "maps/default_map.json";
+            world = new StaticWorld(path);
+            Gdx.app.log("GameScreen", "Switched to StaticWorld: " + path);
+        } else if (worldType.equalsIgnoreCase("procedural")) {
+            world = new ProceduralWorld();
+            Gdx.app.log("GameScreen", "Switched to ProceduralWorld");
+        } else {
+            Gdx.app.error("GameScreen", "Unknown world type: " + worldType);
+            return;
+        }
+
+        // Update player's world reference
+        player = new Player(player.getPosition().x, player.getPosition().y, playerTex, world);
+
+        // Update map editor
+        mapEditor.setWorld(world);
+
+        // Preload chunks
+        world.preloadChunks(20);
+    }
+
+    /**
+     * Gets the current world.
+     */
+    public WorldProvider getWorld() {
+        return world;
     }
 
     /**
@@ -382,9 +517,41 @@ public class GameScreen extends ScreenAdapter {
             debugConsole.toggle();
         }
 
+        // Toggle map editor with F10
+        if (Gdx.input.isKeyJustPressed(Input.Keys.F10)) {
+            mapEditor.toggle();
+            if (mapEditor.isActive()) {
+                SoundManager.getInstance().play(SoundType.UI_CLICK, 0.8f);
+            }
+        }
+
+        // Handle map editor input
+        if (mapEditor.isActive()) {
+            mapEditor.handleInput();
+
+            // Update hovered tile for preview
+            Vector3 groundPosition = getGroundPositionFromMouse();
+            if (groundPosition != null) {
+                int tileX = (int) Math.floor(groundPosition.x / Constants.TILE_SIZE);
+                int tileZ = (int) Math.floor(groundPosition.z / Constants.TILE_SIZE);
+                mapEditor.setHoveredTile(tileX, tileZ);
+
+                // Handle map editor clicks
+                if (Gdx.input.justTouched()) {
+                    mapEditor.handleClick(tileX, tileZ);
+                }
+            } else {
+                mapEditor.clearHoveredTile();
+            }
+            return; // Skip normal input when editor is active
+        }
+
         // Toggle inventory with 'I' key
         if (!debugConsole.isOpen() && Gdx.input.isKeyJustPressed(Input.Keys.I)) {
             inventoryOpen = !inventoryOpen;
+            if (inventoryOpen) {
+                SoundManager.getInstance().play(SoundType.UI_CLICK, 0.7f);
+            }
         }
 
         // Handle inventory clicks when open
@@ -392,6 +559,11 @@ public class GameScreen extends ScreenAdapter {
             float mouseX = Gdx.input.getX();
             float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
             inventoryUI.handleClick(mouseX, mouseY);
+        }
+
+        // Handle right-click for breaking objects
+        if (!debugConsole.isOpen() && !inventoryOpen && Gdx.input.isButtonJustPressed(Input.Buttons.RIGHT)) {
+            handleBreakableObjectClick();
         }
 
         // Handle hold-to-move (like FATE/Diablo)
@@ -476,6 +648,101 @@ public class GameScreen extends ScreenAdapter {
     }
 
     /**
+     * Handles right-click interactions with breakable objects.
+     * Damages/breaks objects and gives loot to the player.
+     */
+    private void handleBreakableObjectClick() {
+        Vector3 groundPosition = getGroundPositionFromMouse();
+        if (groundPosition == null) {
+            return;
+        }
+
+        // Convert pixel coordinates to tile coordinates
+        float tileX = groundPosition.x / Constants.TILE_SIZE;
+        float tileZ = groundPosition.z / Constants.TILE_SIZE;
+
+        // Check if any breakable object was clicked
+        for (int i = breakableObjects.size() - 1; i >= 0; i--) {
+            BreakableObject obj = breakableObjects.get(i);
+            if (obj.contains(tileX, tileZ)) {
+                // Play attack sound
+                SoundManager.getInstance().playWithVariation(SoundType.ATTACK_SWING, 0.6f);
+
+                // Damage the object
+                boolean destroyed = obj.damage(1);
+
+                if (destroyed) {
+                    // Play appropriate break sound based on object type
+                    // We can enhance BreakableObject later to store its material type
+                    SoundManager.getInstance().playWithVariation(SoundType.OBJECT_BREAK_WOOD, 0.8f);
+
+                    // Generate and give loot to player
+                    java.util.List<BreakableObject.LootResult> loot = obj.generateLoot();
+                    for (BreakableObject.LootResult result : loot) {
+                        if (result.isGold()) {
+                            player.getInventory().addGold(result.gold);
+                            SoundManager.getInstance().playWithVariation(SoundType.LOOT_GOLD, 0.7f);
+                            Gdx.app.log("Loot", "Received " + result.gold + " gold");
+                        } else if (result.isItem()) {
+                            boolean added = player.getInventory().addItem(result.item, result.quantity);
+                            if (added) {
+                                SoundManager.getInstance().play(SoundType.LOOT_ITEM, 0.7f);
+                                Gdx.app.log("Loot", "Received " + result.quantity + "x " + result.item.getName());
+                            } else {
+                                Gdx.app.log("Loot", "Inventory full! Could not add " + result.item.getName());
+                            }
+                        }
+                    }
+
+                    // Remove destroyed object
+                    breakableObjects.remove(i);
+                } else {
+                    // Play hit sound for damaged but not destroyed
+                    SoundManager.getInstance().playWithVariation(SoundType.ATTACK_HIT, 0.5f);
+                    Gdx.app.log("Object", "Damaged object - Health: " + obj.getCurrentHealth() + "/" + obj.getMaxHealth());
+                }
+                break; // Only interact with one object per click
+            }
+        }
+    }
+
+    /**
+     * Renders breakable objects as 2D sprites projected from their 3D world positions.
+     */
+    private void renderBreakableObjects(SpriteBatch batch) {
+        for (BreakableObject obj : breakableObjects) {
+            // Convert object's tile position to pixel world position
+            float worldX = obj.getPosition().x * Constants.TILE_SIZE;
+            float worldZ = obj.getPosition().y * Constants.TILE_SIZE;
+
+            // Project 3D world position to 2D screen position
+            Vector3 worldPos = new Vector3(worldX, 0, worldZ);
+            Vector3 screenPos = camera.project(worldPos);
+
+            // Check if object is on screen
+            if (screenPos.x >= 0 && screenPos.x <= Gdx.graphics.getWidth() &&
+                screenPos.y >= 0 && screenPos.y <= Gdx.graphics.getHeight() &&
+                screenPos.z >= 0 && screenPos.z <= 1) {
+
+                // Calculate distance-based scale (objects far away appear smaller)
+                float distToCamera = camera.position.dst(worldPos);
+                float scale = Math.min(1.0f, 400f / distToCamera);
+
+                // Draw the sprite centered at the screen position
+                Texture tex = obj.getTexture();
+                float width = tex.getWidth() * scale;
+                float height = tex.getHeight() * scale;
+
+                batch.draw(tex,
+                    screenPos.x - width / 2f,
+                    screenPos.y - height / 2f,
+                    width, height
+                );
+            }
+        }
+    }
+
+    /**
      * Renders visible chunks in 3D with frustum culling.
      * Only renders chunks that are actually visible in the camera's view frustum.
      * This provides massive performance improvement over rendering all chunks in radius.
@@ -548,6 +815,68 @@ public class GameScreen extends ScreenAdapter {
         }
     }
 
+    /**
+     * Renders a preview of the selected tile at the hovered position in the map editor.
+     */
+    private void renderTilePreview() {
+        com.badlogic.gdx.graphics.Texture selectedTexture = mapEditor.getSelectedTileTexture();
+        if (selectedTexture == null) return;
+
+        int hoveredX = mapEditor.getHoveredTileX();
+        int hoveredY = mapEditor.getHoveredTileY();
+        TileLayer selectedLayer = mapEditor.getSelectedLayer();
+        int selectedDirection = mapEditor.getSelectedDirection();
+
+        // Calculate world position for the tile
+        float tileWorldX = hoveredX * Constants.TILE_SIZE;
+        float tileWorldY = hoveredY * Constants.TILE_SIZE;
+
+        // Get layer Y offset
+        float yOffset = selectedLayer != null ? selectedLayer.getYOffset() : 0f;
+        // Add small elevation to preview to make it visually distinct (for non-wall tiles)
+        if (selectedLayer != TileLayer.WALL) {
+            yOffset += 0.5f;
+        }
+
+        // Create temporary tile instance for preview
+        TileMesh3D tileMesh = TileMesh3D.getInstance();
+        ModelInstance previewInstance;
+
+        // Use wall rendering for WALL layer preview
+        if (selectedLayer == TileLayer.WALL) {
+            float wallHeight = Constants.TILE_SIZE;
+            previewInstance = tileMesh.createWallInstance(
+                selectedTexture,
+                tileWorldX,
+                tileWorldY,
+                yOffset,
+                selectedDirection,
+                wallHeight
+            );
+        } else {
+            // Use angled tile rendering for other layers
+            float angle = 0f;
+            previewInstance = tileMesh.createAngledTileInstance(
+                selectedTexture,
+                tileWorldX,
+                tileWorldY,
+                yOffset,
+                angle,
+                selectedDirection
+            );
+        }
+
+        // Enable blending for semi-transparency effect
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+
+        // Render the preview
+        modelBatch.render(previewInstance, environment);
+
+        // Disable blending after preview
+        Gdx.gl.glDisable(GL20.GL_BLEND);
+    }
+
 
     @Override
     public void resize(int width, int height) {
@@ -572,8 +901,11 @@ public class GameScreen extends ScreenAdapter {
         TileTextureManager.getInstance().dispose();
         ItemRegistry.getInstance().dispose();
         FontManager.getInstance().dispose();
+        SoundManager.getInstance().dispose();
         inventoryUI.dispose();
         equipmentUI.dispose();
         hotbarUI.dispose();
+        mapEditor.dispose();
+        world.dispose();
     }
 }

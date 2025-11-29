@@ -1,0 +1,74 @@
+{
+name: Default Map
+width: 500
+height: 600
+spawnX: 50
+spawnY: 50
+defaultTile: grass_1
+tiles: {
+	52,54: stone_1:GROUND:0
+	52,55: stone_1:GROUND:0
+	56,54: stone_1:GROUND:0
+	53,64: grass_3:GROUND:0
+	56,55: stone_1:GROUND:0
+	44,61: stone_2:GROUND:0
+	44,67: grass_3:GROUND:0
+	46,43: grass_3:GROUND:0
+	43,51: grass_3:GROUND:0
+	47,54: stone_1:GROUND:0
+	47,55: stone_1:GROUND:0
+	56,60: stone_2:GROUND:0
+	55,54: stone_1:GROUND:0
+	51,50: grass_3:GROUND:0
+	52,60: stone_2:GROUND:0
+	56,64: grass_3:GROUND:0
+	55,57: stone_2:GROUND:0
+	51,54: stone_1:GROUND:0
+	55,55: stone_1:GROUND:0
+	51,55: stone_2:GROUND:0
+	48,54: stone_1:GROUND:0
+	54,49: grass_3:GROUND:0
+	51,58: grass_1:GROUND:0
+	49,62: stone_2:GROUND:0
+	50,49: grass_3:GROUND:0
+	47,49: grass_3:GROUND:0
+	48,59: stone_2:GROUND:0
+	48,55: stone_1:GROUND:0
+	49,67: grass_3:GROUND:0
+	41,56: grass_3:GROUND:0
+	44,48: grass_3:GROUND:0
+	51,61: stone_2:GROUND:0
+	51,62: stone_2:GROUND:0
+	54,55: stone_1:GROUND:0
+	54,54: stone_1:GROUND:0
+	50,55: stone_1:GROUND:0
+	49,55: stone_1:GROUND:0
+	50,54: stone_1:GROUND:0
+	49,54: stone_1:GROUND:0
+	50,57: grass_2:GROUND:0
+	46,62: grass_3:GROUND:0
+	54,58: stone_2:GROUND:0
+	50,59: stone_2:GROUND:0
+	48,46: stone_1:GROUND:0
+	49,59: stone_2:GROUND:0
+	45,55: stone_1:GROUND:0
+	45,54: stone_1:GROUND:0
+	54,60: stone_2:GROUND:0
+	42,59: grass_3:GROUND:0
+	53,51: grass_2:GROUND:0
+	54,61: grass_3:GROUND:0
+	53,50: grass_2:GROUND:0
+	53,55: stone_1:GROUND:0
+	50,64: stone_2:GROUND:0
+	53,54: stone_1:GROUND:0
+	50,63: grass_3:GROUND:0
+	50,66: grass_3:GROUND:0
+	53,57: stone_2:GROUND:0
+	53,58: grass_3:GROUND:0
+	47,62: stone_2:GROUND:0
+	52,49: grass_2:GROUND:0
+	46,54: stone_1:GROUND:0
+	46,55: stone_1:GROUND:0
+	43,64: grass_3:GROUND:0
+}
+}

@@ -1,12 +1,12 @@
 package io.github.inherit_this.debug;
 
-import io.github.inherit_this.world.World;
+import io.github.inherit_this.world.WorldProvider;
 import io.github.inherit_this.world.Tile;
 
 public class InspectCommand implements DebugCommand {
-    private final World world;
+    private final WorldProvider world;
 
-    public InspectCommand(World world) {
+    public InspectCommand(WorldProvider world) {
         this.world = world;
     }
 

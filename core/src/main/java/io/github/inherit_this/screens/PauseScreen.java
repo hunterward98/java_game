@@ -15,6 +15,8 @@ import io.github.inherit_this.save.SaveManager;
 import io.github.inherit_this.ui.MenuButton;
 import io.github.inherit_this.util.Constants;
 import io.github.inherit_this.util.FontManager;
+import io.github.inherit_this.audio.SoundManager;
+import io.github.inherit_this.audio.SoundType;
 
 public class PauseScreen extends BaseScreen {
 
@@ -116,14 +118,17 @@ public class PauseScreen extends BaseScreen {
             pauseViewport.unproject(touchPos);
 
             if (resumeButton.contains(touchPos.x, touchPos.y)) {
+                SoundManager.getInstance().play(SoundType.UI_CLICK);
                 game.setScreen(gameScreen);
             }
 
             if (settingsButton.contains(touchPos.x, touchPos.y)) {
-                // TODO later: game.setScreen(new SettingsScreen(game, this));
+                SoundManager.getInstance().play(SoundType.UI_CLICK);
+                game.setScreen(new SettingsScreen(game, this));
             }
 
             if (saveExitButton.contains(touchPos.x, touchPos.y)) {
+                SoundManager.getInstance().play(SoundType.UI_CLICK);
                 // Auto-select appropriate save slot based on character name
                 int slot = SaveManager.findSlotForCharacter(gameScreen.getCharacterName());
                 if (gameScreen.saveGame(slot)) {

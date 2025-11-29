@@ -9,5 +9,6 @@ public enum TileType {
     STONE,
     SAND,
     PATH,
-    WATER
+    WATER,
+    VOID  // Used for out-of-bounds tiles
 }

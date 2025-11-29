@@ -1,0 +1,9 @@
+{
+  "name": "Default Map",
+  "width": 500,
+  "height": 600,
+  "spawnX": 50,
+  "spawnY": 50,
+  "defaultTile": "grass_1",
+  "tiles": {}
+}

@@ -68,6 +68,22 @@ public class Chunk {
         return tiles[x][y];
     }
 
+    /**
+     * Gets all tiles at the specified position (supports multiple layers).
+     * Base implementation returns a single-element list for backward compatibility.
+     * StaticChunk overrides this to support multiple layers.
+     */
+    public List<Tile> getTiles(int x, int y) {
+        if (x < 0 || y < 0 || x >= Constants.CHUNK_SIZE || y >= Constants.CHUNK_SIZE) {
+            throw new IndexOutOfBoundsException("Tile coords out of bounds");
+        }
+        List<Tile> result = new ArrayList<>();
+        if (tiles[x][y] != null) {
+            result.add(tiles[x][y]);
+        }
+        return result;
+    }
+
     public int getChunkX() {
         return chunkX;
     }
@@ -120,6 +136,17 @@ public class Chunk {
      */
     public void invalidateCache() {
         cachedModels = null;
+    }
+
+    /**
+     * Disposes of this chunk's resources.
+     * Clears cached models to free memory.
+     */
+    public void dispose() {
+        if (cachedModels != null) {
+            cachedModels.clear();
+            cachedModels = null;
+        }
     }
     // reload idea
     // public void reloadChunk(int chunkX, int chunkY) {

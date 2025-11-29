@@ -4,14 +4,14 @@ import com.badlogic.gdx.math.Vector2;
 import io.github.inherit_this.items.Equipment;
 import io.github.inherit_this.items.Inventory;
 import io.github.inherit_this.util.Constants;
-import io.github.inherit_this.world.World;
+import io.github.inherit_this.world.WorldProvider;
 
 public class Player extends Entity {
 
     // Movement speed in tiles per second (6.25 tiles/sec = 200 pixels/sec at 32px/tile)
     private float speed = 6.25f;
     private boolean noClip = false;
-    private World world;
+    private WorldProvider world;
     private Inventory inventory;
     private Equipment equipment;
     private PlayerStats stats;
@@ -32,7 +32,7 @@ public class Player extends Entity {
      * @param x X position in tiles
      * @param y Y position in tiles
      */
-    public Player(float x, float y, Texture texture, World world) {
+    public Player(float x, float y, Texture texture, WorldProvider world) {
         super(texture, x, y);
         this.world = world;
         this.inventory = new Inventory(8, 6); // 8 columns x 6 rows grid

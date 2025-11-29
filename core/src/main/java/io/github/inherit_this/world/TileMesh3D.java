@@ -65,6 +65,99 @@ public class TileMesh3D {
     }
 
     /**
+     * Creates an angled ModelInstance for walls and roofs.
+     * @param texture The texture to use
+     * @param worldX World X position in pixels
+     * @param worldY World Y position in pixels (Z in 3D space)
+     * @param yOffset Height offset (Y in 3D space)
+     * @param angle Rotation angle in degrees (0=flat, 45=roof, 90=wall)
+     * @param direction Direction facing (0=North, 1=East, 2=South, 3=West)
+     */
+    public ModelInstance createAngledTileInstance(Texture texture, float worldX, float worldY,
+                                                   float yOffset, float angle, int direction) {
+        Model model = getTileModel(texture);
+        ModelInstance instance = new ModelInstance(model);
+
+        // Center position
+        float centerX = worldX + Constants.TILE_SIZE / 2f;
+        float centerZ = worldY + Constants.TILE_SIZE / 2f;
+
+        // Set initial position
+        instance.transform.setToTranslation(centerX, yOffset, centerZ);
+
+        // Apply rotation based on angle (tilt for walls/roofs)
+        if (angle > 0f) {
+            // Rotate around X axis for tilt (0=flat, 45=angled roof, 90=vertical wall)
+            instance.transform.rotate(1, 0, 0, angle);
+        }
+
+        // Apply rotation based on direction (which way the tile faces)
+        if (direction > 0) {
+            // Rotate around Y axis: 0=North, 1=East, 2=South, 3=West
+            instance.transform.rotate(0, 1, 0, direction * 90f);
+        }
+
+        return instance;
+    }
+
+    /**
+     * Creates a wall instance positioned at the edge of a tile.
+     * @param texture The texture to use
+     * @param worldX World X position in pixels (tile position)
+     * @param worldY World Y position in pixels (tile position, Z in 3D space)
+     * @param yOffset Height offset (Y in 3D space)
+     * @param direction Direction of wall (0=North edge, 1=East edge, 2=South edge, 3=West edge)
+     * @param wallHeight Height of the wall in world units
+     */
+    public ModelInstance createWallInstance(Texture texture, float worldX, float worldY,
+                                           float yOffset, int direction, float wallHeight) {
+        Model model = getTileModel(texture);
+        ModelInstance instance = new ModelInstance(model);
+
+        float tileSize = Constants.TILE_SIZE;
+        float halfSize = tileSize / 2f;
+
+        // Calculate position based on direction (which edge of the tile)
+        float posX = worldX + halfSize;
+        float posZ = worldY + halfSize;
+        float posY = yOffset + wallHeight / 2f;  // Center vertically
+
+        // Offset to the edge based on direction
+        switch (direction) {
+            case 0: // North edge (positive Z direction)
+                posZ += halfSize;
+                break;
+            case 1: // East edge (positive X direction)
+                posX += halfSize;
+                break;
+            case 2: // South edge (negative Z direction)
+                posZ -= halfSize;
+                break;
+            case 3: // West edge (negative X direction)
+                posX -= halfSize;
+                break;
+        }
+
+        // Set position
+        instance.transform.setToTranslation(posX, posY, posZ);
+
+        // Rotate 90 degrees around X axis to make it vertical
+        instance.transform.rotate(1, 0, 0, 90f);
+
+        // Rotate around Y axis based on direction to face the correct way
+        // North (0) and South (2) walls run along X axis (no extra rotation needed)
+        // East (1) and West (3) walls run along Z axis (need 90 degree rotation)
+        if (direction == 1 || direction == 3) {
+            instance.transform.rotate(0, 1, 0, 90f);
+        }
+
+        // Scale vertically to match wall height
+        instance.transform.scale(1f, wallHeight / tileSize, 1f);
+
+        return instance;
+    }
+
+    /**
      * Creates a flat horizontal plane mesh with the given texture.
      * The plane lies flat on the XZ plane (horizontal ground).
      */

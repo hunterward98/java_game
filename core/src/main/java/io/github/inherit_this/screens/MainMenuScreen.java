@@ -37,6 +37,17 @@ public class MainMenuScreen extends BaseScreen {
     private MenuButton slot3Button;
     private MenuButton backButton;
 
+    // Delete buttons for each save slot
+    private MenuButton deleteSlot1Button;
+    private MenuButton deleteSlot2Button;
+    private MenuButton deleteSlot3Button;
+
+    // Confirmation dialog state
+    private boolean showingDeleteConfirmation = false;
+    private int slotToDelete = -1;
+    private MenuButton confirmDeleteButton;
+    private MenuButton cancelDeleteButton;
+
     public MainMenuScreen(Main game) {
         super(game);
 
@@ -88,6 +99,31 @@ public class MainMenuScreen extends BaseScreen {
 
         backButton.bounds.x = -backButton.bounds.width / 2f;
         backButton.bounds.y = -backButton.bounds.height - spacing;
+
+        // Create delete buttons for each save slot (positioned to the right of each slot)
+        deleteSlot1Button = new MenuButton("Delete", menuFont, 0, 0);
+        deleteSlot2Button = new MenuButton("Delete", menuFont, 0, 0);
+        deleteSlot3Button = new MenuButton("Delete", menuFont, 0, 0);
+
+        float deleteButtonOffset = 150f; // Offset to the right of save slot button
+        deleteSlot1Button.bounds.x = deleteButtonOffset;
+        deleteSlot1Button.bounds.y = slot1Button.bounds.y;
+
+        deleteSlot2Button.bounds.x = deleteButtonOffset;
+        deleteSlot2Button.bounds.y = slot2Button.bounds.y;
+
+        deleteSlot3Button.bounds.x = deleteButtonOffset;
+        deleteSlot3Button.bounds.y = slot3Button.bounds.y;
+
+        // Create confirmation dialog buttons
+        confirmDeleteButton = new MenuButton("Confirm Delete", menuFont, 0, 0);
+        cancelDeleteButton = new MenuButton("Cancel", menuFont, 0, 0);
+
+        confirmDeleteButton.bounds.x = -confirmDeleteButton.bounds.width / 2f;
+        confirmDeleteButton.bounds.y = spacing;
+
+        cancelDeleteButton.bounds.x = -cancelDeleteButton.bounds.width / 2f;
+        cancelDeleteButton.bounds.y = -cancelDeleteButton.bounds.height - spacing;
     }
 
     @Override
@@ -111,7 +147,18 @@ public class MainMenuScreen extends BaseScreen {
 
         // Render buttons based on current screen
         batch.begin();
-        if (showingSaveSlots) {
+        if (showingDeleteConfirmation) {
+            // Render confirmation dialog
+            menuFont.setColor(Color.WHITE);
+            menuFont.draw(batch, "Delete save in slot " + (slotToDelete + 1) + "?", -100, 60);
+            menuFont.draw(batch, "This action cannot be undone!", -100, 40);
+
+            confirmDeleteButton.updateHover(touchPos.x, touchPos.y);
+            cancelDeleteButton.updateHover(touchPos.x, touchPos.y);
+
+            confirmDeleteButton.render(batch, shapeRenderer);
+            cancelDeleteButton.render(batch, shapeRenderer);
+        } else if (showingSaveSlots) {
             // Update save slot button labels
             updateSaveSlotLabels();
 
@@ -121,11 +168,27 @@ public class MainMenuScreen extends BaseScreen {
             slot3Button.updateHover(touchPos.x, touchPos.y);
             backButton.updateHover(touchPos.x, touchPos.y);
 
+            // Update hover states for delete buttons
+            deleteSlot1Button.updateHover(touchPos.x, touchPos.y);
+            deleteSlot2Button.updateHover(touchPos.x, touchPos.y);
+            deleteSlot3Button.updateHover(touchPos.x, touchPos.y);
+
             // Render save slot buttons
             slot1Button.render(batch, shapeRenderer);
             slot2Button.render(batch, shapeRenderer);
             slot3Button.render(batch, shapeRenderer);
             backButton.render(batch, shapeRenderer);
+
+            // Render delete buttons (only if save exists)
+            if (!slot1Button.isDisabled()) {
+                deleteSlot1Button.render(batch, shapeRenderer);
+            }
+            if (!slot2Button.isDisabled()) {
+                deleteSlot2Button.render(batch, shapeRenderer);
+            }
+            if (!slot3Button.isDisabled()) {
+                deleteSlot3Button.render(batch, shapeRenderer);
+            }
         } else {
             // Update hover states for main menu buttons
             newGameButton.updateHover(touchPos.x, touchPos.y);
@@ -162,7 +225,39 @@ public class MainMenuScreen extends BaseScreen {
             touchPos.set(Gdx.input.getX(), Gdx.input.getY(), 0);
             menuViewport.unproject(touchPos);
 
-            if (showingSaveSlots) {
+            if (showingDeleteConfirmation) {
+                // Handle confirmation dialog
+                if (confirmDeleteButton.contains(touchPos.x, touchPos.y)) {
+                    // Delete the save
+                    if (SaveManager.deleteSave(slotToDelete)) {
+                        Gdx.app.log("MainMenuScreen", "Successfully deleted save in slot " + slotToDelete);
+                    }
+                    showingDeleteConfirmation = false;
+                    slotToDelete = -1;
+                }
+                if (cancelDeleteButton.contains(touchPos.x, touchPos.y)) {
+                    // Cancel deletion
+                    showingDeleteConfirmation = false;
+                    slotToDelete = -1;
+                }
+            } else if (showingSaveSlots) {
+                // Handle delete button clicks
+                if (deleteSlot1Button.contains(touchPos.x, touchPos.y) && !slot1Button.isDisabled()) {
+                    showingDeleteConfirmation = true;
+                    slotToDelete = 0;
+                    return;
+                }
+                if (deleteSlot2Button.contains(touchPos.x, touchPos.y) && !slot2Button.isDisabled()) {
+                    showingDeleteConfirmation = true;
+                    slotToDelete = 1;
+                    return;
+                }
+                if (deleteSlot3Button.contains(touchPos.x, touchPos.y) && !slot3Button.isDisabled()) {
+                    showingDeleteConfirmation = true;
+                    slotToDelete = 2;
+                    return;
+                }
+
                 // Handle save slot selection
                 if (slot1Button.contains(touchPos.x, touchPos.y) && !slot1Button.isDisabled()) {
                     loadGameFromSlot(0);
@@ -247,5 +342,10 @@ public class MainMenuScreen extends BaseScreen {
         slot2Button.dispose();
         slot3Button.dispose();
         backButton.dispose();
+        deleteSlot1Button.dispose();
+        deleteSlot2Button.dispose();
+        deleteSlot3Button.dispose();
+        confirmDeleteButton.dispose();
+        cancelDeleteButton.dispose();
     }
 }

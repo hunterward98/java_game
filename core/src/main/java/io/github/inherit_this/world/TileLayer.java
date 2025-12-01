@@ -36,7 +36,7 @@ public enum TileLayer {
     public float getYOffset() {
         switch (this) {
             case GROUND: return 0f;
-            case WALL: return 16f;  // Half tile height (32px / 2)
+            case WALL: return 0f;  // Walls start at ground level (positioned on edges)
             case ROOF: return 32f;  // Full tile height
             default: return 0f;
         }

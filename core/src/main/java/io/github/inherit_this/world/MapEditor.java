@@ -2,6 +2,7 @@ package io.github.inherit_this.world;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -34,16 +35,20 @@ public class MapEditor {
 
     // Available tile types
     private String[] tileTypes = {
-        "grass_1", "grass_2", "grass_3", "grass_4", "grass_5", "grass_6",
-        "stone_1", "stone_2"
+            "grass_1", "grass_2", "grass_3", "grass_4", "grass_5", "grass_6",
+            "mossy_stone_1", "mossy_stone_2",
+            "path_1",
+            "sand_1",
+            "stone_1", "stone_2",
+            "wood_left_pillar", "wood_right_pillar", "wood_wall", "wood_window_1"
     };
     private int selectedTileIndex = 0;
-    private TileLayer selectedLayer = TileLayer.GROUND;  // Current layer being edited
-    private int selectedDirection = 0;  // Direction (0=N, 1=E, 2=S, 3=W)
+    private TileLayer selectedLayer = TileLayer.GROUND; // Current layer being edited
+    private int selectedDirection = 0; // Direction (0=N, 1=E, 2=S, 3=W)
 
     // Available object types
     private String[] objectTypes = {
-        "Crate", "Pot", "Barrel", "Chest"
+            "Crate", "Pot", "Barrel", "Chest"
     };
     private int selectedObjectIndex = 0;
 
@@ -172,14 +177,17 @@ public class MapEditor {
 
     /**
      * Handles input for the map editor.
+     * 
      * @param clickedWorldTileX World tile X coordinate of click
      * @param clickedWorldTileY World tile Y coordinate of click
      */
     public void handleClick(int clickedWorldTileX, int clickedWorldTileY) {
-        if (!active) return;
+        if (!active)
+            return;
 
         if (editMode == EditMode.TILE) {
-            if (staticWorld == null) return;
+            if (staticWorld == null)
+                return;
 
             // Create tile data string with layer and direction
             // Format: "tileType:layer:direction"
@@ -190,23 +198,27 @@ public class MapEditor {
             if (selectedLayer == TileLayer.WALL) {
                 if (!staticWorld.canPlaceWall(clickedWorldTileX, clickedWorldTileY, selectedDirection)) {
                     SoundManager.getInstance().play(SoundType.EDITOR_ERROR, 0.6f);
-                    Gdx.app.log("MapEditor", "Cannot place wall at (" + clickedWorldTileX + ", " + clickedWorldTileY + ") - no adjacent wall or ground");
+                    Gdx.app.log("MapEditor", "Cannot place wall at (" + clickedWorldTileX + ", " + clickedWorldTileY
+                            + ") - no adjacent wall or ground");
                     return;
                 }
             }
 
             // Execute command and add to undo stack
-            EditorCommand command = new PlaceTileCommand(staticWorld, clickedWorldTileX, clickedWorldTileY, tileData, selectedLayer);
+            EditorCommand command = new PlaceTileCommand(staticWorld, clickedWorldTileX, clickedWorldTileY, tileData,
+                    selectedLayer);
             executeCommand(command);
 
             SoundManager.getInstance().play(SoundType.EDITOR_PLACE, 0.6f);
-            Gdx.app.log("MapEditor", "Placed " + selectedTile + " (" + selectedLayer + ", dir:" + selectedDirection + ") at (" + clickedWorldTileX + ", " + clickedWorldTileY + ")");
+            Gdx.app.log("MapEditor", "Placed " + selectedTile + " (" + selectedLayer + ", dir:" + selectedDirection
+                    + ") at (" + clickedWorldTileX + ", " + clickedWorldTileY + ")");
         } else if (editMode == EditMode.OBJECT) {
             if (objectCallback != null) {
                 String objectType = objectTypes[selectedObjectIndex];
                 objectCallback.placeObject(objectType, clickedWorldTileX, clickedWorldTileY);
                 SoundManager.getInstance().play(SoundType.EDITOR_PLACE, 0.6f);
-                Gdx.app.log("MapEditor", "Placed " + objectType + " at (" + clickedWorldTileX + ", " + clickedWorldTileY + ")");
+                Gdx.app.log("MapEditor",
+                        "Placed " + objectType + " at (" + clickedWorldTileX + ", " + clickedWorldTileY + ")");
             }
         }
     }
@@ -217,7 +229,7 @@ public class MapEditor {
     private void executeCommand(EditorCommand command) {
         command.execute();
         undoStack.push(command);
-        redoStack.clear();  // Clear redo stack when new action is performed
+        redoStack.clear(); // Clear redo stack when new action is performed
     }
 
     /**
@@ -252,7 +264,20 @@ public class MapEditor {
      * Handles keyboard input for the map editor.
      */
     public void handleInput() {
-        if (!active) return;
+        if (!active)
+            return;
+
+        // Undo with Ctrl+Z
+        if (Gdx.input.isKeyPressed(Input.Keys.CONTROL_LEFT) && Gdx.input.isKeyJustPressed(Input.Keys.Z)) {
+            undo();
+            return;
+        }
+
+        // Redo with Ctrl+Y
+        if (Gdx.input.isKeyPressed(Input.Keys.CONTROL_LEFT) && Gdx.input.isKeyJustPressed(Input.Keys.Y)) {
+            redo();
+            return;
+        }
 
         // Toggle edit mode with M key
         if (Gdx.input.isKeyJustPressed(Input.Keys.M)) {
@@ -263,22 +288,11 @@ public class MapEditor {
 
         if (editMode == EditMode.TILE) {
             // Tile mode controls
-            // Cycle through tile types with number keys
-            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) selectedTileIndex = 0;
-            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) selectedTileIndex = 1;
-            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) selectedTileIndex = 2;
-            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_4)) selectedTileIndex = 3;
-            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_5)) selectedTileIndex = 4;
-            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_6)) selectedTileIndex = 5;
-            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_7)) selectedTileIndex = 6;
-            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_8)) selectedTileIndex = 7;
-            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_9)) selectedTileIndex = 8;
-
-            // Arrow keys to cycle through tiles
-            if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) {
+            // Cycle through tiles with < and >
+            if (Gdx.input.isKeyJustPressed(Input.Keys.COMMA)) {
                 selectedTileIndex = (selectedTileIndex - 1 + tileTypes.length) % tileTypes.length;
             }
-            if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.PERIOD)) {
                 selectedTileIndex = (selectedTileIndex + 1) % tileTypes.length;
             }
 
@@ -306,18 +320,14 @@ public class MapEditor {
         } else if (editMode == EditMode.OBJECT) {
             // Object mode controls
             // Number keys to select object type
-            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) selectedObjectIndex = 0;
-            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) selectedObjectIndex = 1;
-            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) selectedObjectIndex = 2;
-            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_4)) selectedObjectIndex = 3;
-
-            // Arrow keys to cycle through objects
-            if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) {
-                selectedObjectIndex = (selectedObjectIndex - 1 + objectTypes.length) % objectTypes.length;
-            }
-            if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) {
-                selectedObjectIndex = (selectedObjectIndex + 1) % objectTypes.length;
-            }
+            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1))
+                selectedObjectIndex = 0;
+            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2))
+                selectedObjectIndex = 1;
+            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3))
+                selectedObjectIndex = 2;
+            if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_4))
+                selectedObjectIndex = 3;
         }
 
         // Toggle palette with Tab (works in both modes)
@@ -330,33 +340,41 @@ public class MapEditor {
      * Renders the map editor UI.
      */
     public void render(SpriteBatch batch) {
-        if (!active) return;
+        if (!active)
+            return;
 
         font.setColor(Color.YELLOW);
-        font.draw(batch, "MAP EDITOR MODE (F10 to exit) | Mode: " + editMode + " (M to toggle)", 10, Gdx.graphics.getHeight() - 90);
+        font.draw(batch, "MAP EDITOR MODE (F10 to exit) | Mode: " + editMode + " (M to toggle)", 10,
+                Gdx.graphics.getHeight() - 90);
 
         // Show hovered tile info
         if (hasHoveredTile) {
             font.setColor(Color.CYAN);
-            font.draw(batch, "Hovering: (" + hoveredTileX + ", " + hoveredTileY + ")", 10, Gdx.graphics.getHeight() - 190);
+            font.draw(batch, "Hovering: (" + hoveredTileX + ", " + hoveredTileY + ")", 10,
+                    Gdx.graphics.getHeight() - 190);
             font.setColor(Color.YELLOW);
         }
 
         if (editMode == EditMode.TILE) {
             // Draw tile mode HUD
             String selectedTile = tileTypes[selectedTileIndex];
-            String[] directionNames = {"North", "East", "South", "West"};
+            String[] directionNames = { "North", "East", "South", "West" };
             String directionName = directionNames[selectedDirection];
 
-            font.draw(batch, "Tile: " + selectedTile + " [" + (selectedTileIndex + 1) + "/" + tileTypes.length + "]", 10, Gdx.graphics.getHeight() - 110);
-            font.draw(batch, "Layer: " + selectedLayer + " (Q/E) | Direction: " + directionName + " (R)", 10, Gdx.graphics.getHeight() - 130);
+            font.draw(batch, "Tile: " + selectedTile + " [" + (selectedTileIndex + 1) + "/" + tileTypes.length + "]",
+                    10, Gdx.graphics.getHeight() - 110);
+            font.draw(batch, "Layer: " + selectedLayer + " (Q/E) | Direction: " + directionName + " (R)", 10,
+                    Gdx.graphics.getHeight() - 130);
             font.draw(batch, "Arrow Keys: Change tile | Click: Place tile", 10, Gdx.graphics.getHeight() - 150);
-            font.draw(batch, "Ctrl+S: Save map | Tab: Toggle palette", 10, Gdx.graphics.getHeight() - 170);
+            font.draw(batch, "Ctrl+S: Save | Ctrl+Z: Undo | Ctrl+Y: Redo | Tab: Palette", 10,
+                    Gdx.graphics.getHeight() - 170);
         } else if (editMode == EditMode.OBJECT) {
             // Draw object mode HUD
             String selectedObject = objectTypes[selectedObjectIndex];
 
-            font.draw(batch, "Object: " + selectedObject + " [" + (selectedObjectIndex + 1) + "/" + objectTypes.length + "]", 10, Gdx.graphics.getHeight() - 110);
+            font.draw(batch,
+                    "Object: " + selectedObject + " [" + (selectedObjectIndex + 1) + "/" + objectTypes.length + "]", 10,
+                    Gdx.graphics.getHeight() - 110);
             font.draw(batch, "Arrow Keys: Change object | Click: Place object", 10, Gdx.graphics.getHeight() - 130);
             font.draw(batch, "Tab: Toggle palette", 10, Gdx.graphics.getHeight() - 150);
         }
@@ -426,7 +444,8 @@ public class MapEditor {
      * Saves the current map to a file.
      */
     private void saveMap() {
-        if (staticWorld == null) return;
+        if (staticWorld == null)
+            return;
 
         String filename = "maps/town_" + System.currentTimeMillis() + ".json";
         staticWorld.saveMap(filename);

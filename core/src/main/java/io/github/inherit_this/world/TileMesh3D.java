@@ -145,10 +145,14 @@ public class TileMesh3D {
         instance.transform.rotate(1, 0, 0, 90f);
 
         // Rotate around Y axis based on direction to face the correct way
-        // North (0) and South (2) walls run along X axis (no extra rotation needed)
-        // East (1) and West (3) walls run along Z axis (need 90 degree rotation)
-        if (direction == 1 || direction == 3) {
-            instance.transform.rotate(0, 1, 0, 90f);
+        // Each direction needs specific rotation to orient the wall texture properly
+        // North (0): 0° - wall faces south from north edge
+        // East (1): 90° - wall faces west from east edge
+        // South (2): 180° - wall faces north from south edge
+        // West (3): 270° - wall faces east from west edge
+        float yRotation = direction * 90f;
+        if (yRotation > 0) {
+            instance.transform.rotate(0, 1, 0, yRotation);
         }
 
         // Scale vertically to match wall height

@@ -228,25 +228,39 @@ public class StaticWorld implements WorldProvider {
      * @return true if wall placement is valid
      */
     public boolean canPlaceWall(int worldTileX, int worldTileY, int direction) {
-        // Check if there's a ground tile at this position
-        String key = worldTileX + "," + worldTileY;
-        String existingData = mapData.tiles.get(key);
-        boolean hasGround = false;
+        // Check if position is within map bounds
+        if (worldTileX >= 0 && worldTileX < mapData.width &&
+            worldTileY >= 0 && worldTileY < mapData.height) {
 
-        if (existingData != null && !existingData.isEmpty()) {
-            String[] parts = existingData.split(";");
-            for (String part : parts) {
-                String[] tileParts = part.split(":");
-                if (tileParts.length > 1 && tileParts[1].equals("GROUND")) {
-                    hasGround = true;
-                    break;
+            // Check if there's a ground tile at this position
+            String key = worldTileX + "," + worldTileY;
+            String existingData = mapData.tiles.get(key);
+            boolean hasGround = false;
+
+            if (existingData != null && !existingData.isEmpty()) {
+                String[] parts = existingData.split(";");
+                for (String part : parts) {
+                    String[] tileParts = part.split(":");
+                    // Check for GROUND layer - handles both new format and legacy format
+                    if (tileParts.length == 1) {
+                        // Legacy format (just "grass_1") defaults to GROUND layer
+                        hasGround = true;
+                        break;
+                    } else if (tileParts.length > 1 && tileParts[1].equals("GROUND")) {
+                        // New format with explicit layer
+                        hasGround = true;
+                        break;
+                    }
                 }
+            } else {
+                // No explicit tile data means it's using the default tile (which is ground)
+                hasGround = true;
             }
-        }
 
-        // If there's ground, wall can be placed
-        if (hasGround) {
-            return true;
+            // If there's ground, wall can be placed
+            if (hasGround) {
+                return true;
+            }
         }
 
         // Otherwise, check for adjacent wall

@@ -45,6 +45,9 @@ public class MapEditor {
     private int selectedTileIndex = 0;
     private TileLayer selectedLayer = TileLayer.GROUND; // Current layer being edited
     private int selectedDirection = 0; // Direction (0=N, 1=E, 2=S, 3=W)
+    private int selectedLevel = 0; // Height level for vertical stacking (0-15)
+    private boolean selectedFlipped = false; // Whether texture is flipped horizontally
+    private int selectedTextureRotation = 0; // Texture rotation in 90° increments (0-3: 0°, 90°, 180°, 270°)
 
     // Available object types
     private String[] objectTypes = {
@@ -176,6 +179,27 @@ public class MapEditor {
     }
 
     /**
+     * Gets whether the selected tile is flipped.
+     */
+    public boolean getSelectedFlipped() {
+        return selectedFlipped;
+    }
+
+    /**
+     * Gets the currently selected height level.
+     */
+    public int getSelectedLevel() {
+        return selectedLevel;
+    }
+
+    /**
+     * Gets the currently selected texture rotation.
+     */
+    public int getSelectedTextureRotation() {
+        return selectedTextureRotation;
+    }
+
+    /**
      * Handles input for the map editor.
      * 
      * @param clickedWorldTileX World tile X coordinate of click
@@ -189,10 +213,10 @@ public class MapEditor {
             if (staticWorld == null)
                 return;
 
-            // Create tile data string with layer and direction
-            // Format: "tileType:layer:direction"
+            // Create tile data string with layer, direction, level, flipped, and texture rotation
+            // Format: "tileType:layer:direction:level:flipped:textureRotation"
             String selectedTile = tileTypes[selectedTileIndex];
-            String tileData = selectedTile + ":" + selectedLayer.name() + ":" + selectedDirection;
+            String tileData = selectedTile + ":" + selectedLayer.name() + ":" + selectedDirection + ":" + selectedLevel + ":" + selectedFlipped + ":" + selectedTextureRotation;
 
             // Validate wall placement if placing on WALL layer
             if (selectedLayer == TileLayer.WALL) {
@@ -313,6 +337,24 @@ public class MapEditor {
                 selectedDirection = (selectedDirection + 1) % 4;
             }
 
+            // [ and ] keys to change height level (0-15)
+            if (Gdx.input.isKeyJustPressed(Input.Keys.LEFT_BRACKET)) {
+                selectedLevel = Math.max(0, selectedLevel - 1);
+            }
+            if (Gdx.input.isKeyJustPressed(Input.Keys.RIGHT_BRACKET)) {
+                selectedLevel = Math.min(15, selectedLevel + 1);
+            }
+
+            // F key to toggle flipped
+            if (Gdx.input.isKeyJustPressed(Input.Keys.F)) {
+                selectedFlipped = !selectedFlipped;
+            }
+
+            // T key to rotate texture (0-3: 0°, 90°, 180°, 270°)
+            if (Gdx.input.isKeyJustPressed(Input.Keys.T)) {
+                selectedTextureRotation = (selectedTextureRotation + 1) % 4;
+            }
+
             // Save map with Ctrl+S
             if (Gdx.input.isKeyPressed(Input.Keys.CONTROL_LEFT) && Gdx.input.isKeyJustPressed(Input.Keys.S)) {
                 saveMap();
@@ -361,13 +403,17 @@ public class MapEditor {
             String[] directionNames = { "North", "East", "South", "West" };
             String directionName = directionNames[selectedDirection];
 
+            String rotationDegrees = (selectedTextureRotation * 90) + "°";
+
             font.draw(batch, "Tile: " + selectedTile + " [" + (selectedTileIndex + 1) + "/" + tileTypes.length + "]",
                     10, Gdx.graphics.getHeight() - 110);
-            font.draw(batch, "Layer: " + selectedLayer + " (Q/E) | Direction: " + directionName + " (R)", 10,
+            font.draw(batch, "Layer: " + selectedLayer + " (Q/E) | Direction: " + directionName + " (R) | Level: " + selectedLevel + " ([/])", 10,
                     Gdx.graphics.getHeight() - 130);
-            font.draw(batch, "Arrow Keys: Change tile | Click: Place tile", 10, Gdx.graphics.getHeight() - 150);
+            font.draw(batch, "Flipped: " + (selectedFlipped ? "Yes" : "No") + " (F) | Texture Rotation: " + rotationDegrees + " (T)", 10,
+                    Gdx.graphics.getHeight() - 150);
+            font.draw(batch, "< and >: Change tile | Click: Place tile", 10, Gdx.graphics.getHeight() - 170);
             font.draw(batch, "Ctrl+S: Save | Ctrl+Z: Undo | Ctrl+Y: Redo | Tab: Palette", 10,
-                    Gdx.graphics.getHeight() - 170);
+                    Gdx.graphics.getHeight() - 190);
         } else if (editMode == EditMode.OBJECT) {
             // Draw object mode HUD
             String selectedObject = objectTypes[selectedObjectIndex];
@@ -447,7 +493,8 @@ public class MapEditor {
         if (staticWorld == null)
             return;
 
-        String filename = "maps/town_" + System.currentTimeMillis() + ".json";
+        // Save to the original file path instead of creating a new file
+        String filename = staticWorld.getMapFilePath();
         staticWorld.saveMap(filename);
         Gdx.app.log("MapEditor", "Map saved to " + filename);
     }

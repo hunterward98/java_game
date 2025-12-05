@@ -103,8 +103,26 @@ public class StaticWorld implements WorldProvider {
 
     @Override
     public boolean isSolidAtPosition(float worldX, float worldY) {
-        Tile tile = getTileAtPosition(worldX, worldY);
-        return tile != null && tile.isSolid();
+        // Need to check ALL tiles at this position (ground, walls, roof)
+        // not just the first one (ground)
+        int tileX = (int) Math.floor(worldX / Constants.TILE_SIZE);
+        int tileY = (int) Math.floor(worldY / Constants.TILE_SIZE);
+
+        int chunkX = Math.floorDiv(tileX, Constants.CHUNK_SIZE);
+        int chunkY = Math.floorDiv(tileY, Constants.CHUNK_SIZE);
+        Chunk chunk = getOrCreateChunk(chunkX, chunkY);
+
+        int localX = Math.floorMod(tileX, Constants.CHUNK_SIZE);
+        int localY = Math.floorMod(tileY, Constants.CHUNK_SIZE);
+
+        // Check all layers at this position
+        java.util.List<Tile> tiles = chunk.getTiles(localX, localY);
+        for (Tile tile : tiles) {
+            if (tile != null && tile.isSolid()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -144,7 +162,7 @@ public class StaticWorld implements WorldProvider {
      * Used by the map editor.
      * @param worldTileX World tile X coordinate
      * @param worldTileY World tile Y coordinate
-     * @param tileData Tile data string (format: "tileType:layer:direction")
+     * @param tileData Tile data string (format: "tileType:layer:direction:level")
      * @param layer The layer to place this tile on
      */
     public void setTileAt(int worldTileX, int worldTileY, String tileData, TileLayer layer) {
@@ -162,27 +180,31 @@ public class StaticWorld implements WorldProvider {
             }
         }
 
-        // Parse direction from new tile data
+        // Parse direction and level from new tile data
         String[] newTileParts = tileData.split(":");
         int newDirection = newTileParts.length > 2 ? Integer.parseInt(newTileParts[2]) : 0;
+        int newLevel = newTileParts.length > 3 ? Integer.parseInt(newTileParts[3]) : 0;
 
         // Remove any existing tile on this layer
-        // For WALL layers, only remove walls on the same side (direction)
-        // For other layers, remove all tiles on that layer
+        // For WALL layers, only remove walls on the same side (direction) AND same level
+        // For other layers, remove all tiles on that layer and level
         layers.removeIf(layerData -> {
             String[] parts = layerData.split(":");
             if (parts.length > 1) {
                 boolean sameLayer = parts[1].equals(layer.name());
                 if (!sameLayer) return false;
 
-                // For WALL layer, only remove if same direction
+                // Parse existing level (default to 0 for legacy format)
+                int existingLevel = parts.length > 3 ? Integer.parseInt(parts[3]) : 0;
+
+                // For WALL layer, only remove if same direction AND same level
                 if (layer == TileLayer.WALL && parts.length > 2) {
                     int existingDirection = Integer.parseInt(parts[2]);
-                    return existingDirection == newDirection;
+                    return existingDirection == newDirection && existingLevel == newLevel;
                 }
 
-                // For non-WALL layers, remove any tile on the same layer
-                return true;
+                // For non-WALL layers, remove any tile on the same layer and level
+                return existingLevel == newLevel;
             }
             return false; // Legacy format, keep it
         });
@@ -356,6 +378,10 @@ public class StaticWorld implements WorldProvider {
 
     public int getSpawnY() {
         return mapData.spawnY;
+    }
+
+    public String getMapFilePath() {
+        return mapFilePath;
     }
 
     private long pack(int x, int y) {

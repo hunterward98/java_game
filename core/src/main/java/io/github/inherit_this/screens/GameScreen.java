@@ -377,8 +377,18 @@ public class GameScreen extends ScreenAdapter {
 
     /**
      * Saves the current game state to the specified slot.
+     * Also saves map edits if in a StaticWorld.
      */
     public boolean saveGame(int slot) {
+        // Save map edits if we're in a StaticWorld
+        if (world instanceof io.github.inherit_this.world.StaticWorld) {
+            io.github.inherit_this.world.StaticWorld staticWorld = (io.github.inherit_this.world.StaticWorld) world;
+            String mapFilePath = staticWorld.getMapFilePath();
+            staticWorld.saveMap(mapFilePath);
+            Gdx.app.log("GameScreen", "Map saved to " + mapFilePath);
+        }
+
+        // Save player state
         return SaveManager.saveGame(player, characterName, slot, playTimeMillis);
     }
 
@@ -826,13 +836,17 @@ public class GameScreen extends ScreenAdapter {
         int hoveredY = mapEditor.getHoveredTileY();
         TileLayer selectedLayer = mapEditor.getSelectedLayer();
         int selectedDirection = mapEditor.getSelectedDirection();
+        boolean selectedFlipped = mapEditor.getSelectedFlipped();
+        int selectedLevel = mapEditor.getSelectedLevel();
+        int selectedTextureRotation = mapEditor.getSelectedTextureRotation();
 
         // Calculate world position for the tile
         float tileWorldX = hoveredX * Constants.TILE_SIZE;
         float tileWorldY = hoveredY * Constants.TILE_SIZE;
 
-        // Get layer Y offset
-        float yOffset = selectedLayer != null ? selectedLayer.getYOffset() : 0f;
+        // Get layer Y offset and add level offset (each level is one tile height)
+        float baseYOffset = selectedLayer != null ? selectedLayer.getYOffset() : 0f;
+        float yOffset = baseYOffset + (selectedLevel * Constants.TILE_SIZE);
         // Add small elevation to preview to make it visually distinct (for non-wall tiles)
         if (selectedLayer != TileLayer.WALL) {
             yOffset += 0.5f;
@@ -851,7 +865,9 @@ public class GameScreen extends ScreenAdapter {
                 tileWorldY,
                 yOffset,
                 selectedDirection,
-                wallHeight
+                wallHeight,
+                selectedFlipped,
+                selectedTextureRotation
             );
         } else {
             // Use angled tile rendering for other layers

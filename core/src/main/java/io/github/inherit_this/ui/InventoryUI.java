@@ -328,6 +328,26 @@ public class InventoryUI {
         return false;
     }
 
+    public ItemStack handleRightClick(float worldX, float worldY) {
+        Vector2 gridPos = screenToGrid(worldX, worldY);
+        if (gridPos == null) {
+            return null;
+        }
+
+        int gridX = (int)gridPos.x;
+        int gridY = (int)gridPos.y;
+
+        ItemStack stack = inventory.getItemAt(gridX, gridY);
+        if (stack != null && stack.getItem().isEquippable()) {
+            return inventory.removeItem(gridX, gridY);
+        }
+        return null;
+    }
+
+    public Inventory getInventory() {
+        return inventory;
+    }
+
     public void dispose() {
         shapeRenderer.dispose();
         batch.dispose();  // Dispose our own batch

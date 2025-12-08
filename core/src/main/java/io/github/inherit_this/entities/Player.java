@@ -27,6 +27,10 @@ public class Player extends Entity {
     private static final float COLLISION_HALF_WIDTH = 0.5f;  // 0.5 tiles = 16 pixels
     private static final float COLLISION_HALF_HEIGHT = 0.5f; // 0.5 tiles = 16 pixels
 
+    // Combat
+    private float timeSinceLastAttack = 0f;
+    private NPC targetEnemy = null;  // Currently targeted enemy
+
     /**
      * Creates a new Player at the given tile coordinates.
      * @param x X position in tiles
@@ -41,6 +45,9 @@ public class Player extends Entity {
     }
 
     public void update(float delta) {
+        // Update attack cooldown
+        timeSinceLastAttack += delta;
+
         // Regenerate stamina over time
         stats.regenerateStamina(delta);
 
@@ -196,6 +203,14 @@ public class Player extends Entity {
         return noClip;
     }
 
+    /**
+     * Set the world provider for collision detection.
+     * Used when switching between town and dungeon.
+     */
+    public void setWorld(WorldProvider world) {
+        this.world = world;
+    }
+
     public Inventory getInventory() {
         return inventory;
     }
@@ -206,6 +221,88 @@ public class Player extends Entity {
 
     public PlayerStats getStats() {
         return stats;
+    }
+
+    /**
+     * Get attack range based on equipped weapon.
+     * @return Attack range in pixels
+     */
+    public float getAttackRange() {
+        // Base melee range
+        float baseRange = 48f;  // ~1.5 tiles
+
+        // TODO: Check equipped weapon and adjust range
+        // For now, return base range
+        return baseRange;
+    }
+
+    /**
+     * Get attack speed (attacks per second) based on equipped weapon.
+     */
+    public float getAttackSpeed() {
+        // Base attack speed
+        float baseSpeed = 1.0f;  // 1 attack per second
+
+        // TODO: Check equipped weapon stats
+        return baseSpeed;
+    }
+
+    /**
+     * Attempt to attack an NPC.
+     * @param target The NPC to attack
+     * @return true if attack was performed, false if on cooldown
+     */
+    public boolean attack(NPC target) {
+        if (target == null || target.isDead()) {
+            return false;
+        }
+
+        float attackCooldown = 1.0f / getAttackSpeed();
+
+        if (timeSinceLastAttack >= attackCooldown) {
+            timeSinceLastAttack = 0f;
+            targetEnemy = target;
+
+            // Calculate total damage (base stats + equipment)
+            int totalDamage = stats.getTotalDamage();
+
+            // Deal damage to target
+            target.takeDamage(totalDamage, this);
+
+            System.out.println("Player attacks " + target.getName() + " for " + totalDamage + " damage!");
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Set the target enemy for combat.
+     */
+    public void setTargetEnemy(NPC enemy) {
+        this.targetEnemy = enemy;
+    }
+
+    /**
+     * Get the currently targeted enemy.
+     */
+    public NPC getTargetEnemy() {
+        return targetEnemy;
+    }
+
+    /**
+     * Check if an NPC is in attack range.
+     */
+    public boolean isInAttackRange(NPC npc) {
+        if (npc == null) {
+            return false;
+        }
+
+        float dx = npc.getPosition().x - position.x;
+        float dy = npc.getPosition().y - position.y;
+        float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+        return distance <= getAttackRange();
     }
 
 }

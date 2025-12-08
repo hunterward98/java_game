@@ -22,10 +22,11 @@ public class Item {
     private final float weight;           // Item weight (for inventory capacity)
     private final ItemStats stats;        // Combat/stat bonuses
     private final List<String> enchantments; // List of enchantment names
+    private final EquipmentSlot equipmentSlot; // Which slot this can be equipped to (null if not equippable)
 
     public Item(String id, String name, String description, ItemType type, ItemRarity rarity,
                 Texture icon, int width, int height, int maxStackSize, int value, float weight,
-                ItemStats stats, List<String> enchantments) {
+                ItemStats stats, List<String> enchantments, EquipmentSlot equipmentSlot) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -39,13 +40,14 @@ public class Item {
         this.weight = weight;
         this.stats = stats != null ? stats : ItemStats.none();
         this.enchantments = enchantments != null ? new ArrayList<>(enchantments) : new ArrayList<>();
+        this.equipmentSlot = equipmentSlot;
     }
 
     // Simplified constructor for basic items (backward compatibility)
     public Item(String id, String name, String description, ItemType type, ItemRarity rarity,
                 Texture icon, int width, int height, int maxStackSize, int value) {
         this(id, name, description, type, rarity, icon, width, height, maxStackSize, value,
-             1.0f, ItemStats.none(), null);
+             1.0f, ItemStats.none(), null, null);
     }
 
     // Getters
@@ -62,8 +64,10 @@ public class Item {
     public float getWeight() { return weight; }
     public ItemStats getStats() { return stats; }
     public List<String> getEnchantments() { return new ArrayList<>(enchantments); }
+    public EquipmentSlot getEquipmentSlot() { return equipmentSlot; }
     public boolean isStackable() { return maxStackSize > 1; }
     public boolean hasEnchantments() { return !enchantments.isEmpty(); }
+    public boolean isEquippable() { return equipmentSlot != null; }
 
     @Override
     public String toString() {

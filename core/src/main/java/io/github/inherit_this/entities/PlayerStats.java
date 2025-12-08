@@ -244,4 +244,23 @@ public class PlayerStats {
     public void setGold(int gold) {
         this.gold = Math.max(0, gold);
     }
+
+    /**
+     * Calculate total damage output.
+     * Base damage scales with level, can be enhanced by equipment.
+     * @return Total damage per attack
+     */
+    public int getTotalDamage() {
+        // Base damage: 5 + (level * 2)
+        // Level 1 = 7 damage
+        // Level 10 = 25 damage
+        // Level 50 = 105 damage
+        int baseDamage = 5 + (level * 2);
+
+        // TODO: Add equipment bonuses from equipped weapon
+        // Equipment equipment = player.getEquipment();
+        // baseDamage += equipment.getTotalStats().getDamage();
+
+        return baseDamage;
+    }
 }

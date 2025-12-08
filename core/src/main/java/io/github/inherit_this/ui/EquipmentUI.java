@@ -292,6 +292,21 @@ public class EquipmentUI {
         return screenToSlot(worldX, worldY);
     }
 
+    public Item unequipSlot(EquipmentSlot slot) {
+        return equipment.unequip(slot);
+    }
+
+    public Item equipItem(Item item) {
+        if (item == null || !item.isEquippable()) {
+            return item;
+        }
+        return equipment.equip(item.getEquipmentSlot(), item);
+    }
+
+    public Equipment getEquipment() {
+        return equipment;
+    }
+
     public void dispose() {
         shapeRenderer.dispose();
         batch.dispose();  // Dispose our own batch

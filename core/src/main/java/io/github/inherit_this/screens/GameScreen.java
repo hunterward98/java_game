@@ -20,6 +20,9 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import io.github.inherit_this.Main;
+import io.github.inherit_this.items.Item;
+import io.github.inherit_this.items.ItemStack;
+import io.github.inherit_this.items.EquipmentSlot;
 import io.github.inherit_this.items.ItemRegistry;
 import io.github.inherit_this.audio.SoundManager;
 import io.github.inherit_this.audio.SoundType;
@@ -28,10 +31,15 @@ import java.util.List;
 import io.github.inherit_this.ui.EquipmentUI;
 import io.github.inherit_this.ui.HotbarUI;
 import io.github.inherit_this.ui.InventoryUI;
+import io.github.inherit_this.ui.DungeonUI;
 import io.github.inherit_this.world.World;
 import io.github.inherit_this.world.WorldProvider;
 import io.github.inherit_this.world.ProceduralWorld;
 import io.github.inherit_this.world.StaticWorld;
+import io.github.inherit_this.world.DungeonWorld;
+import io.github.inherit_this.world.DungeonManager;
+import io.github.inherit_this.world.Portal;
+import io.github.inherit_this.world.PortalRenderer;
 import io.github.inherit_this.world.Chunk;
 import io.github.inherit_this.world.Tile;
 import io.github.inherit_this.world.TileTextureManager;
@@ -80,11 +88,22 @@ public class GameScreen extends ScreenAdapter {
     private HotbarUI hotbarUI;
     private boolean inventoryOpen = false;
 
+    // Dungeon system
+    private DungeonManager dungeonManager;
+    private DungeonUI dungeonUI;
+    private PortalRenderer portalRenderer;
+    private StaticWorld townWorld;  // Reference to town world
+    private Portal townDungeonEntrance;  // Portal in town
+    private Portal dungeonTownReturn;    // Portal in dungeon
+
     // Map editor
     private io.github.inherit_this.world.MapEditor mapEditor;
 
     // Breakable objects
     private java.util.List<BreakableObject> breakableObjects;
+
+    // NPCs and enemies
+    private java.util.List<NPC> npcs;
 
     // Fixed time step for game logic
     private static final float FIXED_TIME_STEP = 1f / 60f; // 60 ticks per second
@@ -149,6 +168,17 @@ public class GameScreen extends ScreenAdapter {
         equipmentUI = new EquipmentUI(player.getEquipment());
         hotbarUI = new HotbarUI(player.getInventory(), player.getStats());
 
+        // Initialize dungeon system
+        dungeonManager = DungeonManager.getInstance();
+        dungeonUI = new DungeonUI();
+        townWorld = (StaticWorld) world;  // Save reference to town
+
+        // Create dungeon entrance portal in town (near spawn)
+        townDungeonEntrance = Portal.createDungeonEntrance(
+            spawnX + 200,  // Place portal 200 pixels to the right of spawn
+            spawnY
+        );
+
         debugConsole = new DebugConsole();
         debugConsole.registerCommand(new HelpCommand(debugConsole.getCommands()));
 
@@ -185,6 +215,9 @@ public class GameScreen extends ScreenAdapter {
 
         // Initialize breakable objects list
         breakableObjects = new java.util.ArrayList<>();
+
+        // Initialize NPC list
+        npcs = new java.util.ArrayList<>();
 
         // Set up map editor object placement callback
         mapEditor.setObjectPlacementCallback((objectType, tileX, tileY) -> {
@@ -255,6 +288,14 @@ public class GameScreen extends ScreenAdapter {
             // Update game logic at fixed rate
             if (!debugConsole.isOpen() && !inventoryOpen) {
                 player.update(FIXED_TIME_STEP);
+
+                // Update all NPCs
+                for (NPC npc : npcs) {
+                    npc.update(FIXED_TIME_STEP, player);
+                }
+
+                // Remove dead NPCs
+                npcs.removeIf(npc -> npc.isDead());
             }
             accumulator -= FIXED_TIME_STEP;
         }
@@ -306,8 +347,14 @@ public class GameScreen extends ScreenAdapter {
         hotbarUI.updatePosition(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         hotbarUI.render(batch);
 
+        // Render dungeon UI (level display and portal prompts)
+        dungeonUI.render();
+
         // Render breakable objects (world to screen projection)
         renderBreakableObjects(batch);
+
+        // Render NPCs (world to screen projection)
+        renderNPCs(batch);
 
         // Render player sprite with perspective scaling
         // Scale inversely with camera distance for proper perspective
@@ -556,6 +603,9 @@ public class GameScreen extends ScreenAdapter {
             return; // Skip normal input when editor is active
         }
 
+        // Handle dungeon portal interactions
+        handlePortalInteractions();
+
         // Toggle inventory with 'I' key
         if (!debugConsole.isOpen() && Gdx.input.isKeyJustPressed(Input.Keys.I)) {
             inventoryOpen = !inventoryOpen;
@@ -571,20 +621,69 @@ public class GameScreen extends ScreenAdapter {
             inventoryUI.handleClick(mouseX, mouseY);
         }
 
+        // Handle right-click to equip items from inventory
+        if (inventoryOpen && Gdx.input.isButtonJustPressed(Input.Buttons.RIGHT)) {
+            float mouseX = Gdx.input.getX();
+            float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
+            ItemStack stackToEquip = inventoryUI.handleRightClick(mouseX, mouseY);
+            if (stackToEquip != null && stackToEquip.getItem().isEquippable()) {
+                Item previousItem = equipmentUI.equipItem(stackToEquip.getItem());
+                if (previousItem != null) {
+                    inventoryUI.getInventory().addItem(previousItem, 1);
+                }
+                SoundManager.getInstance().play(SoundType.UI_CLICK, 0.8f);
+            }
+        }
+
+        // Handle equipment slot clicks to unequip
+        if (inventoryOpen && Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
+            float mouseX = Gdx.input.getX();
+            float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
+            EquipmentSlot clickedSlot = equipmentUI.handleClick(mouseX, mouseY);
+            if (clickedSlot != null) {
+                Item unequippedItem = equipmentUI.unequipSlot(clickedSlot);
+                if (unequippedItem != null) {
+                    boolean added = inventoryUI.getInventory().addItem(unequippedItem, 1);
+                    if (!added) {
+                        equipmentUI.equipItem(unequippedItem);
+                    } else {
+                        SoundManager.getInstance().play(SoundType.UI_CLICK, 0.8f);
+                    }
+                }
+            }
+        }
+
         // Handle right-click for breaking objects
         if (!debugConsole.isOpen() && !inventoryOpen && Gdx.input.isButtonJustPressed(Input.Buttons.RIGHT)) {
             handleBreakableObjectClick();
         }
 
-        // Handle hold-to-move (like FATE/Diablo)
+        // Handle hold-to-move and combat (FATE-style)
         if (!debugConsole.isOpen() && !inventoryOpen && Gdx.input.isButtonPressed(Input.Buttons.LEFT)) {
             // Get mouse position and raycast to ground (returns pixel coordinates)
             Vector3 groundPosition = getGroundPositionFromMouse();
             if (groundPosition != null) {
-                // Convert pixel coordinates to tile coordinates
-                float tileX = groundPosition.x / Constants.TILE_SIZE;
-                float tileZ = groundPosition.z / Constants.TILE_SIZE;
-                player.setTargetPosition(tileX, tileZ);
+                // Check if clicking on/near an enemy
+                NPC targetEnemy = findNearestNPC(groundPosition.x, groundPosition.z, 32f);
+
+                if (targetEnemy != null && !targetEnemy.isDead()) {
+                    // Enemy found - attack if in range
+                    if (player.isInAttackRange(targetEnemy)) {
+                        // In range - attack the enemy
+                        player.attack(targetEnemy);
+                        player.stopMoving();  // Stop moving while attacking
+                    } else {
+                        // Not in range - move toward enemy to get into range
+                        float tileX = targetEnemy.getPosition().x / Constants.TILE_SIZE;
+                        float tileZ = targetEnemy.getPosition().y / Constants.TILE_SIZE;
+                        player.setTargetPosition(tileX, tileZ);
+                    }
+                } else {
+                    // No enemy - just move to clicked position
+                    float tileX = groundPosition.x / Constants.TILE_SIZE;
+                    float tileZ = groundPosition.z / Constants.TILE_SIZE;
+                    player.setTargetPosition(tileX, tileZ);
+                }
             }
         } else if (!Gdx.input.isButtonPressed(Input.Buttons.LEFT)) {
             // Stop moving when mouse button is released
@@ -609,6 +708,115 @@ public class GameScreen extends ScreenAdapter {
         if (!debugConsole.isOpen() && !inventoryOpen && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.setScreen(new PauseScreen(game, this));
         }
+    }
+
+    /**
+     * Handle dungeon portal interactions.
+     */
+    private void handlePortalInteractions() {
+        if (debugConsole.isOpen() || inventoryOpen) {
+            dungeonUI.setNearbyPortal(null);
+            return;
+        }
+
+        float playerX = player.getPosition().x;
+        float playerY = player.getPosition().y;
+        float interactionRange = 64f;
+
+        // Check if in dungeon or town
+        if (!dungeonManager.isInDungeon()) {
+            // In town - check for dungeon entrance portal
+            if (townDungeonEntrance.isPlayerNear(playerX, playerY, interactionRange)) {
+                dungeonUI.setNearbyPortal(townDungeonEntrance);
+
+                // Press E to enter dungeon
+                if (Gdx.input.isKeyJustPressed(Input.Keys.E)) {
+                    enterDungeon(1);
+                }
+            } else {
+                dungeonUI.setNearbyPortal(null);
+            }
+        } else {
+            // In dungeon - check for town return portal
+            if (dungeonTownReturn != null &&
+                dungeonTownReturn.isPlayerNear(playerX, playerY, interactionRange)) {
+                dungeonUI.setNearbyPortal(dungeonTownReturn);
+
+                // Press E to return to town
+                if (Gdx.input.isKeyJustPressed(Input.Keys.E)) {
+                    exitDungeon();
+                }
+            } else {
+                dungeonUI.setNearbyPortal(null);
+            }
+        }
+    }
+
+    /**
+     * Enter a dungeon at the specified level.
+     */
+    private void enterDungeon(int level) {
+        DungeonWorld dungeon = dungeonManager.enterDungeon(level, player.getPosition().x, player.getPosition().y);
+
+        // Switch world provider
+        world = dungeon;
+        player.setWorld(world);
+
+        // Move player to dungeon spawn
+        int[] spawnPos = dungeon.getSpawnPosition();
+        player.setPosition(spawnPos[0], spawnPos[1]);
+
+        // Create return portal at spawn
+        dungeonTownReturn = Portal.createTownReturn(spawnPos[0] + 64, spawnPos[1]);
+
+        // Clear existing NPCs
+        npcs.clear();
+
+        // Spawn test enemies around dungeon spawn (using player texture as placeholder)
+        Texture enemyTexture = new Texture("character.png");
+        enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+        npcs.add(new Enemy(enemyTexture, spawnPos[0] + 100, spawnPos[1], "Skeleton", world));
+        npcs.add(new Enemy(enemyTexture, spawnPos[0] - 100, spawnPos[1] + 50, "Zombie", world));
+        npcs.add(new Enemy(enemyTexture, spawnPos[0], spawnPos[1] + 150, "Ghost", world));
+
+        // Preload nearby chunks
+        dungeon.preloadChunks(3);
+
+        // Update map editor reference
+        mapEditor.setWorld(world);
+
+        // Play sound
+        SoundManager.getInstance().play(SoundType.UI_CLICK, 1.0f);
+
+        Gdx.app.log("GameScreen", "Entered dungeon level " + level + " with " + npcs.size() + " enemies");
+    }
+
+    /**
+     * Exit dungeon and return to town.
+     */
+    private void exitDungeon() {
+        float[] townPos = dungeonManager.exitToTown();
+
+        // Switch back to town world
+        world = townWorld;
+        player.setWorld(world);
+
+        // Move player to saved town position
+        player.setPosition(townPos[0], townPos[1]);
+
+        // Clear dungeon portal
+        dungeonTownReturn = null;
+
+        // Clear all NPCs when leaving dungeon
+        npcs.clear();
+
+        // Update map editor reference
+        mapEditor.setWorld(world);
+
+        // Play sound
+        SoundManager.getInstance().play(SoundType.UI_CLICK, 1.0f);
+
+        Gdx.app.log("GameScreen", "Returned to town");
     }
 
     /**
@@ -655,6 +863,35 @@ public class GameScreen extends ScreenAdapter {
         );
 
         return intersection;
+    }
+
+    /**
+     * Find the nearest NPC to a world position.
+     * @param worldX World X coordinate in pixels
+     * @param worldZ World Z coordinate in pixels (Y in 2D space)
+     * @param maxDistance Maximum search radius in pixels
+     * @return Nearest NPC within range, or null if none found
+     */
+    private NPC findNearestNPC(float worldX, float worldZ, float maxDistance) {
+        NPC nearest = null;
+        float nearestDist = Float.MAX_VALUE;
+
+        for (NPC npc : npcs) {
+            if (npc.isDead()) {
+                continue;
+            }
+
+            float dx = npc.getPosition().x - worldX;
+            float dy = npc.getPosition().y - worldZ;
+            float dist = (float) Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < nearestDist && dist <= maxDistance) {
+                nearest = npc;
+                nearestDist = dist;
+            }
+        }
+
+        return nearest;
     }
 
     /**
@@ -748,6 +985,49 @@ public class GameScreen extends ScreenAdapter {
                     screenPos.y - height / 2f,
                     width, height
                 );
+            }
+        }
+    }
+
+    /**
+     * Renders NPCs as 2D sprites projected from their 3D world positions.
+     */
+    private void renderNPCs(SpriteBatch batch) {
+        for (NPC npc : npcs) {
+            if (npc.isDead()) {
+                continue; // Don't render dead NPCs
+            }
+
+            // Convert NPC's tile position to pixel world position
+            float worldX = npc.getPosition().x;
+            float worldZ = npc.getPosition().y;
+
+            // Project 3D world position to 2D screen position
+            Vector3 worldPos = new Vector3(worldX, 0, worldZ);
+            Vector3 screenPos = camera.project(worldPos);
+
+            // Check if NPC is on screen
+            if (screenPos.x >= 0 && screenPos.x <= Gdx.graphics.getWidth() &&
+                screenPos.y >= 0 && screenPos.y <= Gdx.graphics.getHeight() &&
+                screenPos.z >= 0 && screenPos.z <= 1) {
+
+                // Calculate distance-based scale (NPCs far away appear smaller)
+                float distToCamera = camera.position.dst(worldPos);
+                float scale = Math.min(1.0f, 400f / distToCamera);
+
+                // Draw the sprite centered at the screen position with slight vertical offset for feet
+                Texture tex = npc.getTexture();
+                float width = tex.getWidth() * scale;
+                float height = tex.getHeight() * scale;
+                float yOffset = 10f * scale; // Slight offset so sprite feet align with ground
+
+                batch.draw(tex,
+                    screenPos.x - width / 2f,
+                    screenPos.y - height / 2f + yOffset,
+                    width, height
+                );
+
+                // TODO: Render health bar above NPC
             }
         }
     }
@@ -905,6 +1185,7 @@ public class GameScreen extends ScreenAdapter {
         hotbarUI.updateCamera();
         inventoryUI.updateCamera();
         equipmentUI.updateCamera();
+        dungeonUI.updateCamera();
     }
 
     @Override
@@ -921,6 +1202,8 @@ public class GameScreen extends ScreenAdapter {
         inventoryUI.dispose();
         equipmentUI.dispose();
         hotbarUI.dispose();
+        dungeonUI.dispose();
+        dungeonManager.dispose();
         mapEditor.dispose();
         world.dispose();
     }

@@ -27,9 +27,6 @@ public class PlayerStats {
     private float currentStamina;
     private float maxStamina;
 
-    // Currencies
-    private int gold;
-
     public PlayerStats() {
         this.level = 1;
         this.currentXP = 0f;
@@ -43,8 +40,6 @@ public class PlayerStats {
 
         this.maxStamina = 100f;
         this.currentStamina = maxStamina;
-
-        this.gold = 0;
     }
 
     /**
@@ -178,19 +173,6 @@ public class PlayerStats {
         restoreStamina(10f * delta); // 10 stamina per second
     }
 
-    // Gold methods
-    public void addGold(int amount) {
-        gold = Math.max(0, gold + amount);
-    }
-
-    public boolean removeGold(int amount) {
-        if (gold >= amount) {
-            gold -= amount;
-            return true;
-        }
-        return false;
-    }
-
     // Getters
     public int getLevel() { return level; }
     public float getCurrentXP() { return currentXP; }
@@ -200,7 +182,6 @@ public class PlayerStats {
     public float getMaxMana() { return maxMana; }
     public float getCurrentStamina() { return currentStamina; }
     public float getMaxStamina() { return maxStamina; }
-    public int getGold() { return gold; }
     public boolean isAlive() { return currentHealth > 0; }
     public boolean isMaxLevel() { return level >= MAX_LEVEL; }
 
@@ -239,10 +220,6 @@ public class PlayerStats {
 
     public void setCurrentXP(float xp) {
         this.currentXP = Math.max(0, xp);
-    }
-
-    public void setGold(int gold) {
-        this.gold = Math.max(0, gold);
     }
 
     /**

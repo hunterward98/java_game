@@ -23,14 +23,14 @@ public class SetGoldCommand implements DebugCommand {
     public void execute(String[] args, DebugConsole console) {
         if (args.length < 1) {
             console.log("Usage: setgold <amount>");
-            console.log("Current gold: " + player.getStats().getGold());
+            console.log("Current gold: " + player.getInventory().getGold());
             return;
         }
 
         try {
             int amount = Integer.parseInt(args[0]);
-            player.getStats().setGold(amount);
-            console.log("Set gold to " + player.getStats().getGold());
+            player.getInventory().setGold(amount);
+            console.log("Set gold to " + player.getInventory().getGold());
         } catch (NumberFormatException e) {
             console.log("Invalid amount: " + args[0]);
         }

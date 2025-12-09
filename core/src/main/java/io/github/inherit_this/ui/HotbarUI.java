@@ -108,7 +108,12 @@ public class HotbarUI {
         int goldWidth = 100; // Width for gold display
 
         uiWidth = PANEL_PADDING * 2 + slotsWidth + PANEL_PADDING + barsWidth + PANEL_PADDING + goldWidth;
-        uiHeight = PANEL_PADDING * 2 + HOTBAR_SLOT_SIZE + PANEL_PADDING + (4 * BAR_HEIGHT) + (3 * BAR_PADDING);
+
+        // Height is determined by the taller element (bars are ~68px, slots are 56px)
+        // Total bars height = 4 bars * 14px + 3 padding * 4px = 68px
+        int barsHeight = (4 * BAR_HEIGHT) + (3 * BAR_PADDING);
+        int contentHeight = Math.max(HOTBAR_SLOT_SIZE, barsHeight);
+        uiHeight = PANEL_PADDING * 2 + contentHeight;
     }
 
     /**
@@ -155,9 +160,9 @@ public class HotbarUI {
         shapeRenderer.rect(uiX, uiY, uiWidth, uiHeight);
         shapeRenderer.end();
 
-        // Draw hotbar slots
+        // Draw hotbar slots (vertically centered)
         float slotStartX = uiX + PANEL_PADDING;
-        float slotY = uiY + uiHeight - PANEL_PADDING - HOTBAR_SLOT_SIZE;
+        float slotY = uiY + (uiHeight - HOTBAR_SLOT_SIZE) / 2; // Center slots vertically
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         for (int i = 0; i < NUM_HOTBAR_SLOTS; i++) {
@@ -176,9 +181,10 @@ public class HotbarUI {
         }
         shapeRenderer.end();
 
-        // Draw stat bars
+        // Draw stat bars (vertically centered)
         float barsStartX = slotStartX + NUM_HOTBAR_SLOTS * (HOTBAR_SLOT_SIZE + HOTBAR_SLOT_PADDING) + PANEL_PADDING;
-        float barsY = uiY + PANEL_PADDING;
+        int barsHeight = (4 * BAR_HEIGHT) + (3 * BAR_PADDING);
+        float barsY = uiY + (uiHeight - barsHeight) / 2; // Center bars vertically
         float barWidth = 200;
 
         drawStatBar(XP_BAR_COLOR, stats.getXPProgress(), barsStartX, barsY + 3 * (BAR_HEIGHT + BAR_PADDING), barWidth);
@@ -227,7 +233,7 @@ public class HotbarUI {
         font.setColor(XP_BAR_COLOR); // Gold color
         font.draw(batch, "Gold", Math.round(goldX), Math.round(goldY + 20));
         font.setColor(Color.WHITE);
-        font.draw(batch, "" + stats.getGold(), Math.round(goldX), Math.round(goldY));
+        font.draw(batch, "" + inventory.getGold(), Math.round(goldX), Math.round(goldY));
 
         // Draw XP progress (use integer coordinates for pixel-perfect rendering)
         if (!stats.isMaxLevel()) {

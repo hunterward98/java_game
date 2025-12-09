@@ -29,6 +29,10 @@ public class Inventory {
         return gold;
     }
 
+    public void setGold(int amount) {
+        gold = Math.max(0, amount);
+    }
+
     public void addGold(int amount) {
         gold = Math.max(0, gold + amount);
     }

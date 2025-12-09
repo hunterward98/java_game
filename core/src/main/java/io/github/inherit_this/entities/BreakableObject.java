@@ -1,6 +1,7 @@
 package io.github.inherit_this.entities;
 
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g3d.Model;
 import io.github.inherit_this.items.Item;
 
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.List;
 /**
  * Represents a breakable object in the game world (crate, pot, etc).
  * Can be clicked to damage and eventually break, dropping loot.
+ * Supports both 2D sprites and 3D models.
  */
 public class BreakableObject extends Entity {
 
@@ -19,8 +21,12 @@ public class BreakableObject extends Entity {
     private int goldMax;
     private boolean destroyed;
 
+    // 3D model support
+    private Model model;
+    private boolean is3D;
+
     /**
-     * Creates a breakable object.
+     * Creates a 2D breakable object (legacy).
      * @param texture The texture for this object
      * @param x X position in tiles
      * @param y Y position in tiles
@@ -36,6 +42,30 @@ public class BreakableObject extends Entity {
         this.goldMax = goldMax;
         this.lootTable = new ArrayList<>();
         this.destroyed = false;
+        this.model = null;
+        this.is3D = false;
+    }
+
+    /**
+     * Creates a 3D breakable object.
+     * @param model The 3D model for this object
+     * @param texture Fallback texture (used for identification/contains checking)
+     * @param x X position in tiles
+     * @param y Y position in tiles
+     * @param maxHealth How many hits it takes to break
+     * @param goldMin Minimum gold dropped
+     * @param goldMax Maximum gold dropped
+     */
+    public BreakableObject(Model model, Texture texture, float x, float y, int maxHealth, int goldMin, int goldMax) {
+        super(texture, x, y);
+        this.maxHealth = maxHealth;
+        this.currentHealth = maxHealth;
+        this.goldMin = goldMin;
+        this.goldMax = goldMax;
+        this.lootTable = new ArrayList<>();
+        this.destroyed = false;
+        this.model = model;
+        this.is3D = true;
     }
 
     /**
@@ -106,6 +136,20 @@ public class BreakableObject extends Entity {
 
     public float getHealthPercent() {
         return (float) currentHealth / maxHealth;
+    }
+
+    /**
+     * Gets the 3D model for this object (null if 2D sprite).
+     */
+    public Model getModel() {
+        return model;
+    }
+
+    /**
+     * Returns true if this is a 3D object, false if 2D sprite.
+     */
+    public boolean is3D() {
+        return is3D;
     }
 
     /**

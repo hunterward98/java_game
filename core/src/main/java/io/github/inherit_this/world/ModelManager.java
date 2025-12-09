@@ -117,6 +117,29 @@ public class ModelManager {
     }
 
     /**
+     * Safely loads a texture, falling back to a placeholder if the file doesn't exist.
+     * @param texturePath Path to the texture file
+     * @param fallbackPath Path to fallback texture (if null, uses default placeholder)
+     * @return Loaded texture or placeholder
+     */
+    private Texture loadTextureOrPlaceholder(String texturePath, String fallbackPath) {
+        try {
+            return new Texture(texturePath);
+        } catch (Exception e) {
+            Gdx.app.error("ModelManager", "Failed to load texture: " + texturePath + ", using placeholder");
+            if (fallbackPath != null) {
+                try {
+                    return new Texture(fallbackPath);
+                } catch (Exception e2) {
+                    Gdx.app.error("ModelManager", "Failed to load fallback texture: " + fallbackPath);
+                }
+            }
+            // Use a basic tile texture as ultimate fallback
+            return new Texture("tiles/void.png");
+        }
+    }
+
+    /**
      * Loads a 3D model from a file (OBJ, G3D, etc).
      * @param modelPath Path to the model file in assets
      * @return Loaded model, or null if loading fails
@@ -143,10 +166,10 @@ public class ModelManager {
     }
 
     /**
-     * Creates a simple crate model (cube with crate texture).
+     * Creates a simple crate model (cube with crate texture or placeholder).
      */
     public Model createCrateModel() {
-        Texture crateTexture = new Texture("breakable/crate.png");
+        Texture crateTexture = loadTextureOrPlaceholder("breakable/crate.png", "tiles/wood_wall.png");
         return getBoxModel("crate",
             Constants.TILE_SIZE * 0.8f,  // Slightly smaller than a tile
             Constants.TILE_SIZE * 0.8f,
@@ -156,10 +179,10 @@ public class ModelManager {
     }
 
     /**
-     * Creates a simple pot model (cylinder).
+     * Creates a simple pot model (cylinder with pot texture or placeholder).
      */
     public Model createPotModel() {
-        Texture potTexture = new Texture("breakable/pot.png");
+        Texture potTexture = loadTextureOrPlaceholder("breakable/pot.png", "tiles/mossy_stone_1.png");
         return getCylinderModel("pot",
             Constants.TILE_SIZE * 0.5f,  // Width (diameter)
             Constants.TILE_SIZE * 0.6f,  // Height
@@ -170,10 +193,10 @@ public class ModelManager {
     }
 
     /**
-     * Creates a simple barrel model (cylinder, taller than pot).
+     * Creates a simple barrel model (cylinder, taller than pot, with texture or placeholder).
      */
     public Model createBarrelModel() {
-        Texture barrelTexture = new Texture("breakable/barrel.png");
+        Texture barrelTexture = loadTextureOrPlaceholder("breakable/barrel.png", "tiles/wood_wall.png");
         return getCylinderModel("barrel",
             Constants.TILE_SIZE * 0.6f,  // Width
             Constants.TILE_SIZE * 0.9f,  // Height (taller than pot)
@@ -184,11 +207,11 @@ public class ModelManager {
     }
 
     /**
-     * Creates a simple chest model (rectangular box).
+     * Creates a simple chest model (rectangular box with texture or placeholder).
      * Used for interactable storage chests.
      */
     public Model createChestModel() {
-        Texture chestTexture = new Texture("breakable/chest.png");
+        Texture chestTexture = loadTextureOrPlaceholder("breakable/chest.png", "tiles/grass_2.png");
         return getBoxModel("chest",
             Constants.TILE_SIZE * 0.9f,  // Width (wider)
             Constants.TILE_SIZE * 0.7f,  // Height (shorter)
@@ -198,10 +221,10 @@ public class ModelManager {
     }
 
     /**
-     * Creates a workbench model (flat-topped table).
+     * Creates a workbench model (flat-topped table with texture or placeholder).
      */
     public Model createWorkbenchModel() {
-        Texture workbenchTexture = new Texture("interactable/workbench.png");
+        Texture workbenchTexture = loadTextureOrPlaceholder("interactable/workbench.png", "tiles/wood_wall.png");
         return getBoxModel("workbench",
             Constants.TILE_SIZE * 1.0f,  // Width (full tile)
             Constants.TILE_SIZE * 0.8f,  // Height (table height)
@@ -211,10 +234,10 @@ public class ModelManager {
     }
 
     /**
-     * Creates an anvil model (heavy, squat metalworking tool).
+     * Creates an anvil model (heavy, squat metalworking tool with texture or placeholder).
      */
     public Model createAnvilModel() {
-        Texture anvilTexture = new Texture("interactable/anvil.png");
+        Texture anvilTexture = loadTextureOrPlaceholder("interactable/anvil.png", "tiles/stone_1.png");
         return getBoxModel("anvil",
             Constants.TILE_SIZE * 0.7f,  // Width
             Constants.TILE_SIZE * 0.6f,  // Height (squat)
@@ -224,10 +247,10 @@ public class ModelManager {
     }
 
     /**
-     * Creates a shrine/altar model (tall, ornate structure).
+     * Creates a shrine/altar model (tall, ornate structure with texture or placeholder).
      */
     public Model createShrineModel() {
-        Texture shrineTexture = new Texture("interactable/shrine.png");
+        Texture shrineTexture = loadTextureOrPlaceholder("interactable/shrine.png", "tiles/mossy_stone_1.png");
         return getBoxModel("shrine",
             Constants.TILE_SIZE * 0.9f,  // Width
             Constants.TILE_SIZE * 1.2f,  // Height (taller than most objects)

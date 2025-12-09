@@ -14,11 +14,13 @@ import java.util.List;
  */
 public class BreakableObject extends Entity {
 
+    private String name;
     private int maxHealth;
     private int currentHealth;
     private List<LootDrop> lootTable;
     private int goldMin;
     private int goldMax;
+    private int xpReward;  // XP awarded when broken
     private boolean destroyed;
 
     // 3D model support
@@ -36,10 +38,12 @@ public class BreakableObject extends Entity {
      */
     public BreakableObject(Texture texture, float x, float y, int maxHealth, int goldMin, int goldMax) {
         super(texture, x, y);
+        this.name = "Object";
         this.maxHealth = maxHealth;
         this.currentHealth = maxHealth;
         this.goldMin = goldMin;
         this.goldMax = goldMax;
+        this.xpReward = 0;
         this.lootTable = new ArrayList<>();
         this.destroyed = false;
         this.model = null;
@@ -58,10 +62,12 @@ public class BreakableObject extends Entity {
      */
     public BreakableObject(Model model, Texture texture, float x, float y, int maxHealth, int goldMin, int goldMax) {
         super(texture, x, y);
+        this.name = "Object";
         this.maxHealth = maxHealth;
         this.currentHealth = maxHealth;
         this.goldMin = goldMin;
         this.goldMax = goldMax;
+        this.xpReward = 0;
         this.lootTable = new ArrayList<>();
         this.destroyed = false;
         this.model = model;
@@ -108,14 +114,19 @@ public class BreakableObject extends Entity {
         // Add gold
         int gold = goldMin + (int)(Math.random() * (goldMax - goldMin + 1));
         if (gold > 0) {
-            results.add(new LootResult(null, 0, gold));
+            results.add(new LootResult(null, 0, gold, 0));
+        }
+
+        // Add XP
+        if (xpReward > 0) {
+            results.add(new LootResult(null, 0, 0, xpReward));
         }
 
         // Roll for item drops
         for (LootDrop drop : lootTable) {
             if (Math.random() < drop.dropChance) {
                 int quantity = drop.minQuantity + (int)(Math.random() * (drop.maxQuantity - drop.minQuantity + 1));
-                results.add(new LootResult(drop.item, quantity, 0));
+                results.add(new LootResult(drop.item, quantity, 0, 0));
             }
         }
 
@@ -139,6 +150,20 @@ public class BreakableObject extends Entity {
     }
 
     /**
+     * Gets the XP reward for breaking this object.
+     */
+    public int getXPReward() {
+        return xpReward;
+    }
+
+    /**
+     * Sets the XP reward for breaking this object.
+     */
+    public void setXPReward(int xp) {
+        this.xpReward = xp;
+    }
+
+    /**
      * Gets the 3D model for this object (null if 2D sprite).
      */
     public Model getModel() {
@@ -150,6 +175,14 @@ public class BreakableObject extends Entity {
      */
     public boolean is3D() {
         return is3D;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     /**
@@ -181,14 +214,21 @@ public class BreakableObject extends Entity {
      * Result of loot generation.
      */
     public static class LootResult {
-        public final Item item;      // null if this is gold
+        public final Item item;      // null if this is gold/xp
         public final int quantity;   // Item quantity
         public final int gold;       // Gold amount
+        public final int xp;         // XP amount
 
-        public LootResult(Item item, int quantity, int gold) {
+        public LootResult(Item item, int quantity, int gold, int xp) {
             this.item = item;
             this.quantity = quantity;
             this.gold = gold;
+            this.xp = xp;
+        }
+
+        // Legacy constructor for backward compatibility
+        public LootResult(Item item, int quantity, int gold) {
+            this(item, quantity, gold, 0);
         }
 
         public boolean isGold() {
@@ -197,6 +237,10 @@ public class BreakableObject extends Entity {
 
         public boolean isItem() {
             return item != null && quantity > 0;
+        }
+
+        public boolean isXP() {
+            return item == null && xp > 0;
         }
     }
 }

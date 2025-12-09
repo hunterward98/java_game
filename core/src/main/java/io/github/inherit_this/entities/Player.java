@@ -15,6 +15,7 @@ public class Player extends Entity {
     private Inventory inventory;
     private Equipment equipment;
     private PlayerStats stats;
+    private java.util.List<BreakableObject> breakableObjects;
 
     // Mouse-based movement
     private Vector2 targetPosition = null;
@@ -138,10 +139,10 @@ public class Player extends Entity {
     }
 
     /**
-     * Checks if the player collides with solid tiles at the given position.
+     * Checks if the player collides with solid tiles or breakable objects at the given position.
      * @param x X position in tiles
      * @param y Y position in tiles
-     * @return true if colliding with any solid tile
+     * @return true if colliding with any solid tile or breakable object
      */
     private boolean isColliding(float x, float y) {
         // Check collision at the four corners of the player's hitbox
@@ -155,6 +156,27 @@ public class Player extends Entity {
         boolean topRight = world.isSolidAtPosition(pixelX + halfWidthPixels, pixelY + halfHeightPixels);
         boolean bottomLeft = world.isSolidAtPosition(pixelX - halfWidthPixels, pixelY - halfHeightPixels);
         boolean bottomRight = world.isSolidAtPosition(pixelX + halfWidthPixels, pixelY - halfHeightPixels);
+
+        // Check collision with breakable objects
+        if (breakableObjects != null) {
+            for (BreakableObject obj : breakableObjects) {
+                if (obj.isDestroyed()) continue;
+
+                // Check if player's position overlaps with object's tile
+                float objX = obj.getPosition().x;
+                float objY = obj.getPosition().y;
+
+                // Simple AABB collision: check if circles overlap
+                float dx = x - (objX + 0.5f); // Center of object tile
+                float dy = y - (objY + 0.5f);
+                float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+                // Both player and object have ~0.5 tile radius
+                if (distance < 0.7f) {
+                    return true;
+                }
+            }
+        }
 
         return topLeft || topRight || bottomLeft || bottomRight;
     }
@@ -209,6 +231,13 @@ public class Player extends Entity {
      */
     public void setWorld(WorldProvider world) {
         this.world = world;
+    }
+
+    /**
+     * Set the breakable objects list for collision detection.
+     */
+    public void setBreakableObjects(java.util.List<BreakableObject> objects) {
+        this.breakableObjects = objects;
     }
 
     public Inventory getInventory() {

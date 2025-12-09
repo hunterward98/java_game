@@ -187,6 +187,9 @@ public class GameScreen extends ScreenAdapter {
         debugConsole.registerCommand(new ReloadChunkCommand(world, player));
         debugConsole.registerCommand(new SwitchWorldCommand(this));
 
+        // Object spawning command
+        debugConsole.registerCommand(new SpawnObjectCommand(player, this));
+
         // Set up input handling with scroll wheel support
         inputMultiplexer = new InputMultiplexer();
         inputMultiplexer.addProcessor(inputHandler.getScrollProcessor());
@@ -206,6 +209,9 @@ public class GameScreen extends ScreenAdapter {
         // Initialize interactable objects list
         interactableObjects = new java.util.ArrayList<>();
 
+        // Set breakable objects on player for collision detection
+        player.setBreakableObjects(breakableObjects);
+
         // Initialize combat manager
         combatManager = new io.github.inherit_this.combat.CombatManager(player);
 
@@ -220,19 +226,18 @@ public class GameScreen extends ScreenAdapter {
 
         // Set up map editor object placement callback
         mapEditor.setObjectPlacementCallback((objectType, tileX, tileY) -> {
+            int playerLevel = player.getStats().getLevel();
+            int dungeonLevel = getCurrentDungeonLevel();
             BreakableObject obj = null;
             switch (objectType) {
                 case "Crate":
-                    obj = BreakableObjectFactory.createCrate(tileX, tileY);
+                    obj = BreakableObjectFactory.createCrate(tileX, tileY, playerLevel, dungeonLevel);
                     break;
                 case "Pot":
-                    obj = BreakableObjectFactory.createPot(tileX, tileY);
+                    obj = BreakableObjectFactory.createPot(tileX, tileY, playerLevel, dungeonLevel);
                     break;
                 case "Barrel":
-                    obj = BreakableObjectFactory.createBarrel(tileX, tileY);
-                    break;
-                case "Chest":
-                    obj = BreakableObjectFactory.createChest(tileX, tileY);
+                    obj = BreakableObjectFactory.createBarrel(tileX, tileY, playerLevel, dungeonLevel);
                     break;
             }
             if (obj != null) {
@@ -240,10 +245,9 @@ public class GameScreen extends ScreenAdapter {
             }
         });
 
-        // Add some test breakable objects around spawn point
-        addBreakableObject(BreakableObjectFactory.createCrate(2, 2));
-        addBreakableObject(BreakableObjectFactory.createPot(4, 2));
-        addBreakableObject(BreakableObjectFactory.createBarrel(-2, 3));
+        // Spawn persistent town objects (these regenerate on world reload/return from dungeon)
+        // TEMPORARILY DISABLED FOR DEBUGGING
+        // spawnTownObjects();
 
         // Add test interactable objects (press E to interact)
         interactableObjects.add(InteractableObjectFactory.createChest(0, 5));
@@ -293,6 +297,9 @@ public class GameScreen extends ScreenAdapter {
 
         // Render 3D breakable objects (chests, barrels, etc)
         gameRenderer.render3DBreakableObjects();
+
+        // Render 3D interactable objects (workbenches, anvils, shrines, chests)
+        gameRenderer.render3DInteractableObjects();
 
         // Render map editor tile preview
         if (mapEditor.isActive() && mapEditor.hasHoveredTile()) {
@@ -380,6 +387,11 @@ public class GameScreen extends ScreenAdapter {
 
         // Render map editor UI
         mapEditor.render(batch);
+
+        // Render breakable object tooltip if hovering
+        if (!debugConsole.isOpen() && !inventoryOpen) {
+            renderBreakableObjectTooltip(batch);
+        }
 
         debugConsole.render();
         batch.end();
@@ -474,6 +486,7 @@ public class GameScreen extends ScreenAdapter {
 
         // Update player's world reference
         player = new Player(player.getPosition().x, player.getPosition().y, playerTex, world);
+        player.setBreakableObjects(breakableObjects);
 
         // Update map editor and renderer
         mapEditor.setWorld(world);
@@ -528,6 +541,14 @@ public class GameScreen extends ScreenAdapter {
         world = dungeonController.getCurrentWorld();  // Sync world after portal use
         mapEditor.setWorld(world);
         gameRenderer.setWorld(world);
+
+        // Update nearby interactable object
+        updateNearbyInteractable();
+
+        // Handle E key to interact with nearby objects
+        if (!debugConsole.isOpen() && !inventoryOpen && Gdx.input.isKeyJustPressed(Input.Keys.E)) {
+            handleInteractableInteraction();
+        }
 
         // Toggle inventory with 'I' key
         if (!debugConsole.isOpen() && Gdx.input.isKeyJustPressed(Input.Keys.I)) {
@@ -597,12 +618,12 @@ public class GameScreen extends ScreenAdapter {
                         player.stopMoving();  // Stop moving while attacking
                     } else {
                         // Not in range - move toward enemy to get into range
-                        float tileX = targetEnemy.getPosition().x / Constants.TILE_SIZE;
-                        float tileZ = targetEnemy.getPosition().y / Constants.TILE_SIZE;
-                        player.setTargetPosition(tileX, tileZ);
+                        // Enemy position is already in tiles
+                        player.setTargetPosition(targetEnemy.getPosition().x, targetEnemy.getPosition().y);
                     }
                 } else {
                     // No enemy - just move to clicked position
+                    // groundPosition is in pixels, convert to tiles
                     float tileX = groundPosition.x / Constants.TILE_SIZE;
                     float tileZ = groundPosition.z / Constants.TILE_SIZE;
                     player.setTargetPosition(tileX, tileZ);
@@ -642,6 +663,114 @@ public class GameScreen extends ScreenAdapter {
         System.out.println("Hotbar slot " + (slotIndex + 1) + " pressed");
     }
 
+    /**
+     * Gets the current dungeon level (returns 0 if in overworld).
+     */
+    public int getCurrentDungeonLevel() {
+        if (dungeonController.getDungeonManager().isInDungeon()) {
+            io.github.inherit_this.world.DungeonWorld dungeon = dungeonController.getDungeonManager().getCurrentDungeon();
+            if (dungeon != null) {
+                return dungeon.getConfig().getDungeonLevel();
+            }
+        }
+        return 0; // Overworld
+    }
+
+    /**
+     * Adds an interactable object to the world.
+     */
+    public void addInteractableObject(InteractableObject obj) {
+        interactableObjects.add(obj);
+    }
+
+    /**
+     * Spawns persistent breakable objects in town that regenerate when player
+     * reloads the game or returns from a dungeon. These objects scale with player level only.
+     */
+    private void spawnTownObjects() {
+        // Only spawn in overworld/town (not in dungeons)
+        if (getCurrentDungeonLevel() > 0) {
+            return;
+        }
+
+        // Clear existing breakable objects to prevent duplicates
+        breakableObjects.clear();
+
+        int playerLevel = player.getStats().getLevel();
+        int townDungeonLevel = 0; // Town objects use player level only
+
+        // Spawn persistent objects around town spawn point
+        // These positions should be adjusted to match your town layout
+
+        // Area 1: Near spawn (training area)
+        addBreakableObject(BreakableObjectFactory.createCrate(2, 2, playerLevel, townDungeonLevel));
+        addBreakableObject(BreakableObjectFactory.createPot(4, 2, playerLevel, townDungeonLevel));
+        addBreakableObject(BreakableObjectFactory.createBarrel(-2, 3, playerLevel, townDungeonLevel));
+
+        // Area 2: Resource gathering area
+        addBreakableObject(BreakableObjectFactory.createCrate(8, -5, playerLevel, townDungeonLevel));
+        addBreakableObject(BreakableObjectFactory.createCrate(10, -5, playerLevel, townDungeonLevel));
+        addBreakableObject(BreakableObjectFactory.createBarrel(9, -7, playerLevel, townDungeonLevel));
+
+        // Area 3: Storage area
+        addBreakableObject(BreakableObjectFactory.createPot(-8, 5, playerLevel, townDungeonLevel));
+        addBreakableObject(BreakableObjectFactory.createPot(-6, 5, playerLevel, townDungeonLevel));
+        addBreakableObject(BreakableObjectFactory.createCrate(-7, 7, playerLevel, townDungeonLevel));
+    }
+
+    /**
+     * Regenerates town objects (called when returning from dungeon or reloading).
+     */
+    public void regenerateTownObjects() {
+        spawnTownObjects();
+    }
+
+    /**
+     * Renders a tooltip for the breakable object under the mouse cursor.
+     */
+    private void renderBreakableObjectTooltip(SpriteBatch batch) {
+        // Use object-level mouse detection for better alignment with raised 3D models
+        Vector3 objectPosition = inputHandler.getObjectPositionFromMouse();
+        if (objectPosition == null) {
+            return;
+        }
+
+        // Convert pixel coordinates to tile coordinates
+        float tileX = objectPosition.x / Constants.TILE_SIZE;
+        float tileZ = objectPosition.z / Constants.TILE_SIZE;
+
+        // Find hovered breakable object
+        BreakableObject hoveredObject = null;
+        for (BreakableObject obj : breakableObjects) {
+            if (!obj.isDestroyed() && obj.contains(tileX, tileZ)) {
+                hoveredObject = obj;
+                break;
+            }
+        }
+
+        if (hoveredObject != null) {
+            // Draw tooltip text with simple background
+            float mouseX = Gdx.input.getX();
+            float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
+
+            String text = hoveredObject.getName() + " [" + hoveredObject.getCurrentHealth() + "/" + hoveredObject.getMaxHealth() + " HP]";
+
+            // Position tooltip near cursor
+            float bgX = mouseX + 15;
+            float bgY = mouseY + 5;
+
+            // Draw text with black outline for visibility
+            fpsFont.setColor(0, 0, 0, 1);
+            fpsFont.draw(batch, text, bgX - 1, bgY - 1);
+            fpsFont.draw(batch, text, bgX + 1, bgY - 1);
+            fpsFont.draw(batch, text, bgX - 1, bgY + 1);
+            fpsFont.draw(batch, text, bgX + 1, bgY + 1);
+
+            // Draw main text in white
+            fpsFont.setColor(1, 1, 1, 1);
+            fpsFont.draw(batch, text, bgX, bgY);
+        }
+    }
 
     /**
      * Handles right-click interactions with breakable objects.
@@ -679,6 +808,13 @@ public class GameScreen extends ScreenAdapter {
                             player.getInventory().addGold(result.gold);
                             SoundManager.getInstance().playWithVariation(SoundType.LOOT_GOLD, 0.7f);
                             Gdx.app.log("Loot", "Received " + result.gold + " gold");
+                        } else if (result.isXP()) {
+                            int levelsGained = player.getStats().addXP(result.xp);
+                            if (levelsGained > 0) {
+                                SoundManager.getInstance().play(SoundType.UI_CLICK, 1.0f);
+                                Gdx.app.log("Level", "LEVEL UP! Now level " + player.getStats().getLevel());
+                            }
+                            Gdx.app.log("Loot", "Received " + result.xp + " XP");
                         } else if (result.isItem()) {
                             boolean added = player.getInventory().addItem(result.item, result.quantity);
                             if (added) {
@@ -702,6 +838,61 @@ public class GameScreen extends ScreenAdapter {
         }
     }
 
+    /**
+     * Updates the nearby interactable object reference.
+     * Checks if player is within interaction range of any interactable object.
+     */
+    private void updateNearbyInteractable() {
+        nearbyInteractable = null;
+        float playerX = player.getPosition().x;
+        float playerY = player.getPosition().y;
+        float interactDistance = 1.5f; // tiles
+
+        for (InteractableObject obj : interactableObjects) {
+            if (obj.isPlayerNear(playerX, playerY, interactDistance)) {
+                nearbyInteractable = obj;
+                break; // Only track the first nearby object
+            }
+        }
+    }
+
+    /**
+     * Handles interaction with the nearby interactable object when E is pressed.
+     * Opens appropriate UI based on the object type.
+     */
+    private void handleInteractableInteraction() {
+        if (nearbyInteractable == null) {
+            return;
+        }
+
+        // Trigger interaction
+        boolean success = nearbyInteractable.interact();
+
+        if (success) {
+            // Play interaction sound
+            SoundManager.getInstance().play(SoundType.UI_CLICK, 0.8f);
+
+            // Open appropriate UI based on type
+            switch (nearbyInteractable.getType()) {
+                case CHEST:
+                    // TODO: Open chest storage UI
+                    Gdx.app.log("Interaction", "Opened chest!");
+                    break;
+                case WORKBENCH:
+                    // TODO: Open crafting UI
+                    Gdx.app.log("Interaction", "Opened workbench!");
+                    break;
+                case ANVIL:
+                    // TODO: Open repair/upgrade UI
+                    Gdx.app.log("Interaction", "Opened anvil!");
+                    break;
+                case SHRINE:
+                    // TODO: Open blessing/buff UI
+                    Gdx.app.log("Interaction", "Activated shrine!");
+                    break;
+            }
+        }
+    }
 
     @Override
     public void resize(int width, int height) {

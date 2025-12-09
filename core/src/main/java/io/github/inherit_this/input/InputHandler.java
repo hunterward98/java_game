@@ -21,13 +21,18 @@ public class InputHandler {
     private static final float MIN_CAMERA_DISTANCE = 200f;
     private static final float MAX_CAMERA_DISTANCE = 400f;
     private static final float ZOOM_SPEED = 30f;
+    private static final float MIN_CAMERA_PITCH = 15f;  // Minimum vertical angle (looking more down)
+    private static final float MAX_CAMERA_PITCH = 75f;  // Maximum vertical angle (looking more up)
 
     private float cameraDistance = 300f;
-    private float cameraAngle = 45f;
+    private float cameraAngle = 45f;      // Horizontal rotation
+    private float cameraPitch = 45f;      // Vertical angle (elevation)
 
     // Input state
     private boolean rotateLeft = false;
     private boolean rotateRight = false;
+    private boolean tiltUp = false;
+    private boolean tiltDown = false;
 
     public InputHandler(PerspectiveCamera camera, Player player) {
         this.camera = camera;
@@ -49,9 +54,10 @@ public class InputHandler {
     }
 
     /**
-     * Update camera rotation based on Q/E key input.
+     * Update camera rotation and tilt based on key input.
      */
     public void updateCameraRotation(float delta) {
+        // Horizontal rotation with LEFT/RIGHT
         if (rotateLeft) {
             cameraAngle += CAMERA_ROTATION_SPEED * delta;
         }
@@ -59,36 +65,62 @@ public class InputHandler {
             cameraAngle -= CAMERA_ROTATION_SPEED * delta;
         }
 
-        // Normalize angle to 0-360 range
+        // Vertical tilt with UP/DOWN
+        if (tiltUp) {
+            cameraPitch += CAMERA_ROTATION_SPEED * delta;
+            cameraPitch = Math.min(MAX_CAMERA_PITCH, cameraPitch);
+        }
+        if (tiltDown) {
+            cameraPitch -= CAMERA_ROTATION_SPEED * delta;
+            cameraPitch = Math.max(MIN_CAMERA_PITCH, cameraPitch);
+        }
+
+        // Normalize horizontal angle to 0-360 range
         cameraAngle = cameraAngle % 360f;
         if (cameraAngle < 0) cameraAngle += 360f;
     }
 
     /**
      * Update camera position to follow the player.
+     * Uses spherical coordinates: horizontal angle, vertical angle (pitch), and distance.
      */
     public void updateCameraPosition() {
-        float angleRad = (float) Math.toRadians(cameraAngle);
-        float offsetX = (float) Math.cos(angleRad) * cameraDistance;
-        float offsetZ = (float) Math.sin(angleRad) * cameraDistance;
+        // Convert angles to radians
+        float horizontalRad = (float) Math.toRadians(cameraAngle);
+        float pitchRad = (float) Math.toRadians(cameraPitch);
+
+        // Calculate camera offset using spherical coordinates
+        // x = distance * cos(pitch) * cos(azimuth)
+        // y = distance * sin(pitch)
+        // z = distance * cos(pitch) * sin(azimuth)
+        float horizontalDistance = cameraDistance * (float) Math.cos(pitchRad);
+        float offsetX = horizontalDistance * (float) Math.cos(horizontalRad);
+        float offsetY = cameraDistance * (float) Math.sin(pitchRad);
+        float offsetZ = horizontalDistance * (float) Math.sin(horizontalRad);
+
+        // Convert player position from tiles to pixels for 3D camera
+        float playerPixelX = player.getPosition().x * Constants.TILE_SIZE;
+        float playerPixelZ = player.getPosition().y * Constants.TILE_SIZE;
 
         camera.position.set(
-            player.getPosition().x + offsetX,
-            cameraDistance * 0.6f,
-            player.getPosition().y + offsetZ
+            playerPixelX + offsetX,
+            offsetY,
+            playerPixelZ + offsetZ
         );
 
-        camera.lookAt(player.getPosition().x, 0, player.getPosition().y);
+        camera.lookAt(playerPixelX, 0, playerPixelZ);
         camera.up.set(0, 1, 0);
         camera.update();
     }
 
     /**
-     * Check for camera rotation key inputs.
+     * Check for camera rotation and tilt key inputs.
      */
     public void checkRotationKeys() {
-        rotateLeft = Gdx.input.isKeyPressed(Input.Keys.Q);
-        rotateRight = Gdx.input.isKeyPressed(Input.Keys.E);
+        rotateLeft = Gdx.input.isKeyPressed(Input.Keys.LEFT);
+        rotateRight = Gdx.input.isKeyPressed(Input.Keys.RIGHT);
+        tiltUp = Gdx.input.isKeyPressed(Input.Keys.UP);
+        tiltDown = Gdx.input.isKeyPressed(Input.Keys.DOWN);
     }
 
     /**
@@ -96,6 +128,15 @@ public class InputHandler {
      * @return World position vector, or null if ray doesn't intersect ground
      */
     public Vector3 getGroundPositionFromMouse() {
+        return getPlanePositionFromMouse(0);
+    }
+
+    /**
+     * Project mouse position to a horizontal plane at the given Y height.
+     * @param planeY The Y coordinate of the plane to intersect with
+     * @return World position vector, or null if ray doesn't intersect plane
+     */
+    private Vector3 getPlanePositionFromMouse(float planeY) {
         int screenX = Gdx.input.getX();
         int screenY = Gdx.input.getY();
 
@@ -104,17 +145,32 @@ public class InputHandler {
         Vector3 far = camera.unproject(new Vector3(screenX, screenY, 1));
         Vector3 rayDirection = far.sub(near).nor();
 
-        // Intersect ray with ground plane (y = 0)
-        if (rayDirection.y >= 0) {
-            return null; // Ray pointing up, won't hit ground
+        // Intersect ray with horizontal plane at planeY
+        float deltaY = planeY - near.y;
+        if (Math.abs(rayDirection.y) < 0.0001f) {
+            return null; // Ray parallel to plane
         }
 
         // Calculate intersection point
-        float t = -near.y / rayDirection.y;
+        float t = deltaY / rayDirection.y;
+        if (t < 0) {
+            return null; // Intersection behind camera
+        }
+
         float worldX = near.x + rayDirection.x * t;
         float worldZ = near.z + rayDirection.z * t;
 
-        return new Vector3(worldX, 0, worldZ);
+        return new Vector3(worldX, planeY, worldZ);
+    }
+
+    /**
+     * Get mouse position projected onto the object plane (raised above ground).
+     * This is better for detecting 3D objects that are rendered above the ground.
+     * @return World position vector at object height, or null if no intersection
+     */
+    public Vector3 getObjectPositionFromMouse() {
+        // Objects are rendered at TILE_SIZE/2 above ground
+        return getPlanePositionFromMouse(Constants.TILE_SIZE / 2f);
     }
 
     /**
@@ -125,6 +181,7 @@ public class InputHandler {
         Vector3 groundPos = getGroundPositionFromMouse();
         if (groundPos == null) return null;
 
+        // groundPos is in pixel coordinates, convert to tiles
         int tileX = (int) Math.floor(groundPos.x / Constants.TILE_SIZE);
         int tileY = (int) Math.floor(groundPos.z / Constants.TILE_SIZE);
         return new int[]{tileX, tileY};

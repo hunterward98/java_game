@@ -118,8 +118,9 @@ public class SaveManager {
         player.getStats().setMaxMana(data.getMaxMana());
         player.getStats().setStamina(data.getStamina());
         player.getStats().setMaxStamina(data.getMaxStamina());
-        player.getStats().setCurrentXP(data.getExperience());
+        // Set level BEFORE XP, because setLevel() resets XP to 0
         player.getStats().setLevel(data.getLevel());
+        player.getStats().setCurrentXP(data.getExperience());
 
         // Apply inventory
         player.getInventory().clear();  // This also resets gold to 0

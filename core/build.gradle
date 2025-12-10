@@ -56,8 +56,29 @@ jacocoTestCoverageVerification {
   violationRules {
     rule {
       limit {
-        minimum = 0.60  // 60% coverage target
+        counter = 'INSTRUCTION'
+        value = 'COVEREDRATIO'
+        minimum = 0.95  // 95% instruction coverage required
+      }
+    }
+    rule {
+      limit {
+        counter = 'BRANCH'
+        value = 'COVEREDRATIO'
+        minimum = 0.95  // 95% branch coverage required
       }
     }
   }
+  afterEvaluate {
+    classDirectories.setFrom(files(classDirectories.files.collect {
+      fileTree(dir: it, exclude: [
+        '**/screens/**',  // Exclude screen classes (heavy LibGDX dependency)
+        '**/ui/**',       // Exclude UI classes (heavy LibGDX dependency)
+        '**/debug/**',    // Exclude debug utilities
+        '**/Main.class'   // Exclude main entry point
+      ])
+    }))
+  }
 }
+
+check.dependsOn jacocoTestCoverageVerification

@@ -2,7 +2,7 @@
 
 ## Changes Made
 
-### 1. Fixed UI Following Player Issue ✓
+### 1. Fixed UI Following Player Issue [DONE]
 
 **Problem**: Inventory and Equipment UI were following the player around the map because they used the world camera.
 
@@ -24,7 +24,7 @@
   - Added camera updates to `resize()` method
   - Inventory and Equipment now centered on screen properly
 
-### 2. Centered Inventory and Equipment UI ✓
+### 2. Centered Inventory and Equipment UI [DONE]
 
 **Change**: Both UIs are now centered horizontally and vertically on the screen as a group.
 
@@ -39,7 +39,7 @@ float inventoryX = (screenWidth - totalWidth) / 2;
 float inventoryY = (screenHeight - inventoryUI.getHeight()) / 2;
 ```
 
-### 3. Created FontManager System ✓
+### 3. Created FontManager System [DONE]
 
 **Purpose**: Centralized font management for consistent pixel font support across all UI components.
 
@@ -61,7 +61,7 @@ float inventoryY = (screenHeight - inventoryUI.getHeight()) / 2;
 - EquipmentUI.java
 - ItemTooltip.java
 
-### 4. Added Pixel Font Support ✓
+### 4. Added Pixel Font Support [DONE]
 
 **Setup Guide**: [assets/fonts/README.md](assets/fonts/README.md)
 
@@ -88,11 +88,11 @@ float inventoryY = (screenHeight - inventoryUI.getHeight()) / 2;
 ## Testing
 
 Run the game and verify:
-- ✓ Inventory and equipment stay centered when player moves
-- ✓ UIs resize properly when window changes
-- ✓ Font appears pixel-perfect (no blurring/stretching)
-- ✓ Debug console font is pixel-perfect
-- ✓ All tooltips use consistent font
+- [x] Inventory and equipment stay centered when player moves
+- [x] UIs resize properly when window changes
+- [x] Font appears pixel-perfect (no blurring/stretching)
+- [x] Debug console font is pixel-perfect
+- [x] All tooltips use consistent font
 
 ## Font Integration Checklist
 

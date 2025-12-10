@@ -89,7 +89,7 @@ public class Particle {
 
         // Calculate alpha for fade out in last 30% of lifetime
         float alpha = 1.0f;
-        float scale = 1.0f;
+        float scale = 3.0f;
         if (lifetime < maxLifetime * 0.3f) {
             alpha = lifetime / (maxLifetime * 0.3f);
             scale = alpha;

@@ -61,8 +61,8 @@ class PlayerTest {
         Inventory inventory = player.getInventory();
         assertNotNull(inventory, "Inventory should not be null");
         // Inventory is 8x6 grid
-        assertEquals(8, inventory.getColumns(), "Inventory should have 8 columns");
-        assertEquals(6, inventory.getRows(), "Inventory should have 6 rows");
+        assertEquals(8, inventory.getGridWidth(), "Inventory should have 8 columns");
+        assertEquals(6, inventory.getGridHeight(), "Inventory should have 6 rows");
     }
 
     @Test
@@ -312,6 +312,9 @@ class PlayerTest {
         when(mockEnemy.isDead()).thenReturn(false);
         when(mockEnemy.getName()).thenReturn("Test Enemy");
 
+        // Update player to allow attack cooldown to pass
+        player.update(1.1f);
+
         boolean attacked = player.attack(mockEnemy);
 
         assertTrue(attacked, "Attack should succeed when off cooldown");
@@ -323,6 +326,9 @@ class PlayerTest {
     void testAttackCooldown() {
         when(mockEnemy.isDead()).thenReturn(false);
         when(mockEnemy.getName()).thenReturn("Test Enemy");
+
+        // Update to allow first attack
+        player.update(1.1f);
 
         // First attack
         player.attack(mockEnemy);
@@ -338,6 +344,9 @@ class PlayerTest {
     void testAttackAfterCooldown() {
         when(mockEnemy.isDead()).thenReturn(false);
         when(mockEnemy.getName()).thenReturn("Test Enemy");
+
+        // Update to allow first attack
+        player.update(1.1f);
 
         // First attack
         player.attack(mockEnemy);
@@ -375,6 +384,9 @@ class PlayerTest {
     void testAttackSetsTargetEnemy() {
         when(mockEnemy.isDead()).thenReturn(false);
         when(mockEnemy.getName()).thenReturn("Test Enemy");
+
+        // Update to allow attack
+        player.update(1.1f);
 
         player.attack(mockEnemy);
 
@@ -424,6 +436,9 @@ class PlayerTest {
         when(mockEnemy.getName()).thenReturn("Test Enemy");
 
         int expectedDamage = player.getStats().getTotalDamage();
+
+        // Update to allow attack
+        player.update(1.1f);
 
         player.attack(mockEnemy);
 

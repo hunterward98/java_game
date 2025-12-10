@@ -98,7 +98,7 @@ public class LootTableGenerator {
     private int calculateXP(int effectiveLevel, ObjectType objectType) {
         int baseXP = objectType.getBaseXP();
         // Scale: base * (1 + level * 0.1)
-        return (int) (baseXP * (1 + effectiveLevel * 0.1));
+        return (int) (baseXP * (1 + effectiveLevel * 0.12));
     }
 
     /**

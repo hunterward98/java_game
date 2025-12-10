@@ -185,6 +185,9 @@ class NPCTest {
         @Test
         @DisplayName("Attack should succeed when off cooldown")
         void testAttack() {
+            // Update to allow attack cooldown to pass
+            npc.update(1.1f, mockPlayer);
+
             boolean attacked = npc.attack(mockPlayer);
             assertTrue(attacked, "Attack should succeed when off cooldown");
         }
@@ -192,6 +195,9 @@ class NPCTest {
         @Test
         @DisplayName("Attack should fail when on cooldown")
         void testAttackCooldown() {
+            // Update to allow first attack
+            npc.update(1.1f, mockPlayer);
+
             npc.attack(mockPlayer); // First attack
             boolean secondAttack = npc.attack(mockPlayer); // Immediate second attack
 

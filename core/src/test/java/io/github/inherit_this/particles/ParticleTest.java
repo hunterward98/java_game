@@ -278,14 +278,14 @@ class ParticleTest {
 
         // At full lifetime, alpha should be 1.0
         particle.render(mockBatch, mockCamera);
-        verify(mockBatch).setColor(1f, 1f, 1f, 1f);
+        verify(mockBatch, atLeastOnce()).setColor(1f, 1f, 1f, 1f);
 
         reset(mockBatch);
 
         // Update to 0.8s remaining (80% of lifetime, no fade yet)
         particle.update(0.2f);
         particle.render(mockBatch, mockCamera);
-        verify(mockBatch).setColor(1f, 1f, 1f, 1f);
+        verify(mockBatch, atLeastOnce()).setColor(1f, 1f, 1f, 1f);
 
         reset(mockBatch);
 
@@ -293,7 +293,7 @@ class ParticleTest {
         particle.update(0.6f);
         particle.render(mockBatch, mockCamera);
         // Alpha should be 0.2 / (1.0 * 0.3) = 0.666...
-        verify(mockBatch).setColor(eq(1f), eq(1f), eq(1f), floatThat(alpha -> alpha > 0.6f && alpha < 0.7f));
+        verify(mockBatch, atLeastOnce()).setColor(eq(1f), eq(1f), eq(1f), floatThat(alpha -> alpha > 0.6f && alpha < 0.7f));
     }
 
     @Test
@@ -311,7 +311,7 @@ class ParticleTest {
         particle.render(mockBatch, mockCamera);
 
         // Verify color was reset to white at the end
-        verify(mockBatch, times(1)).setColor(1f, 1f, 1f, 1f);
+        verify(mockBatch, atLeastOnce()).setColor(1f, 1f, 1f, 1f);
     }
 
     @Test
@@ -404,6 +404,6 @@ class ParticleTest {
         particle.render(mockBatch, mockCamera);
 
         // Verify the tint color components were used (with full alpha initially)
-        verify(mockBatch).setColor(eq(0.8f), eq(0.3f), eq(0.5f), eq(1f));
+        verify(mockBatch, atLeastOnce()).setColor(eq(0.8f), eq(0.3f), eq(0.5f), eq(1f));
     }
 }

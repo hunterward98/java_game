@@ -1,6 +1,12 @@
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 eclipse.project.name = appName + '-core'
 
+apply plugin: 'jacoco'
+
+jacoco {
+    toolVersion = "0.8.11"
+}
+
 dependencies {
   api "com.badlogicgames.ashley:ashley:$ashleyVersion"
   api "com.badlogicgames.box2dlights:box2dlights:$box2dlightsVersion"
@@ -10,7 +16,48 @@ dependencies {
   api "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
 
+  // Testing dependencies
+  testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+  testImplementation 'org.mockito:mockito-core:5.7.0'
+  testImplementation 'org.mockito:mockito-junit-jupiter:5.7.0'
+  testImplementation "com.badlogicgames.gdx:gdx-backend-headless:$gdxVersion"
+  testImplementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+
   if(enableGraalNative == 'true') {
     implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"
+  }
+}
+
+test {
+  useJUnitPlatform()
+  finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+  dependsOn test
+  reports {
+    xml.required = true
+    html.required = true
+    csv.required = false
+  }
+  afterEvaluate {
+    classDirectories.setFrom(files(classDirectories.files.collect {
+      fileTree(dir: it, exclude: [
+        '**/screens/**',  // Exclude screen classes (heavy LibGDX dependency)
+        '**/ui/**',       // Exclude UI classes (heavy LibGDX dependency)
+        '**/debug/**',    // Exclude debug utilities
+        '**/Main.class'   // Exclude main entry point
+      ])
+    }))
+  }
+}
+
+jacocoTestCoverageVerification {
+  violationRules {
+    rule {
+      limit {
+        minimum = 0.60  // 60% coverage target
+      }
+    }
   }
 }

@@ -89,6 +89,9 @@ public class GameScreen extends ScreenAdapter {
     private java.util.List<InteractableObject> interactableObjects;
     private InteractableObject nearbyInteractable;
 
+    // Particle system for visual effects
+    private io.github.inherit_this.particles.ParticleSystem particleSystem;
+
     // Combat manager (handles NPCs and enemies)
     private io.github.inherit_this.combat.CombatManager combatManager;
 
@@ -209,6 +212,9 @@ public class GameScreen extends ScreenAdapter {
         // Initialize interactable objects list
         interactableObjects = new java.util.ArrayList<>();
 
+        // Initialize particle system
+        particleSystem = new io.github.inherit_this.particles.ParticleSystem(camera);
+
         // Set breakable objects on player for collision detection
         player.setBreakableObjects(breakableObjects);
 
@@ -283,6 +289,8 @@ public class GameScreen extends ScreenAdapter {
                 player.update(FIXED_TIME_STEP);
                 combatManager.update(FIXED_TIME_STEP);
             }
+            // Always update particles (even when paused)
+            particleSystem.update(FIXED_TIME_STEP);
             accumulator -= FIXED_TIME_STEP;
         }
 
@@ -392,6 +400,9 @@ public class GameScreen extends ScreenAdapter {
         if (!debugConsole.isOpen() && !inventoryOpen) {
             renderBreakableObjectTooltip(batch);
         }
+
+        // Render particle effects (projected from 3D world to 2D screen, like player)
+        particleSystem.render(batch);
 
         debugConsole.render();
         batch.end();
@@ -749,6 +760,9 @@ public class GameScreen extends ScreenAdapter {
         }
 
         if (hoveredObject != null) {
+            // Use the game's tooltip font for consistency
+            BitmapFont tooltipFont = FontManager.getInstance().getTooltipFont();
+
             // Draw tooltip text with simple background
             float mouseX = Gdx.input.getX();
             float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
@@ -760,15 +774,15 @@ public class GameScreen extends ScreenAdapter {
             float bgY = mouseY + 5;
 
             // Draw text with black outline for visibility
-            fpsFont.setColor(0, 0, 0, 1);
-            fpsFont.draw(batch, text, bgX - 1, bgY - 1);
-            fpsFont.draw(batch, text, bgX + 1, bgY - 1);
-            fpsFont.draw(batch, text, bgX - 1, bgY + 1);
-            fpsFont.draw(batch, text, bgX + 1, bgY + 1);
+            tooltipFont.setColor(0, 0, 0, 1);
+            tooltipFont.draw(batch, text, bgX - 1, bgY - 1);
+            tooltipFont.draw(batch, text, bgX + 1, bgY - 1);
+            tooltipFont.draw(batch, text, bgX - 1, bgY + 1);
+            tooltipFont.draw(batch, text, bgX + 1, bgY + 1);
 
             // Draw main text in white
-            fpsFont.setColor(1, 1, 1, 1);
-            fpsFont.draw(batch, text, bgX, bgY);
+            tooltipFont.setColor(1, 1, 1, 1);
+            tooltipFont.draw(batch, text, bgX, bgY);
         }
     }
 
@@ -800,6 +814,20 @@ public class GameScreen extends ScreenAdapter {
                     // Play appropriate break sound based on object type
                     // We can enhance BreakableObject later to store its material type
                     SoundManager.getInstance().playWithVariation(SoundType.OBJECT_BREAK_WOOD, 0.8f);
+
+                    // Spawn break particles
+                    float pixelX = (obj.getPosition().x + 0.5f) * Constants.TILE_SIZE;
+                    float pixelZ = (obj.getPosition().y + 0.5f) * Constants.TILE_SIZE; // Tile Y maps to world Z
+                    float pixelY = Constants.TILE_SIZE / 2f; // Start particles at object height
+                    particleSystem.createBreakEffect(
+                        obj,     // Pass the object to determine material type
+                        pixelX,
+                        pixelY,
+                        pixelZ,
+                        12,      // particle count
+                        100f,    // min speed (pixels/sec)
+                        250f     // max speed (pixels/sec)
+                    );
 
                     // Generate and give loot to player
                     java.util.List<BreakableObject.LootResult> loot = obj.generateLoot();
@@ -914,6 +942,7 @@ public class GameScreen extends ScreenAdapter {
         player.dispose();
         modelBatch.dispose();
         fpsFont.dispose();
+        particleSystem.dispose();
         TileMesh3D.getInstance().dispose();
         TileTextureManager.getInstance().dispose();
         io.github.inherit_this.world.ModelManager.getInstance().dispose();

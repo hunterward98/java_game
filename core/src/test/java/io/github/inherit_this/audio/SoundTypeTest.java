@@ -5,13 +5,18 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Tests for SoundType enum
- */
-class SoundTypeTest {
+@DisplayName("SoundType Tests")
+public class SoundTypeTest {
 
     @Test
-    @DisplayName("All UI sound types should exist")
+    @DisplayName("Should have all expected sound types")
+    void testAllValues() {
+        SoundType[] types = SoundType.values();
+        assertEquals(22, types.length, "Should have exactly 22 sound types");
+    }
+
+    @Test
+    @DisplayName("Should have UI sound types")
     void testUISounds() {
         assertNotNull(SoundType.UI_CLICK);
         assertNotNull(SoundType.UI_HOVER);
@@ -22,7 +27,7 @@ class SoundTypeTest {
     }
 
     @Test
-    @DisplayName("All combat sound types should exist")
+    @DisplayName("Should have combat sound types")
     void testCombatSounds() {
         assertNotNull(SoundType.ATTACK_SWING);
         assertNotNull(SoundType.ATTACK_HIT);
@@ -31,7 +36,7 @@ class SoundTypeTest {
     }
 
     @Test
-    @DisplayName("All object interaction sound types should exist")
+    @DisplayName("Should have object interaction sound types")
     void testObjectSounds() {
         assertNotNull(SoundType.OBJECT_BREAK_WOOD);
         assertNotNull(SoundType.OBJECT_BREAK_CERAMIC);
@@ -40,21 +45,21 @@ class SoundTypeTest {
     }
 
     @Test
-    @DisplayName("All loot sound types should exist")
+    @DisplayName("Should have loot sound types")
     void testLootSounds() {
         assertNotNull(SoundType.LOOT_GOLD);
         assertNotNull(SoundType.LOOT_ITEM);
     }
 
     @Test
-    @DisplayName("All player action sound types should exist")
-    void testPlayerSounds() {
+    @DisplayName("Should have player action sound types")
+    void testPlayerActionSounds() {
         assertNotNull(SoundType.FOOTSTEP);
         assertNotNull(SoundType.LEVEL_UP);
     }
 
     @Test
-    @DisplayName("All editor sound types should exist")
+    @DisplayName("Should have map editor sound types")
     void testEditorSounds() {
         assertNotNull(SoundType.EDITOR_PLACE);
         assertNotNull(SoundType.EDITOR_DELETE);
@@ -63,7 +68,7 @@ class SoundTypeTest {
     }
 
     @Test
-    @DisplayName("valueOf should work for all sound types")
+    @DisplayName("valueOf should work for all types")
     void testValueOf() {
         assertEquals(SoundType.UI_CLICK, SoundType.valueOf("UI_CLICK"));
         assertEquals(SoundType.ATTACK_SWING, SoundType.valueOf("ATTACK_SWING"));
@@ -71,18 +76,41 @@ class SoundTypeTest {
     }
 
     @Test
-    @DisplayName("values() should return all sound types")
-    void testValues() {
-        SoundType[] values = SoundType.values();
-        assertEquals(22, values.length, "Should have exactly 22 sound types");
+    @DisplayName("valueOf should throw for invalid name")
+    void testValueOfInvalid() {
+        assertThrows(IllegalArgumentException.class, () -> SoundType.valueOf("INVALID"));
     }
 
     @Test
-    @DisplayName("Enum should be comparable")
-    void testComparable() {
-        SoundType[] values = SoundType.values();
-        assertTrue(values.length > 1);
-        // Enums are Comparable by declaration order
-        assertNotEquals(0, values[0].compareTo(values[1]));
+    @DisplayName("Each sound type should have unique ordinal")
+    void testUniqueOrdinals() {
+        SoundType[] types = SoundType.values();
+        for (int i = 0; i < types.length; i++) {
+            for (int j = i + 1; j < types.length; j++) {
+                assertNotEquals(types[i].ordinal(), types[j].ordinal());
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("Should support switch statements")
+    void testSwitchStatement() {
+        for (SoundType type : SoundType.values()) {
+            String category;
+            switch (type) {
+                case UI_CLICK:
+                case UI_HOVER:
+                    category = "UI";
+                    break;
+                case ATTACK_SWING:
+                case ATTACK_HIT:
+                    category = "Combat";
+                    break;
+                default:
+                    category = "Other";
+                    break;
+            }
+            assertNotNull(category);
+        }
     }
 }

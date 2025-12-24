@@ -1,0 +1,166 @@
+{
+  "overall_coverage": 36,
+  "target_coverage": 40,
+  "last_updated": "2025-12-23",
+  "completed_tests": {
+    "enums": [
+      {
+        "class": "io.github.inherit_this.audio.SoundType",
+        "coverage": 100,
+        "test_file": "SoundTypeTest.java",
+        "notes": "22 sound effect types, all tested"
+      },
+      {
+        "class": "io.github.inherit_this.entities.InteractableType",
+        "coverage": 100,
+        "test_file": "InteractableTypeTest.java",
+        "notes": "4 types with display names and prompts"
+      },
+      {
+        "class": "io.github.inherit_this.entities.NPCType",
+        "coverage": 100,
+        "test_file": "NPCTypeTest.java",
+        "notes": "4 behavior types (HOSTILE, FRIENDLY, NEUTRAL, PASSIVE)"
+      },
+      {
+        "class": "io.github.inherit_this.items.EquipmentSlot",
+        "coverage": 100,
+        "test_file": "EquipmentSlotTest.java",
+        "notes": "Equipment slot enum"
+      },
+      {
+        "class": "io.github.inherit_this.items.ItemRarity",
+        "coverage": 100,
+        "test_file": "ItemRarityTest.java",
+        "notes": "Item rarity levels"
+      },
+      {
+        "class": "io.github.inherit_this.items.ItemType",
+        "coverage": 100,
+        "test_file": "ItemTypeTest.java",
+        "notes": "Item type classifications"
+      },
+      {
+        "class": "io.github.inherit_this.loot.LootTableGenerator.ObjectType",
+        "coverage": 100,
+        "test_file": "ObjectTypeTest.java",
+        "notes": "4 breakable object types (POT, CRATE, BARREL, CHEST)"
+      },
+      {
+        "class": "io.github.inherit_this.world.TileLayer",
+        "coverage": 100,
+        "test_file": "TileLayerTest.java",
+        "notes": "3 layers with methods (GROUND, WALL, ROOF)"
+      },
+      {
+        "class": "io.github.inherit_this.world.TileType",
+        "coverage": 100,
+        "test_file": "TileTypeTest.java",
+        "notes": "6 tile material types"
+      }
+    ],
+    "data_classes": [
+      {
+        "class": "io.github.inherit_this.combat.CombatManager",
+        "coverage": 100,
+        "test_file": "CombatManagerTest.java"
+      },
+      {
+        "class": "io.github.inherit_this.dungeon.DungeonConfig",
+        "coverage": 100,
+        "test_file": "DungeonConfigTest.java"
+      },
+      {
+        "class": "io.github.inherit_this.entities.PlayerStats",
+        "coverage": 96,
+        "test_file": "PlayerStatsTest.java",
+        "notes": "Enhanced with 12 additional tests"
+      },
+      {
+        "class": "io.github.inherit_this.items.Equipment",
+        "coverage": 100,
+        "test_file": "EquipmentTest.java"
+      },
+      {
+        "class": "io.github.inherit_this.items.Inventory",
+        "coverage": 99,
+        "test_file": "InventoryTest.java"
+      },
+      {
+        "class": "io.github.inherit_this.items.Item",
+        "coverage": 100,
+        "test_file": "ItemTest.java"
+      },
+      {
+        "class": "io.github.inherit_this.items.ItemStack",
+        "coverage": 100,
+        "test_file": "ItemStackTest.java"
+      },
+      {
+        "class": "io.github.inherit_this.items.ItemStats",
+        "coverage": 100,
+        "test_file": "ItemStatsTest.java"
+      },
+      {
+        "class": "io.github.inherit_this.loot.ScaledLootTable",
+        "coverage": 100,
+        "test_file": "ScaledLootTableTest.java"
+      },
+      {
+        "class": "io.github.inherit_this.particles.Particle",
+        "coverage": 100,
+        "test_file": "ParticleTest.java"
+      },
+      {
+        "class": "io.github.inherit_this.save.SaveData",
+        "coverage": 100,
+        "test_file": "SaveDataTest.java"
+      },
+      {
+        "class": "io.github.inherit_this.save.SaveManager.SaveSlotInfo",
+        "coverage": 100,
+        "test_file": "SaveManagerTest.java"
+      },
+      {
+        "class": "io.github.inherit_this.world.Portal",
+        "coverage": 100,
+        "test_file": "PortalTest.java",
+        "notes": "Portal teleportation system"
+      },
+      {
+        "class": "io.github.inherit_this.world.StaticWorld.StaticMapData",
+        "coverage": 100,
+        "test_file": "StaticMapDataTest.java"
+      },
+      {
+        "class": "io.github.inherit_this.world.Tile",
+        "coverage": 100,
+        "test_file": "TileTest.java"
+      }
+    ]
+  },
+  "untestable_classes": {
+    "libgdx_dependencies": [
+      "io.github.inherit_this.items.ItemRegistry (requires Texture loading)",
+      "io.github.inherit_this.loot.LootTableGenerator (requires ItemRegistry)",
+      "io.github.inherit_this.particles.ParticleSystem (requires Texture, Camera)",
+      "io.github.inherit_this.rendering.* (all rendering classes)",
+      "io.github.inherit_this.save.SaveManager (requires Gdx.files, FileHandle)",
+      "io.github.inherit_this.util.FontManager (requires FreeTypeFontGenerator)",
+      "io.github.inherit_this.world.DungeonWorld (requires TileTextureManager)",
+      "io.github.inherit_this.world.ProceduralWorld (requires TileTextureManager)",
+      "io.github.inherit_this.world.TileTextureManager (requires Texture loading)"
+    ]
+  },
+  "next_targets": {
+    "easy_wins": [
+      "Look for more inner classes or data classes in existing files",
+      "Check for constants classes or utility classes",
+      "Review debug command classes (may have simple logic)"
+    ],
+    "partial_coverage_improvements": [
+      "ParticleSystem (currently 13%, but has Texture dependencies)",
+      "Inventory (currently 99%, find the missing 1%)"
+    ]
+  }
+}

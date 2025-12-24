@@ -1,0 +1,45 @@
+=== Test Coverage Analysis ===
+
+Overall Coverage: 7%
+Target: 40%
+Remaining: 33%
+
+=== Package Coverage Breakdown ===
+
+High Priority (Low Coverage, Likely Testable):
+  loot: 28%
+
+  entities: 80%
+
+  util: 70%
+
+  audio: 84%
+
+Medium Priority:
+  particles: 44%
+
+  save: 24%
+
+  dungeon: 34%
+
+Low Priority (LibGDX Dependencies):
+  world: 7%
+  rendering: 0%
+
+=== Quick Wins (Simple Enums/Data Classes) ===
+
+Enums to test:
+  ✓ io.github.inherit_this.audio.SoundType (tested)
+  ✓ io.github.inherit_this.entities.InteractableType (tested)
+  ✓ io.github.inherit_this.entities.NPCType (tested)
+  ✓ io.github.inherit_this.items.EquipmentSlot (tested)
+  ✓ io.github.inherit_this.items.ItemRarity (tested)
+  ✓ io.github.inherit_this.items.ItemType (tested)
+  ✓ io.github.inherit_this.world.TileLayer (tested)
+  ✓ io.github.inherit_this.world.TileType (tested)
+
+=== Recommendations ===
+1. Focus on enums without tests (marked with ✗ above)
+2. Test data classes in high-priority packages
+3. Avoid classes with LibGDX dependencies (Texture, FileHandle, etc.)
+

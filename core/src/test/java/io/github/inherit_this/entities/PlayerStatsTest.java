@@ -210,4 +210,138 @@ class PlayerStatsTest {
         assertEquals(112f, level3XP, 0.01f, "Level 3 should require 112 XP (100 * 1.12)");
         assertTrue(level10XP > level3XP, "Higher levels should require more XP");
     }
+
+    @Test
+    @DisplayName("Should get total XP for current level")
+    void testGetTotalXPForCurrentLevel() {
+        assertEquals(0f, stats.getTotalXPForCurrentLevel(), "Level 1 should start at 0 total XP");
+
+        stats.addXP(100f); // Level up to 2
+        assertEquals(100f, stats.getTotalXPForCurrentLevel(), "Level 2 should have 100 total XP");
+
+        stats.addXP(stats.getXPRequiredForNextLevel()); // Level up to 3
+        float expectedLevel3TotalXP = 100f + 112f; // Level 2 XP + Level 3 XP
+        assertEquals(expectedLevel3TotalXP, stats.getTotalXPForCurrentLevel(), 0.01f, "Total XP should accumulate");
+    }
+
+    @Test
+    @DisplayName("Should calculate health percentage correctly")
+    void testGetHealthPercent() {
+        assertEquals(1.0f, stats.getHealthPercent(), 0.01f, "Should start at 100%");
+
+        stats.takeDamage(50f);
+        assertEquals(0.5f, stats.getHealthPercent(), 0.01f, "Should be at 50% after taking 50 damage");
+
+        stats.takeDamage(50f);
+        assertEquals(0.0f, stats.getHealthPercent(), 0.01f, "Should be at 0% when dead");
+    }
+
+    @Test
+    @DisplayName("Should calculate mana percentage correctly")
+    void testGetManaPercent() {
+        assertEquals(1.0f, stats.getManaPercent(), 0.01f, "Should start at 100%");
+
+        stats.useMana(25f);
+        assertEquals(0.5f, stats.getManaPercent(), 0.01f, "Should be at 50% after using 25 mana");
+
+        stats.useMana(25f);
+        assertEquals(0.0f, stats.getManaPercent(), 0.01f, "Should be at 0% when mana depleted");
+    }
+
+    @Test
+    @DisplayName("Should calculate stamina percentage correctly")
+    void testGetStaminaPercent() {
+        assertEquals(1.0f, stats.getStaminaPercent(), 0.01f, "Should start at 100%");
+
+        stats.useStamina(50f);
+        assertEquals(0.5f, stats.getStaminaPercent(), 0.01f, "Should be at 50% after using 50 stamina");
+
+        stats.useStamina(50f);
+        assertEquals(0.0f, stats.getStaminaPercent(), 0.01f, "Should be at 0% when stamina depleted");
+    }
+
+    @Test
+    @DisplayName("Should restore mana")
+    void testRestoreMana() {
+        stats.useMana(30f);
+        assertEquals(20f, stats.getCurrentMana(), "Mana should be reduced");
+
+        stats.restoreMana(15f);
+        assertEquals(35f, stats.getCurrentMana(), "Mana should be restored");
+
+        stats.restoreMana(20f);
+        assertEquals(50f, stats.getCurrentMana(), "Mana should not exceed max");
+    }
+
+    @Test
+    @DisplayName("Should set health directly")
+    void testSetHealth() {
+        stats.setHealth(75f);
+        assertEquals(75f, stats.getCurrentHealth(), "Health should be set to 75");
+
+        stats.setHealth(0f);
+        assertEquals(0f, stats.getCurrentHealth(), "Health should be set to 0");
+    }
+
+    @Test
+    @DisplayName("Should set mana directly")
+    void testSetMana() {
+        stats.setMana(30f);
+        assertEquals(30f, stats.getCurrentMana(), "Mana should be set to 30");
+
+        stats.setMana(50f);
+        assertEquals(50f, stats.getCurrentMana(), "Mana should be set to max");
+    }
+
+    @Test
+    @DisplayName("Should set stamina directly")
+    void testSetStamina() {
+        stats.setStamina(60f);
+        assertEquals(60f, stats.getCurrentStamina(), "Stamina should be set to 60");
+
+        stats.setStamina(0f);
+        assertEquals(0f, stats.getCurrentStamina(), "Stamina should be set to 0");
+    }
+
+    @Test
+    @DisplayName("Should set current XP directly")
+    void testSetCurrentXP() {
+        stats.setCurrentXP(50f);
+        assertEquals(50f, stats.getCurrentXP(), "XP should be set to 50");
+
+        stats.setCurrentXP(0f);
+        assertEquals(0f, stats.getCurrentXP(), "XP should be set to 0");
+    }
+
+    @Test
+    @DisplayName("Should set max health")
+    void testSetMaxHealth() {
+        stats.setMaxHealth(150f);
+        assertEquals(150f, stats.getMaxHealth(), "Max health should be set to 150");
+
+        // Current health should also be adjusted if it exceeds new max
+        stats.setHealth(200f);
+        stats.setMaxHealth(100f);
+        assertTrue(stats.getCurrentHealth() <= stats.getMaxHealth(), "Current health should not exceed max");
+    }
+
+    @Test
+    @DisplayName("Should set max mana")
+    void testSetMaxMana() {
+        stats.setMaxMana(75f);
+        assertEquals(75f, stats.getMaxMana(), "Max mana should be set to 75");
+
+        stats.setMaxMana(100f);
+        assertEquals(100f, stats.getMaxMana(), "Max mana should be updated");
+    }
+
+    @Test
+    @DisplayName("Should set max stamina")
+    void testSetMaxStamina() {
+        stats.setMaxStamina(120f);
+        assertEquals(120f, stats.getMaxStamina(), "Max stamina should be set to 120");
+
+        stats.setMaxStamina(80f);
+        assertEquals(80f, stats.getMaxStamina(), "Max stamina should be updated");
+    }
 }

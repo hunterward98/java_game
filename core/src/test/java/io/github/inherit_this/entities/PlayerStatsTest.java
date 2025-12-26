@@ -344,4 +344,58 @@ class PlayerStatsTest {
         stats.setMaxStamina(80f);
         assertEquals(80f, stats.getMaxStamina(), "Max stamina should be updated");
     }
+
+    // Edge case tests for complete coverage
+
+    @Test
+    @DisplayName("XP progress should be 100% at max level")
+    void testXPProgressAtMaxLevel() {
+        stats.setLevel(100);
+        assertEquals(1.0f, stats.getXPProgress(), 0.01f, "XP progress should be 100% at max level");
+    }
+
+    @Test
+    @DisplayName("XP required for level 1 should be 0")
+    void testXPRequiredForLevel1() {
+        assertEquals(0f, stats.getXPRequiredForLevel(1), "Level 1 should require 0 XP");
+        assertEquals(0f, stats.getXPRequiredForLevel(0), "Level 0 should require 0 XP");
+    }
+
+    @Test
+    @DisplayName("XP required for next level should be 0 at max level")
+    void testXPRequiredForNextLevelAtMaxLevel() {
+        stats.setLevel(100);
+        assertEquals(0f, stats.getXPRequiredForNextLevel(), "Should require 0 XP at max level");
+    }
+
+    @Test
+    @DisplayName("Cannot use more stamina than available")
+    void testCannotUseStaminaWhenInsufficient() {
+        boolean used = stats.useStamina(150f); // More than available
+        assertFalse(used, "Should not be able to use more stamina than available");
+        assertEquals(100f, stats.getCurrentStamina(), "Stamina should remain unchanged");
+    }
+
+    @Test
+    @DisplayName("Health percent should be 0 when max health is 0")
+    void testHealthPercentWhenMaxHealthIsZero() {
+        stats.setMaxHealth(1f);
+        stats.setHealth(0f);
+        stats.setMaxHealth(0f);
+        assertEquals(0f, stats.getHealthPercent(), 0.01f, "Health percent should be 0 when max health is 0");
+    }
+
+    @Test
+    @DisplayName("Mana percent should be 0 when max mana is 0")
+    void testManaPercentWhenMaxManaIsZero() {
+        stats.setMaxMana(0f);
+        assertEquals(0f, stats.getManaPercent(), 0.01f, "Mana percent should be 0 when max mana is 0");
+    }
+
+    @Test
+    @DisplayName("Stamina percent should be 0 when max stamina is 0")
+    void testStaminaPercentWhenMaxStaminaIsZero() {
+        stats.setMaxStamina(0f);
+        assertEquals(0f, stats.getStaminaPercent(), 0.01f, "Stamina percent should be 0 when max stamina is 0");
+    }
 }

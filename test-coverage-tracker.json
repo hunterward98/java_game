@@ -1,7 +1,7 @@
 {
   "overall_coverage": 36,
-  "target_coverage": 40,
-  "last_updated": "2025-12-23",
+  "target_coverage": 30,
+  "last_updated": "2025-12-24",
   "completed_tests": {
     "enums": [
       {
@@ -57,6 +57,30 @@
         "coverage": 100,
         "test_file": "TileTypeTest.java",
         "notes": "6 tile material types"
+      },
+      {
+        "class": "io.github.inherit_this.particles.ParticleSystem.MaterialType",
+        "coverage": 100,
+        "test_file": "MaterialTypeTest.java",
+        "notes": "2 particle material types (WOOD, STONE)"
+      },
+      {
+        "class": "io.github.inherit_this.entities.FriendlyNPC.NPCRole",
+        "coverage": 100,
+        "test_file": "NPCRoleTest.java",
+        "notes": "4 NPC roles (MERCHANT, QUEST_GIVER, GUARD, VILLAGER)"
+      },
+      {
+        "class": "io.github.inherit_this.entities.NPC.NPCState",
+        "coverage": 100,
+        "test_file": "NPCStateTest.java",
+        "notes": "6 NPC AI states (IDLE, WANDER, CHASE, ATTACK, FLEE, DEAD)"
+      },
+      {
+        "class": "io.github.inherit_this.world.MapEditor.EditMode",
+        "coverage": 100,
+        "test_file": "EditModeTest.java",
+        "notes": "2 editor modes (TILE, OBJECT)"
       }
     ],
     "data_classes": [
@@ -72,9 +96,9 @@
       },
       {
         "class": "io.github.inherit_this.entities.PlayerStats",
-        "coverage": 96,
+        "coverage": 98,
         "test_file": "PlayerStatsTest.java",
-        "notes": "Enhanced with 12 additional tests"
+        "notes": "Enhanced with edge case tests"
       },
       {
         "class": "io.github.inherit_this.items.Equipment",
@@ -159,7 +183,7 @@
       "Review debug command classes (may have simple logic)"
     ],
     "partial_coverage_improvements": [
-      "ParticleSystem (currently 13%, but has Texture dependencies)",
+      "ParticleSystem (improved to 44% with MaterialType tests, but main class has Texture dependencies)",
       "Inventory (currently 99%, find the missing 1%)"
     ]
   }

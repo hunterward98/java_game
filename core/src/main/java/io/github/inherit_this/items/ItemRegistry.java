@@ -4,6 +4,8 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.EnumSet;
 
 /**
  * Central registry for all item definitions in the game.
@@ -82,6 +84,103 @@ public class ItemRegistry {
             1, 2,
             1,
             250
+        ));
+
+        // Test weapons with special effects
+        register(new Item(
+            "mana_draining_sword",
+            "Mana Draining Sword",
+            "A mystical blade that drains mana from foes.",
+            ItemType.WEAPON,
+            ItemRarity.RARE,
+            loadTexture("items/mana_draining_sword.png", 1, 2),
+            1, 2,
+            1,
+            500,
+            2.0f,  // weight
+            ItemStats.weaponWithEffects(
+                15,    // damage
+                100,   // durability
+                1.2f,  // attack speed
+                EnumSet.of(WeaponEffect.MANA_DRAIN),
+                10f,   // mana drain amount
+                0f,    // stamina drain amount
+                0f     // life steal percent
+            ),
+            null,  // enchantments
+            EquipmentSlot.MAIN_HAND
+        ));
+
+        register(new Item(
+            "stamina_draining_axe",
+            "Stamina Draining Axe",
+            "A cursed axe that saps the stamina of its victims.",
+            ItemType.WEAPON,
+            ItemRarity.RARE,
+            loadTexture("items/stamina_draining_axe.png", 1, 2),
+            1, 2,
+            1,
+            550,
+            2.5f,  // weight
+            ItemStats.weaponWithEffects(
+                18,    // damage
+                120,   // durability
+                0.9f,  // attack speed (slower)
+                EnumSet.of(WeaponEffect.STAMINA_DRAIN),
+                0f,    // mana drain amount
+                15f,   // stamina drain amount
+                0f     // life steal percent
+            ),
+            null,  // enchantments
+            EquipmentSlot.MAIN_HAND
+        ));
+
+        register(new Item(
+            "vampiric_dagger",
+            "Vampiric Dagger",
+            "A sinister dagger that steals life force from enemies.",
+            ItemType.WEAPON,
+            ItemRarity.EPIC,
+            loadTexture("items/vampiric_dagger.png", 1, 2),
+            1, 2,
+            1,
+            750,
+            1.5f,  // weight
+            ItemStats.weaponWithEffects(
+                12,    // damage (lower but steals life)
+                80,    // durability
+                1.5f,  // attack speed (fast)
+                EnumSet.of(WeaponEffect.LIFE_STEAL),
+                0f,    // mana drain amount
+                0f,    // stamina drain amount
+                0.25f  // life steal percent (25% of damage as healing)
+            ),
+            null,  // enchantments
+            EquipmentSlot.MAIN_HAND
+        ));
+
+        register(new Item(
+            "cursed_blade",
+            "Cursed Blade",
+            "A forbidden weapon that drains both mana and stamina.",
+            ItemType.WEAPON,
+            ItemRarity.LEGENDARY,
+            loadTexture("items/cursed_blade.png", 1, 2),
+            1, 2,
+            1,
+            1200,
+            3.0f,  // weight
+            ItemStats.weaponWithEffects(
+                22,    // damage (powerful but heavy cost)
+                150,   // durability
+                1.0f,  // attack speed (normal)
+                EnumSet.of(WeaponEffect.MANA_DRAIN, WeaponEffect.STAMINA_DRAIN),
+                8f,    // mana drain amount
+                12f,   // stamina drain amount
+                0f     // life steal percent
+            ),
+            null,  // enchantments
+            EquipmentSlot.MAIN_HAND
         ));
 
         // Armor (1x1 size)

@@ -398,4 +398,118 @@ class PlayerStatsTest {
         stats.setMaxStamina(0f);
         assertEquals(0f, stats.getStaminaPercent(), 0.01f, "Stamina percent should be 0 when max stamina is 0");
     }
+
+    @Test
+    @DisplayName("takeDamage should drain health, mana, and stamina with multiple weapon effects")
+    void testTakeDamageWithMultipleWeaponEffects() {
+        // Set initial stats (must set max first to avoid clamping)
+        stats.setMaxHealth(100f);
+        stats.setHealth(100f);
+        stats.setMaxMana(100f);
+        stats.setMana(100f);
+        stats.setMaxStamina(100f);
+        stats.setStamina(100f);
+
+        // Create weapon stats with MANA_DRAIN and STAMINA_DRAIN effects
+        java.util.Set<io.github.inherit_this.items.WeaponEffect> effects =
+            java.util.EnumSet.of(
+                io.github.inherit_this.items.WeaponEffect.MANA_DRAIN,
+                io.github.inherit_this.items.WeaponEffect.STAMINA_DRAIN
+            );
+
+        io.github.inherit_this.items.ItemStats weaponStats =
+            io.github.inherit_this.items.ItemStats.weaponWithEffects(
+                10, 0, 0f,  // damage, durability, attackSpeed
+                effects,
+                15f,  // manaDrainAmount
+                20f,  // staminaDrainAmount
+                0f    // lifeStealPercent
+            );
+
+        // Create damage info with 10 base damage + weapon effects
+        io.github.inherit_this.combat.DamageInfo damageInfo =
+            io.github.inherit_this.combat.DamageInfo.attackWithEffects(10, weaponStats);
+
+        // Apply damage (no particles for testing)
+        stats.takeDamage(damageInfo, null, 0f, 0f, 0f);
+
+        // Verify all three stats were drained
+        assertEquals(90f, stats.getCurrentHealth(), "Health should be reduced by 10");
+        assertEquals(85f, stats.getCurrentMana(), "Mana should be reduced by 15");
+        assertEquals(80f, stats.getCurrentStamina(), "Stamina should be reduced by 20");
+    }
+
+    @Test
+    @DisplayName("takeDamage should only drain mana with MANA_DRAIN effect")
+    void testTakeDamageWithOnlyManaDrain() {
+        // Set initial stats (must set max first to avoid clamping)
+        stats.setMaxHealth(100f);
+        stats.setHealth(100f);
+        stats.setMaxMana(100f);
+        stats.setMana(100f);
+        stats.setMaxStamina(100f);
+        stats.setStamina(100f);
+
+        // Create weapon stats with only MANA_DRAIN effect
+        java.util.Set<io.github.inherit_this.items.WeaponEffect> effects =
+            java.util.EnumSet.of(io.github.inherit_this.items.WeaponEffect.MANA_DRAIN);
+
+        io.github.inherit_this.items.ItemStats weaponStats =
+            io.github.inherit_this.items.ItemStats.weaponWithEffects(
+                0, 0, 0f,  // no base damage
+                effects,
+                25f,  // manaDrainAmount
+                0f,   // staminaDrainAmount
+                0f    // lifeStealPercent
+            );
+
+        // Create damage info with no base damage, only mana drain
+        io.github.inherit_this.combat.DamageInfo damageInfo =
+            io.github.inherit_this.combat.DamageInfo.attackWithEffects(0, weaponStats);
+
+        // Apply damage (no particles for testing)
+        stats.takeDamage(damageInfo, null, 0f, 0f, 0f);
+
+        // Verify only mana was drained
+        assertEquals(100f, stats.getCurrentHealth(), "Health should not change");
+        assertEquals(75f, stats.getCurrentMana(), "Mana should be reduced by 25");
+        assertEquals(100f, stats.getCurrentStamina(), "Stamina should not change");
+    }
+
+    @Test
+    @DisplayName("takeDamage should only drain stamina with STAMINA_DRAIN effect")
+    void testTakeDamageWithOnlyStaminaDrain() {
+        // Set initial stats (must set max first to avoid clamping)
+        stats.setMaxHealth(100f);
+        stats.setHealth(100f);
+        stats.setMaxMana(100f);
+        stats.setMana(100f);
+        stats.setMaxStamina(100f);
+        stats.setStamina(100f);
+
+        // Create weapon stats with only STAMINA_DRAIN effect
+        java.util.Set<io.github.inherit_this.items.WeaponEffect> effects =
+            java.util.EnumSet.of(io.github.inherit_this.items.WeaponEffect.STAMINA_DRAIN);
+
+        io.github.inherit_this.items.ItemStats weaponStats =
+            io.github.inherit_this.items.ItemStats.weaponWithEffects(
+                0, 0, 0f,  // no base damage
+                effects,
+                0f,   // manaDrainAmount
+                30f,  // staminaDrainAmount
+                0f    // lifeStealPercent
+            );
+
+        // Create damage info with no base damage, only stamina drain
+        io.github.inherit_this.combat.DamageInfo damageInfo =
+            io.github.inherit_this.combat.DamageInfo.attackWithEffects(0, weaponStats);
+
+        // Apply damage (no particles for testing)
+        stats.takeDamage(damageInfo, null, 0f, 0f, 0f);
+
+        // Verify only stamina was drained
+        assertEquals(100f, stats.getCurrentHealth(), "Health should not change");
+        assertEquals(100f, stats.getCurrentMana(), "Mana should not change");
+        assertEquals(70f, stats.getCurrentStamina(), "Stamina should be reduced by 30");
+    }
 }

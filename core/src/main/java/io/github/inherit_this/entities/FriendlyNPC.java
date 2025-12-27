@@ -1,6 +1,7 @@
 package io.github.inherit_this.entities;
 
 import com.badlogic.gdx.graphics.Texture;
+import io.github.inherit_this.particles.ParticleSystem;
 import io.github.inherit_this.world.WorldProvider;
 
 /**
@@ -31,7 +32,7 @@ public class FriendlyNPC extends NPC {
     }
 
     @Override
-    protected void updateAI(float delta, Player player) {
+    protected void updateAI(float delta, Player player, ParticleSystem particleSystem) {
         // Friendly NPCs just stand idle or wander
         switch (state) {
             case IDLE:

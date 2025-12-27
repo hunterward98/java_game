@@ -2,6 +2,10 @@ package io.github.inherit_this.entities;
 
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.Vector2;
+import io.github.inherit_this.combat.DamageInfo;
+import io.github.inherit_this.combat.DamageSource;
+import io.github.inherit_this.items.WeaponEffect;
+import io.github.inherit_this.particles.ParticleSystem;
 import io.github.inherit_this.world.WorldProvider;
 
 /**
@@ -68,8 +72,12 @@ public abstract class NPC extends Entity {
 
     /**
      * Update NPC behavior and AI.
+     *
+     * @param delta Time since last frame
+     * @param player The player entity
+     * @param particleSystem Particle system for combat effects
      */
-    public void update(float delta, Player player) {
+    public void update(float delta, Player player, ParticleSystem particleSystem) {
         if (state == NPCState.DEAD) {
             return;
         }
@@ -78,7 +86,7 @@ public abstract class NPC extends Entity {
         timeSinceLastAttack += delta;
 
         // Update AI based on NPC type and current state
-        updateAI(delta, player);
+        updateAI(delta, player, particleSystem);
 
         // Move toward target position if set
         if (targetPosition != null) {
@@ -88,8 +96,12 @@ public abstract class NPC extends Entity {
 
     /**
      * AI behavior - override in subclasses for custom behavior.
+     *
+     * @param delta Time since last frame
+     * @param player The player entity
+     * @param particleSystem Particle system for combat effects
      */
-    protected abstract void updateAI(float delta, Player player);
+    protected abstract void updateAI(float delta, Player player, ParticleSystem particleSystem);
 
     /**
      * Move toward a target position.
@@ -112,8 +124,49 @@ public abstract class NPC extends Entity {
     }
 
     /**
-     * Take damage from an attack.
+     * Take damage with weapon effects and particle emissions.
+     *
+     * @param damageInfo Damage information including amount, source, and effects
+     * @param attacker The entity that dealt the damage
+     * @param particles Particle system for visual effects (null to disable particles)
+     * @param worldX World X position in pixels for particle spawn
+     * @param worldY World Y position in pixels for particle spawn
+     * @param worldZ World Z position in pixels for particle spawn
      */
+    public void takeDamage(DamageInfo damageInfo, Entity attacker, ParticleSystem particles, float worldX, float worldY, float worldZ) {
+        if (state == NPCState.DEAD) {
+            return;
+        }
+
+        // Apply base damage
+        currentHealth -= damageInfo.getBaseDamage();
+
+        // Emit blood particles for attack damage
+        if (damageInfo.getSource() == DamageSource.ATTACK && particles != null) {
+            particles.createCombatEffect(ParticleSystem.MaterialType.BLOOD, worldX, worldY, worldZ, 10);
+
+            // Process life steal - heal the attacker
+            if (damageInfo.hasEffect(WeaponEffect.LIFE_STEAL) && attacker instanceof Player) {
+                float healAmount = damageInfo.getBaseDamage() * damageInfo.getLifeStealPercent();
+                ((Player) attacker).getStats().heal(healAmount);
+            }
+        }
+
+        // Check for death
+        if (currentHealth <= 0) {
+            currentHealth = 0;
+            state = NPCState.DEAD;
+            onDeath(attacker);
+        } else {
+            onHit(attacker);
+        }
+    }
+
+    /**
+     * Take damage (simple version for backward compatibility).
+     * @deprecated Use takeDamage(DamageInfo, Entity, ParticleSystem, float, float, float) instead
+     */
+    @Deprecated
     public void takeDamage(int amount, Entity attacker) {
         if (state == NPCState.DEAD) {
             return;

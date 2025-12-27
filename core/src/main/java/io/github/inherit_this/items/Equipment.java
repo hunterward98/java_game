@@ -1,7 +1,9 @@
 package io.github.inherit_this.items;
 
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Manages equipped items on a player or entity.
@@ -119,6 +121,27 @@ public class Equipment {
             }
         }
         return totalWeight;
+    }
+
+    /**
+     * Get weapon effects from the currently equipped main-hand weapon.
+     * @return Set of weapon effects, or empty set if no weapon equipped
+     */
+    public Set<WeaponEffect> getActiveWeaponEffects() {
+        Item weapon = equippedItems.get(EquipmentSlot.MAIN_HAND);
+        if (weapon != null && weapon.getStats() != null) {
+            return weapon.getStats().getWeaponEffects();
+        }
+        return Collections.emptySet();
+    }
+
+    /**
+     * Get stats from the currently equipped main-hand weapon.
+     * @return ItemStats from the weapon, or null if no weapon equipped
+     */
+    public ItemStats getWeaponStats() {
+        Item weapon = equippedItems.get(EquipmentSlot.MAIN_HAND);
+        return (weapon != null) ? weapon.getStats() : null;
     }
 
     /**

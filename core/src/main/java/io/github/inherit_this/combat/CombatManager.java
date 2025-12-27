@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Texture;
 import io.github.inherit_this.entities.Enemy;
 import io.github.inherit_this.entities.NPC;
 import io.github.inherit_this.entities.Player;
+import io.github.inherit_this.particles.ParticleSystem;
 import io.github.inherit_this.world.WorldProvider;
 
 import java.util.ArrayList;
@@ -16,9 +17,11 @@ import java.util.List;
 public class CombatManager {
     private final List<NPC> npcs;
     private final Player player;
+    private final ParticleSystem particleSystem;
 
-    public CombatManager(Player player) {
+    public CombatManager(Player player, ParticleSystem particleSystem) {
         this.player = player;
+        this.particleSystem = particleSystem;
         this.npcs = new ArrayList<>();
     }
 
@@ -26,13 +29,20 @@ public class CombatManager {
      * Update all NPCs (AI, movement, combat).
      */
     public void update(float delta) {
-        // Update all NPCs
+        // Update all NPCs with particle system for combat effects
         for (NPC npc : npcs) {
-            npc.update(delta, player);
+            npc.update(delta, player, particleSystem);
         }
 
         // Remove dead NPCs
         npcs.removeIf(NPC::isDead);
+    }
+
+    /**
+     * Get the particle system for combat effects.
+     */
+    public ParticleSystem getParticleSystem() {
+        return particleSystem;
     }
 
     /**

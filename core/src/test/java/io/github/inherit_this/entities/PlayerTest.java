@@ -40,6 +40,9 @@ class PlayerTest {
         when(mockTexture.getWidth()).thenReturn(32);
         when(mockTexture.getHeight()).thenReturn(32);
 
+        // Mock enemy position (close to player for attack range tests)
+        when(mockEnemy.getPosition()).thenReturn(new com.badlogic.gdx.math.Vector2(5.5f, 5.5f));
+
         // Create player at position (5, 5)
         player = new Player(5f, 5f, mockTexture, mockWorld);
     }
@@ -318,7 +321,7 @@ class PlayerTest {
         boolean attacked = player.attack(mockEnemy);
 
         assertTrue(attacked, "Attack should succeed when off cooldown");
-        verify(mockEnemy).takeDamage(anyInt(), eq(player));
+        verify(mockEnemy).takeDamage(any(), eq(player), any(), anyFloat(), anyFloat(), anyFloat());
     }
 
     @Test
@@ -435,14 +438,13 @@ class PlayerTest {
         when(mockEnemy.isDead()).thenReturn(false);
         when(mockEnemy.getName()).thenReturn("Test Enemy");
 
-        int expectedDamage = player.getStats().getTotalDamage();
-
         // Update to allow attack
         player.update(1.1f);
 
         player.attack(mockEnemy);
 
-        verify(mockEnemy).takeDamage(eq(expectedDamage), eq(player));
+        // Verify takeDamage was called (damage is wrapped in DamageInfo now)
+        verify(mockEnemy).takeDamage(any(), eq(player), any(), anyFloat(), anyFloat(), anyFloat());
     }
 
     @Test

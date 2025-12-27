@@ -50,7 +50,7 @@ class NPCTest {
         }
 
         @Override
-        protected void updateAI(float delta, Player player) {
+        protected void updateAI(float delta, Player player, io.github.inherit_this.particles.ParticleSystem particleSystem) {
             // Simple AI for testing: chase player if in range
             if (canSee(player)) {
                 state = NPCState.CHASE;
@@ -186,7 +186,7 @@ class NPCTest {
         @DisplayName("Attack should succeed when off cooldown")
         void testAttack() {
             // Update to allow attack cooldown to pass
-            npc.update(1.1f, mockPlayer);
+            npc.update(1.1f, mockPlayer, null);
 
             boolean attacked = npc.attack(mockPlayer);
             assertTrue(attacked, "Attack should succeed when off cooldown");
@@ -196,7 +196,7 @@ class NPCTest {
         @DisplayName("Attack should fail when on cooldown")
         void testAttackCooldown() {
             // Update to allow first attack
-            npc.update(1.1f, mockPlayer);
+            npc.update(1.1f, mockPlayer, null);
 
             npc.attack(mockPlayer); // First attack
             boolean secondAttack = npc.attack(mockPlayer); // Immediate second attack
@@ -207,7 +207,7 @@ class NPCTest {
         @Test
         @DisplayName("Update should call AI and increment timers")
         void testUpdate() {
-            npc.update(0.5f, mockPlayer);
+            npc.update(0.5f, mockPlayer, null);
 
             // AI should have been called and detected player
             assertEquals(NPC.NPCState.CHASE, npc.getState(),
@@ -220,7 +220,7 @@ class NPCTest {
             npc.takeDamage(100, mockPlayer); // Kill NPC
             Vector2 initialPos = new Vector2(npc.getPosition());
 
-            npc.update(1.0f, mockPlayer);
+            npc.update(1.0f, mockPlayer, null);
 
             assertEquals(initialPos, npc.getPosition(), "Dead NPC should not move");
         }
@@ -231,7 +231,7 @@ class NPCTest {
             Vector2 target = new Vector2(10f, 10f);
             Vector2 initialPos = new Vector2(npc.getPosition());
 
-            npc.update(0.1f, mockPlayer); // This sets target and moves
+            npc.update(0.1f, mockPlayer, null); // This sets target and moves
 
             float distanceMoved = initialPos.dst(npc.getPosition());
             assertTrue(distanceMoved > 0, "NPC should have moved toward target");
@@ -242,7 +242,7 @@ class NPCTest {
         void testMoveTowardArrival() {
             npc = new TestNPC(mockTexture, 9.95f, 9.95f, "Close NPC", NPCType.NEUTRAL, mockWorld);
 
-            npc.update(1.0f, mockPlayer); // Long update to ensure arrival
+            npc.update(1.0f, mockPlayer, null); // Long update to ensure arrival
 
             // Should have moved close to player and stopped
             float distance = npc.getPosition().dst(mockPlayer.getPosition());
@@ -281,7 +281,7 @@ class NPCTest {
         void testIdleToChase() {
             assertEquals(NPC.NPCState.IDLE, enemy.getState(), "Should start IDLE");
 
-            enemy.update(0.1f, mockPlayer);
+            enemy.update(0.1f, mockPlayer, null);
 
             assertEquals(NPC.NPCState.CHASE, enemy.getState(),
                     "Should transition to CHASE when player is in range");
@@ -292,10 +292,10 @@ class NPCTest {
         void testChaseToAttack() {
             when(mockPlayer.getPosition()).thenReturn(new Vector2(5.5f, 5.5f)); // Very close
 
-            enemy.update(0.1f, mockPlayer); // Enter CHASE
+            enemy.update(0.1f, mockPlayer, null); // Enter CHASE
             assertEquals(NPC.NPCState.CHASE, enemy.getState(), "Should be chasing");
 
-            enemy.update(0.1f, mockPlayer); // Should enter ATTACK
+            enemy.update(0.1f, mockPlayer, null); // Should enter ATTACK
             assertEquals(NPC.NPCState.ATTACK, enemy.getState(),
                     "Should transition to ATTACK when in range");
         }
@@ -306,13 +306,13 @@ class NPCTest {
             when(mockPlayer.getPosition()).thenReturn(new Vector2(5.5f, 5.5f));
 
             // Move to CHASE then ATTACK
-            enemy.update(0.1f, mockPlayer);
-            enemy.update(0.1f, mockPlayer);
+            enemy.update(0.1f, mockPlayer, null);
+            enemy.update(0.1f, mockPlayer, null);
 
             assertEquals(NPC.NPCState.ATTACK, enemy.getState(), "Should be attacking");
 
             float initialHealth = mockPlayer.getStats().getCurrentHealth();
-            enemy.update(2.0f, mockPlayer); // Wait for attack cooldown
+            enemy.update(2.0f, mockPlayer, null); // Wait for attack cooldown
 
             // Player should have taken damage
             assertTrue(mockPlayer.getStats().getCurrentHealth() < initialHealth,
@@ -324,12 +324,12 @@ class NPCTest {
         void testStopChasingOutOfRange() {
             // Start close
             when(mockPlayer.getPosition()).thenReturn(new Vector2(10f, 10f));
-            enemy.update(0.1f, mockPlayer);
+            enemy.update(0.1f, mockPlayer, null);
             assertEquals(NPC.NPCState.CHASE, enemy.getState(), "Should be chasing");
 
             // Move player far away
             when(mockPlayer.getPosition()).thenReturn(new Vector2(100f, 100f));
-            enemy.update(0.1f, mockPlayer);
+            enemy.update(0.1f, mockPlayer, null);
 
             assertEquals(NPC.NPCState.IDLE, enemy.getState(),
                     "Should return to IDLE when player is out of range");
@@ -342,7 +342,7 @@ class NPCTest {
 
             // Update many times to trigger wander behavior
             for (int i = 0; i < 100; i++) {
-                enemy.update(0.1f, mockPlayer);
+                enemy.update(0.1f, mockPlayer, null);
                 if (enemy.getState() == NPC.NPCState.WANDER) {
                     break;
                 }
@@ -389,7 +389,7 @@ class NPCTest {
             enemy.takeDamage(10, mockPlayer); // Get aggro
             // Use reflection or subclass to test FLEE, or just verify it doesn't crash
 
-            enemy.update(0.1f, mockPlayer);
+            enemy.update(0.1f, mockPlayer, null);
 
             // Enemy should be in some valid state
             assertNotNull(enemy.getState(), "Enemy should have a valid state");
@@ -457,7 +457,7 @@ class NPCTest {
         @Test
         @DisplayName("FriendlyNPC should remain idle")
         void testFriendlyNPCStaysIdle() {
-            friendlyNPC.update(0.1f, mockPlayer);
+            friendlyNPC.update(0.1f, mockPlayer, null);
 
             assertEquals(NPC.NPCState.IDLE, friendlyNPC.getState(),
                     "Friendly NPC should remain IDLE");
@@ -500,7 +500,7 @@ class NPCTest {
         void testFriendlyNPCNeverFights() {
             // Try to provoke it
             friendlyNPC.takeDamage(50, mockPlayer);
-            friendlyNPC.update(1.0f, mockPlayer);
+            friendlyNPC.update(1.0f, mockPlayer, null);
 
             assertNotEquals(NPC.NPCState.CHASE, friendlyNPC.getState(),
                     "Friendly NPC should not chase");
@@ -557,17 +557,17 @@ class NPCTest {
 
             // Move player into detection range -> CHASE
             when(mockPlayer.getPosition()).thenReturn(new Vector2(55f, 55f));
-            enemy.update(0.1f, mockPlayer);
+            enemy.update(0.1f, mockPlayer, null);
             assertEquals(NPC.NPCState.CHASE, enemy.getState());
 
             // Move player into attack range -> ATTACK
             when(mockPlayer.getPosition()).thenReturn(new Vector2(50.5f, 50.5f));
-            enemy.update(0.1f, mockPlayer);
+            enemy.update(0.1f, mockPlayer, null);
             assertEquals(NPC.NPCState.ATTACK, enemy.getState());
 
             // Move player far away -> back to IDLE
             when(mockPlayer.getPosition()).thenReturn(new Vector2(100f, 100f));
-            enemy.update(0.1f, mockPlayer);
+            enemy.update(0.1f, mockPlayer, null);
             assertEquals(NPC.NPCState.IDLE, enemy.getState());
         }
 

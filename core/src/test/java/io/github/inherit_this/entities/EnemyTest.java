@@ -87,21 +87,21 @@ class EnemyTest extends LibGdxTestBase {
         @Test
         @DisplayName("update should not crash")
         void testUpdate() {
-            assertDoesNotThrow(() -> enemy.update(0.016f, mockPlayer),
+            assertDoesNotThrow(() -> enemy.update(0.016f, mockPlayer, null),
                 "Update should not crash");
         }
 
         @Test
         @DisplayName("update should handle zero delta time")
         void testUpdateZeroDelta() {
-            assertDoesNotThrow(() -> enemy.update(0f, mockPlayer),
+            assertDoesNotThrow(() -> enemy.update(0f, mockPlayer, null),
                 "Should handle zero delta time");
         }
 
         @Test
         @DisplayName("update should handle large delta time")
         void testUpdateLargeDelta() {
-            assertDoesNotThrow(() -> enemy.update(10f, mockPlayer),
+            assertDoesNotThrow(() -> enemy.update(10f, mockPlayer, null),
                 "Should handle large delta time");
         }
 
@@ -110,7 +110,7 @@ class EnemyTest extends LibGdxTestBase {
         void testUpdateMultipleTimes() {
             assertDoesNotThrow(() -> {
                 for (int i = 0; i < 100; i++) {
-                    enemy.update(0.016f, mockPlayer);
+                    enemy.update(0.016f, mockPlayer, null);
                 }
             }, "Should handle multiple updates");
         }
@@ -234,7 +234,7 @@ class EnemyTest extends LibGdxTestBase {
 
             // Update multiple times (simulate detection and combat)
             for (int i = 0; i < 10; i++) {
-                enemy.update(0.016f, mockPlayer);
+                enemy.update(0.016f, mockPlayer, null);
             }
 
             // Take damage
@@ -242,7 +242,7 @@ class EnemyTest extends LibGdxTestBase {
 
             // Continue updating
             for (int i = 0; i < 10; i++) {
-                enemy.update(0.016f, mockPlayer);
+                enemy.update(0.016f, mockPlayer, null);
             }
 
             // Enemy should still be functional

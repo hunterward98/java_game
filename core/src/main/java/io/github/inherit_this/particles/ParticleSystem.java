@@ -27,6 +27,17 @@ public class ParticleSystem {
     private Texture stoneParticle1;
     private Texture stoneParticle2;
 
+    // Combat particle textures
+    private Texture bloodParticle1;
+    private Texture bloodParticle2;
+    private Texture bloodParticle3;
+    private Texture manaParticle1;
+    private Texture manaParticle2;
+    private Texture manaParticle3;
+    private Texture staminaParticle1;
+    private Texture staminaParticle2;
+    private Texture staminaParticle3;
+
     private static final float PARTICLE_SIZE = 4f; // 4x4 pixels
 
     public ParticleSystem(PerspectiveCamera camera) {
@@ -44,6 +55,17 @@ public class ParticleSystem {
             stoneParticle1 = new Texture(Gdx.files.internal("particles/stone_particle_1.png"));
             stoneParticle2 = new Texture(Gdx.files.internal("particles/stone_particle_2.png"));
 
+            // Load combat particle textures
+            bloodParticle1 = new Texture(Gdx.files.internal("particles/blood_particle_1.png"));
+            bloodParticle2 = new Texture(Gdx.files.internal("particles/blood_particle_2.png"));
+            bloodParticle3 = new Texture(Gdx.files.internal("particles/blood_particle_3.png"));
+            manaParticle1 = new Texture(Gdx.files.internal("particles/mana_particle_1.png"));
+            manaParticle2 = new Texture(Gdx.files.internal("particles/mana_particle_2.png"));
+            manaParticle3 = new Texture(Gdx.files.internal("particles/mana_particle_3.png"));
+            staminaParticle1 = new Texture(Gdx.files.internal("particles/stamina_particle_1.png"));
+            staminaParticle2 = new Texture(Gdx.files.internal("particles/stamina_particle_2.png"));
+            staminaParticle3 = new Texture(Gdx.files.internal("particles/stamina_particle_3.png"));
+
             Gdx.app.log("ParticleSystem", "Loaded particle textures");
         } catch (Exception e) {
             Gdx.app.error("ParticleSystem", "Failed to load particle textures", e);
@@ -55,7 +77,10 @@ public class ParticleSystem {
      */
     public enum MaterialType {
         WOOD,
-        STONE
+        STONE,
+        BLOOD,      // Red droplets for health damage
+        MANA,       // Blue sparkles for mana drain
+        STAMINA     // Yellow/green particles for stamina drain
     }
 
     /**
@@ -159,6 +184,12 @@ public class ParticleSystem {
                 return new Texture[]{woodParticle1, woodParticle2};
             case STONE:
                 return new Texture[]{stoneParticle1, stoneParticle2};
+            case BLOOD:
+                return new Texture[]{bloodParticle1, bloodParticle2, bloodParticle3};
+            case MANA:
+                return new Texture[]{manaParticle1, manaParticle2, manaParticle3};
+            case STAMINA:
+                return new Texture[]{staminaParticle1, staminaParticle2, staminaParticle3};
             default:
                 return new Texture[]{woodParticle1, woodParticle2};
         }
@@ -211,6 +242,111 @@ public class ParticleSystem {
     }
 
     /**
+     * Creates a combat particle effect for damage/drain visualization.
+     * Used when players/NPCs take damage or have resources drained.
+     *
+     * @param type Material type (BLOOD, MANA, or STAMINA)
+     * @param worldX World X position (in pixels)
+     * @param worldY World Y position (in pixels)
+     * @param worldZ World Z position (in pixels)
+     * @param particleCount Number of particles to spawn
+     */
+    public void createCombatEffect(MaterialType type, float worldX, float worldY, float worldZ, int particleCount) {
+        // Get particle textures for this type
+        Texture[] textures = getTexturesForMaterial(type);
+        if (textures == null || textures.length == 0) {
+            return;
+        }
+
+        // Define color and physics properties based on type
+        Color baseColor;
+        float particleSize;
+        float minLifetime, maxLifetime;
+        float gravity;
+        float minSpeed = 100f;   // Match break effect speed range
+        float maxSpeed = 250f;
+
+        switch (type) {
+            case BLOOD:
+                baseColor = new Color(0.8f, 0.2f, 0.2f, 1.0f);  // Red
+                particleSize = PARTICLE_SIZE;  // Match break effect size for visibility
+                minLifetime = 0.5f;
+                maxLifetime = 1.5f;
+                gravity = -300f;  // Same as break effects - negative pulls down
+                break;
+            case MANA:
+                baseColor = new Color(0.3f, 0.5f, 1.0f, 1.0f);  // Blue
+                particleSize = PARTICLE_SIZE;  // Match break effect size for visibility
+                minLifetime = 0.5f;
+                maxLifetime = 1.5f;
+                gravity = -200f;  // Lighter, floatier than blood
+                minSpeed = 80f;  // Match break effect speed range
+                maxSpeed = 200f;
+                break;
+            case STAMINA:
+                baseColor = new Color(0.9f, 0.8f, 0.3f, 1.0f);  // Yellow/gold
+                particleSize = PARTICLE_SIZE;  // Match break effect size for visibility
+                minLifetime = 0.5f;
+                maxLifetime = 1.5f;
+                gravity = -250f;  // Medium gravity between blood and mana
+                break;
+            default:
+                return;  // Don't create particles for WOOD/STONE via this method
+        }
+
+        // Create particles with varied behavior for more chaotic effect
+        // TODO: Add directional bias based on attacker position
+        for (int i = 0; i < particleCount; i++) {
+            // Random texture variant
+            Texture texture = textures[(int) (Math.random() * textures.length)];
+            TextureRegion region = new TextureRegion(texture);
+
+            // Random direction (spherical coordinates) with more variation
+            float angle = (float) (Math.random() * Math.PI * 2);
+            float elevation = (float) (Math.random() * Math.PI / 2); // 0 to 90 degrees (increased from 60)
+
+            // Random speed with more variation
+            float speed = minSpeed + (float) Math.random() * (maxSpeed - minSpeed);
+            float velocityX = (float) (Math.cos(angle) * Math.cos(elevation)) * speed;
+            float velocityY = (float) Math.sin(elevation) * speed;
+            float velocityZ = (float) (Math.sin(angle) * Math.cos(elevation)) * speed;
+
+            // Randomize particle behavior: ~40% float up, ~60% fall down
+            float particleGravity = gravity;
+            if (Math.random() < 0.4f) {
+                // This particle floats upward
+                particleGravity = Math.abs(gravity) * 0.5f;  // Positive gravity (weaker)
+                velocityY += speed * 0.5f;  // Strong upward boost
+            } else {
+                // This particle falls down
+                velocityY += speed * 0.2f;  // Slight upward bias before falling
+            }
+
+            // Random lifetime
+            float lifetime = minLifetime + (float) (Math.random() * (maxLifetime - minLifetime));
+
+            // Apply slight random tint variation (±15% for more variety)
+            Color tintColor = new Color(
+                    baseColor.r * (0.85f + (float) Math.random() * 0.3f),
+                    baseColor.g * (0.85f + (float) Math.random() * 0.3f),
+                    baseColor.b * (0.85f + (float) Math.random() * 0.3f),
+                    1.0f
+            );
+            // Clamp to valid range
+            tintColor.clamp();
+
+            // Create particle with randomized gravity
+            Particle particle = new Particle(
+                    region, worldX, worldY, worldZ,
+                    velocityX, velocityY, velocityZ,
+                    lifetime, particleGravity, tintColor, particleSize
+            );
+
+            particles.add(particle);
+        }
+    }
+
+    /**
      * Get the number of active particles.
      */
     public int getParticleCount() {
@@ -232,5 +368,14 @@ public class ParticleSystem {
         if (woodParticle2 != null) woodParticle2.dispose();
         if (stoneParticle1 != null) stoneParticle1.dispose();
         if (stoneParticle2 != null) stoneParticle2.dispose();
+        if (bloodParticle1 != null) bloodParticle1.dispose();
+        if (bloodParticle2 != null) bloodParticle2.dispose();
+        if (bloodParticle3 != null) bloodParticle3.dispose();
+        if (manaParticle1 != null) manaParticle1.dispose();
+        if (manaParticle2 != null) manaParticle2.dispose();
+        if (manaParticle3 != null) manaParticle3.dispose();
+        if (staminaParticle1 != null) staminaParticle1.dispose();
+        if (staminaParticle2 != null) staminaParticle2.dispose();
+        if (staminaParticle3 != null) staminaParticle3.dispose();
     }
 }

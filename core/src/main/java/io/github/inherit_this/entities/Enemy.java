@@ -3,6 +3,8 @@ package io.github.inherit_this.entities;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
+import io.github.inherit_this.combat.DamageInfo;
+import io.github.inherit_this.particles.ParticleSystem;
 import io.github.inherit_this.world.WorldProvider;
 
 /**
@@ -24,7 +26,7 @@ public class Enemy extends NPC {
     }
 
     @Override
-    protected void updateAI(float delta, Player player) {
+    protected void updateAI(float delta, Player player, ParticleSystem particleSystem) {
         switch (state) {
             case IDLE:
                 // Idle enemies look for the player
@@ -105,9 +107,21 @@ public class Enemy extends NPC {
                     // Face target and attack
                     if (inAttackRange(targetEntity)) {
                         if (attack(targetEntity)) {
-                            // Attack successful - deal damage
+                            // Attack successful - deal damage with particles
                             if (targetEntity instanceof Player) {
-                                ((Player) targetEntity).getStats().takeDamage(damage);
+                                Player targetPlayer = (Player) targetEntity;
+
+                                // Create basic damage info (enemies don't have weapon effects yet)
+                                DamageInfo damageInfo = DamageInfo.attack(damage);
+
+                                // Calculate player position in pixels (assuming TILE_SIZE = 32)
+                                final float TILE_SIZE = 32f;
+                                float playerX = targetPlayer.getPosition().x * TILE_SIZE;
+                                float playerY = targetPlayer.getPosition().y * TILE_SIZE;
+                                float playerZ = 0f; // Ground level
+
+                                // Deal damage with particle emission
+                                targetPlayer.getStats().takeDamage(damageInfo, particleSystem, playerX, playerY, playerZ);
                             }
                         }
                     } else {

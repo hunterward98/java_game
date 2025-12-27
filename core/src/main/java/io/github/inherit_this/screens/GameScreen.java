@@ -169,6 +169,7 @@ public class GameScreen extends ScreenAdapter {
         debugConsole.registerCommand(new NoClipCommand(player));
         debugConsole.registerCommand(new TeleportCommand(player));
         debugConsole.registerCommand(new SetHealthCommand(player));
+        // NOTE: DrainCommand requires particleSystem - registered after initialization (see line ~220)
         debugConsole.registerCommand(new SetLevelCommand(player));
         debugConsole.registerCommand(new AddXPCommand(player));
         debugConsole.registerCommand(new SetGoldCommand(player));
@@ -211,8 +212,14 @@ public class GameScreen extends ScreenAdapter {
         // Set breakable objects on player for collision detection
         player.setBreakableObjects(breakableObjects);
 
-        // Initialize combat manager
-        combatManager = new io.github.inherit_this.combat.CombatManager(player);
+        // Set particle system on player for combat effects
+        player.setParticleSystem(particleSystem);
+
+        // Initialize combat manager with particle system
+        combatManager = new io.github.inherit_this.combat.CombatManager(player, particleSystem);
+
+        // Register DrainCommand now that particleSystem is initialized
+        debugConsole.registerCommand(new io.github.inherit_this.debug.DrainCommand(player, particleSystem));
 
         // Initialize rendering system
         gameRenderer = new io.github.inherit_this.rendering.GameRenderer(
@@ -491,6 +498,7 @@ public class GameScreen extends ScreenAdapter {
         // Update player's world reference
         player = new Player(player.getPosition().x, player.getPosition().y, playerTex, world);
         player.setBreakableObjects(breakableObjects);
+        player.setParticleSystem(particleSystem);
 
         // Update map editor and renderer
         mapEditor.setWorld(world);

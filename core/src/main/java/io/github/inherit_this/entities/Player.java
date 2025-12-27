@@ -1,8 +1,11 @@
 package io.github.inherit_this.entities;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.Vector2;
+import io.github.inherit_this.combat.DamageInfo;
 import io.github.inherit_this.items.Equipment;
 import io.github.inherit_this.items.Inventory;
+import io.github.inherit_this.items.ItemStats;
+import io.github.inherit_this.particles.ParticleSystem;
 import io.github.inherit_this.util.Constants;
 import io.github.inherit_this.world.WorldProvider;
 
@@ -16,6 +19,7 @@ public class Player extends Entity {
     private Equipment equipment;
     private PlayerStats stats;
     private java.util.List<BreakableObject> breakableObjects;
+    private ParticleSystem particleSystem;
 
     // Mouse-based movement
     private Vector2 targetPosition = null;
@@ -240,6 +244,13 @@ public class Player extends Entity {
         this.breakableObjects = objects;
     }
 
+    /**
+     * Set the particle system for combat effects.
+     */
+    public void setParticleSystem(ParticleSystem particleSystem) {
+        this.particleSystem = particleSystem;
+    }
+
     public Inventory getInventory() {
         return inventory;
     }
@@ -250,6 +261,23 @@ public class Player extends Entity {
 
     public PlayerStats getStats() {
         return stats;
+    }
+
+    /**
+     * Player takes damage with particle effects.
+     * Calculates particle spawn position consistently for all damage sources.
+     * @param damageInfo The damage information (amount, effects, source)
+     * @param particles The particle system for visual effects (can be null)
+     */
+    public void takeDamage(io.github.inherit_this.combat.DamageInfo damageInfo, ParticleSystem particles) {
+        // Calculate player position for particle emission (same as break effects)
+        // In 3D world: X = horizontal, Y = vertical height, Z = depth (tile row)
+        float playerX = (position.x + 0.5f) * io.github.inherit_this.util.Constants.TILE_SIZE;
+        float playerY = io.github.inherit_this.util.Constants.TILE_SIZE / 2f;
+        float playerZ = (position.y + 0.5f) * io.github.inherit_this.util.Constants.TILE_SIZE;
+
+        // Delegate to stats with calculated position
+        stats.takeDamage(damageInfo, particles, playerX, playerY, playerZ);
     }
 
     /**
@@ -295,8 +323,19 @@ public class Player extends Entity {
             // Calculate total damage (base stats + equipment)
             int totalDamage = stats.getTotalDamage();
 
-            // Deal damage to target
-            target.takeDamage(totalDamage, this);
+            // Get weapon stats from equipped weapon
+            ItemStats weaponStats = equipment.getWeaponStats();
+
+            // Create damage info with weapon effects
+            DamageInfo damageInfo = DamageInfo.attackWithEffects(totalDamage, weaponStats);
+
+            // Calculate NPC position in pixels for particle emission
+            float npcX = target.getPosition().x * Constants.TILE_SIZE;
+            float npcY = target.getPosition().y * Constants.TILE_SIZE;
+            float npcZ = 0f;  // Ground level
+
+            // Deal damage with weapon effects and particle emission
+            target.takeDamage(damageInfo, this, particleSystem, npcX, npcY, npcZ);
 
             System.out.println("Player attacks " + target.getName() + " for " + totalDamage + " damage!");
             return true;

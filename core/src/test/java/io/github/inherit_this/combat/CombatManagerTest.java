@@ -46,6 +46,9 @@ class CombatManagerTest {
     @Mock
     private NPC mockNPC3;
 
+    @Mock
+    private io.github.inherit_this.particles.ParticleSystem mockParticleSystem;
+
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
@@ -59,7 +62,7 @@ class CombatManagerTest {
         when(mockTexture.getWidth()).thenReturn(32);
         when(mockTexture.getHeight()).thenReturn(32);
 
-        combatManager = new CombatManager(mockPlayer);
+        combatManager = new CombatManager(mockPlayer, mockParticleSystem);
     }
 
     // ==================== Initialization Tests ====================
@@ -157,8 +160,8 @@ class CombatManagerTest {
 
             combatManager.update(0.5f);
 
-            verify(mockNPC1, times(1)).update(0.5f, mockPlayer);
-            verify(mockNPC2, times(1)).update(0.5f, mockPlayer);
+            verify(mockNPC1, times(1)).update(eq(0.5f), eq(mockPlayer), any());
+            verify(mockNPC2, times(1)).update(eq(0.5f), eq(mockPlayer), any());
         }
 
         @Test
@@ -211,7 +214,7 @@ class CombatManagerTest {
             combatManager.update(0.016f); // Frame 2
             combatManager.update(0.016f); // Frame 3
 
-            verify(mockNPC1, times(3)).update(anyFloat(), eq(mockPlayer));
+            verify(mockNPC1, times(3)).update(anyFloat(), eq(mockPlayer), any());
         }
 
         @Test

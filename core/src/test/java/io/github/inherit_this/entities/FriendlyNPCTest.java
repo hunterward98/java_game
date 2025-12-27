@@ -231,21 +231,21 @@ class FriendlyNPCTest extends LibGdxTestBase {
         @Test
         @DisplayName("update should not crash")
         void testUpdate() {
-            assertDoesNotThrow(() -> npc.update(0.016f, mockPlayer),
+            assertDoesNotThrow(() -> npc.update(0.016f, mockPlayer, null),
                 "Update should not crash");
         }
 
         @Test
         @DisplayName("update should handle zero delta")
         void testUpdateZeroDelta() {
-            assertDoesNotThrow(() -> npc.update(0f, mockPlayer),
+            assertDoesNotThrow(() -> npc.update(0f, mockPlayer, null),
                 "Should handle zero delta");
         }
 
         @Test
         @DisplayName("update should handle large delta")
         void testUpdateLargeDelta() {
-            assertDoesNotThrow(() -> npc.update(10f, mockPlayer),
+            assertDoesNotThrow(() -> npc.update(10f, mockPlayer, null),
                 "Should handle large delta");
         }
 
@@ -254,7 +254,7 @@ class FriendlyNPCTest extends LibGdxTestBase {
         void testUpdateMultipleTimes() {
             assertDoesNotThrow(() -> {
                 for (int i = 0; i < 100; i++) {
-                    npc.update(0.016f, mockPlayer);
+                    npc.update(0.016f, mockPlayer, null);
                 }
             }, "Should handle multiple updates");
         }
@@ -263,7 +263,7 @@ class FriendlyNPCTest extends LibGdxTestBase {
         @DisplayName("Friendly NPC should remain in idle or wander state")
         void testFriendlyStates() {
             for (int i = 0; i < 10; i++) {
-                npc.update(0.016f, mockPlayer);
+                npc.update(0.016f, mockPlayer, null);
             }
 
             NPC.NPCState state = npc.getState();
@@ -351,7 +351,7 @@ class FriendlyNPCTest extends LibGdxTestBase {
             assertNotNull(dialogue);
 
             // Update
-            npc.update(0.016f, mockPlayer);
+            npc.update(0.016f, mockPlayer, null);
 
             // Take damage (should not affect friendly NPC)
             int initialHealth = npc.getCurrentHealth();
@@ -360,7 +360,7 @@ class FriendlyNPCTest extends LibGdxTestBase {
 
             // Continue updating
             for (int i = 0; i < 10; i++) {
-                npc.update(0.016f, mockPlayer);
+                npc.update(0.016f, mockPlayer, null);
             }
 
             // Should still be alive and functional

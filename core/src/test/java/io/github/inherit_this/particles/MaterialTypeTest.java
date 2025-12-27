@@ -20,7 +20,7 @@ public class MaterialTypeTest {
         @DisplayName("Should have all expected material types")
         void testAllValues() {
             ParticleSystem.MaterialType[] types = ParticleSystem.MaterialType.values();
-            assertEquals(2, types.length, "Should have exactly 2 material types");
+            assertEquals(5, types.length, "Should have exactly 5 material types");
         }
 
         @Test
@@ -36,12 +36,36 @@ public class MaterialTypeTest {
         }
 
         @Test
+        @DisplayName("Should have BLOOD material type")
+        void testBloodExists() {
+            assertNotNull(ParticleSystem.MaterialType.BLOOD);
+        }
+
+        @Test
+        @DisplayName("Should have MANA material type")
+        void testManaExists() {
+            assertNotNull(ParticleSystem.MaterialType.MANA);
+        }
+
+        @Test
+        @DisplayName("Should have STAMINA material type")
+        void testStaminaExists() {
+            assertNotNull(ParticleSystem.MaterialType.STAMINA);
+        }
+
+        @Test
         @DisplayName("valueOf should work for all types")
         void testValueOf() {
-            assertEquals(ParticleSystem.MaterialType.WOOD, 
+            assertEquals(ParticleSystem.MaterialType.WOOD,
                 ParticleSystem.MaterialType.valueOf("WOOD"));
-            assertEquals(ParticleSystem.MaterialType.STONE, 
+            assertEquals(ParticleSystem.MaterialType.STONE,
                 ParticleSystem.MaterialType.valueOf("STONE"));
+            assertEquals(ParticleSystem.MaterialType.BLOOD,
+                ParticleSystem.MaterialType.valueOf("BLOOD"));
+            assertEquals(ParticleSystem.MaterialType.MANA,
+                ParticleSystem.MaterialType.valueOf("MANA"));
+            assertEquals(ParticleSystem.MaterialType.STAMINA,
+                ParticleSystem.MaterialType.valueOf("STAMINA"));
         }
 
         @Test
@@ -92,6 +116,15 @@ public class MaterialTypeTest {
                         break;
                     case STONE:
                         particleType = "Stone particles";
+                        break;
+                    case BLOOD:
+                        particleType = "Blood particles";
+                        break;
+                    case MANA:
+                        particleType = "Mana particles";
+                        break;
+                    case STAMINA:
+                        particleType = "Stamina particles";
                         break;
                     default:
                         particleType = null;
@@ -167,19 +200,30 @@ public class MaterialTypeTest {
     class UseCases {
 
         @Test
-        @DisplayName("Material types should represent breakable object materials")
+        @DisplayName("Material types should represent breakable object and combat materials")
         void testBreakableObjectMaterials() {
             // WOOD for crates, barrels
             assertNotNull(ParticleSystem.MaterialType.WOOD);
-            
+
             // STONE for pots, ceramics
             assertNotNull(ParticleSystem.MaterialType.STONE);
+
+            // BLOOD for health damage effects
+            assertNotNull(ParticleSystem.MaterialType.BLOOD);
+
+            // MANA for mana drain effects
+            assertNotNull(ParticleSystem.MaterialType.MANA);
+
+            // STAMINA for stamina drain effects
+            assertNotNull(ParticleSystem.MaterialType.STAMINA);
         }
 
         @Test
         @DisplayName("Each material type should be distinguishable")
         void testDistinguishable() {
             assertNotEquals(ParticleSystem.MaterialType.WOOD, ParticleSystem.MaterialType.STONE);
+            assertNotEquals(ParticleSystem.MaterialType.BLOOD, ParticleSystem.MaterialType.MANA);
+            assertNotEquals(ParticleSystem.MaterialType.MANA, ParticleSystem.MaterialType.STAMINA);
         }
     }
 }

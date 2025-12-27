@@ -1,5 +1,10 @@
 package io.github.inherit_this.entities;
 
+import io.github.inherit_this.combat.DamageInfo;
+import io.github.inherit_this.combat.DamageSource;
+import io.github.inherit_this.items.WeaponEffect;
+import io.github.inherit_this.particles.ParticleSystem;
+
 /**
  * Manages player statistics including health, mana, stamina, experience, and leveling.
  * Level progression: Each level requires 12% more XP than the previous.
@@ -122,6 +127,56 @@ public class PlayerStats {
     }
 
     // Health methods
+    /**
+     * Take damage with weapon effects and particle emissions.
+     * This is the new method that supports the full combat system.
+     *
+     * @param damageInfo Damage information including amount, source, and effects
+     * @param particles Particle system for visual effects (null to disable particles)
+     * @param worldX World X position in pixels for particle spawn
+     * @param worldY World Y position in pixels for particle spawn
+     * @param worldZ World Z position in pixels for particle spawn
+     */
+    public void takeDamage(DamageInfo damageInfo, ParticleSystem particles, float worldX, float worldY, float worldZ) {
+        // Apply base damage
+        currentHealth = Math.max(0, currentHealth - damageInfo.getBaseDamage());
+
+        // Process weapon effects for ATTACK damage (not natural drains)
+        if (damageInfo.getSource() == DamageSource.ATTACK) {
+            // Emit blood particles only if there's actual health damage AND particles available
+            if (damageInfo.getBaseDamage() > 0 && particles != null) {
+                particles.createCombatEffect(ParticleSystem.MaterialType.BLOOD, worldX, worldY, worldZ, 10);
+            }
+
+            // Process weapon effects (always, regardless of particles)
+            if (damageInfo.hasEffect(WeaponEffect.MANA_DRAIN)) {
+                float manaDrained = Math.min(currentMana, damageInfo.getManaDrainAmount());
+                currentMana -= manaDrained;
+                // Emit particles only if available and mana was actually drained
+                if (manaDrained > 0 && particles != null) {
+                    particles.createCombatEffect(ParticleSystem.MaterialType.MANA, worldX, worldY, worldZ, 8);
+                }
+            }
+
+            if (damageInfo.hasEffect(WeaponEffect.STAMINA_DRAIN)) {
+                float staminaDrained = Math.min(currentStamina, damageInfo.getStaminaDrainAmount());
+                currentStamina -= staminaDrained;
+                // Emit particles only if available and stamina was actually drained
+                if (staminaDrained > 0 && particles != null) {
+                    particles.createCombatEffect(ParticleSystem.MaterialType.STAMINA, worldX, worldY, worldZ, 8);
+                }
+            }
+
+            // Note: Life steal is handled by the attacker, not here
+        }
+    }
+
+    /**
+     * Take damage (simple version for backward compatibility).
+     * This version doesn't support weapon effects or particles.
+     * @deprecated Use takeDamage(DamageInfo, ParticleSystem, float, float, float) instead
+     */
+    @Deprecated
     public void takeDamage(float amount) {
         currentHealth = Math.max(0, currentHealth - amount);
     }

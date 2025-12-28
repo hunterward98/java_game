@@ -277,8 +277,12 @@ public class GameScreen extends ScreenAdapter {
         updateFPSCounter(delta);
 
         handleInput();
-        inputHandler.checkRotationKeys();
-        inputHandler.updateCameraRotation(delta);
+
+        // Only allow camera rotation when console is closed
+        if (!debugConsole.isOpen()) {
+            inputHandler.checkRotationKeys();
+            inputHandler.updateCameraRotation(delta);
+        }
 
         // Fixed time step for consistent game logic
         accumulator += Math.min(delta, 0.25f); // Cap delta to prevent spiral of death

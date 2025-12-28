@@ -23,6 +23,11 @@ public class DebugConsole implements InputProcessor {
     private final Array<String> log = new Array<>();
     private final ObjectMap<String, DebugCommand> commands = new ObjectMap<>();
 
+    // Command history and autocomplete
+    private final Array<String> commandHistory = new Array<>();
+    private int historyIndex = -1;  // Current position in history (-1 = not navigating)
+    private String tempInput = "";  // Stores current input when navigating history
+
     private final BitmapFont font;
     private final ShapeRenderer shape;
     private final SpriteBatch batch;
@@ -83,12 +88,56 @@ public class DebugConsole implements InputProcessor {
         // Nothing needed here if using InputProcessor methods for input.
     }
 
+    /**
+     * Autocomplete the current input based on registered commands.
+     * Returns the completed string or null if no match/multiple matches.
+     */
+    private String autocomplete(String partial) {
+        if (partial == null || partial.isEmpty()) return null;
+
+        Array<String> matches = new Array<>();
+        for (String cmdName : commands.keys()) {
+            if (cmdName.startsWith(partial)) {
+                matches.add(cmdName);
+            }
+        }
+
+        // Single match - complete it
+        if (matches.size == 1) {
+            return matches.first();
+        }
+
+        // Multiple matches - show them in log
+        if (matches.size > 1) {
+            matches.sort();
+            StringBuilder sb = new StringBuilder("Possible completions: ");
+            for (int i = 0; i < matches.size; i++) {
+                if (i > 0) sb.append(", ");
+                sb.append(matches.get(i));
+            }
+            log(sb.toString());
+        }
+
+        return null;
+    }
+
     private void process(String line) {
         if (line == null) return;
         line = line.trim();
         if (line.isEmpty()) return;
 
         log("> " + line);
+
+        // Add to command history (avoid duplicates of last command)
+        if (commandHistory.size == 0 || !commandHistory.peek().equals(line)) {
+            commandHistory.add(line);
+            // Cap history size
+            if (commandHistory.size > 100) {
+                commandHistory.removeIndex(0);
+            }
+        }
+        // Reset history navigation
+        historyIndex = -1;
 
         String[] parts = line.split("\\s+");
         String name = parts[0];
@@ -164,7 +213,11 @@ public class DebugConsole implements InputProcessor {
         }
 
         if (keycode == Input.Keys.BACKSPACE) {
-            if (input.length() > 0) input.deleteCharAt(input.length() - 1);
+            if (input.length() > 0) {
+                input.deleteCharAt(input.length() - 1);
+                // Exit history navigation when user edits
+                historyIndex = -1;
+            }
             return true;
         }
 
@@ -173,9 +226,64 @@ public class DebugConsole implements InputProcessor {
             return true;
         }
 
+        // Tab autocomplete
+        if (keycode == Input.Keys.TAB) {
+            String partial = input.toString().trim();
+            // Only autocomplete if we're typing the first word (command name)
+            if (!partial.contains(" ")) {
+                String completed = autocomplete(partial);
+                if (completed != null) {
+                    input.setLength(0);
+                    input.append(completed).append(" ");
+                }
+            }
+            return true;
+        }
+
+        // UP arrow - navigate backward in history
+        if (keycode == Input.Keys.UP) {
+            if (commandHistory.size == 0) return true;
+
+            // First time pressing UP - save current input and start from most recent
+            if (historyIndex == -1) {
+                tempInput = input.toString();
+                historyIndex = commandHistory.size - 1;
+            } else if (historyIndex > 0) {
+                // Navigate backward
+                historyIndex--;
+            }
+
+            // Load history entry
+            input.setLength(0);
+            input.append(commandHistory.get(historyIndex));
+            return true;
+        }
+
+        // DOWN arrow - navigate forward in history
+        if (keycode == Input.Keys.DOWN) {
+            if (historyIndex == -1) return true; // Not navigating history
+
+            if (historyIndex < commandHistory.size - 1) {
+                // Navigate forward
+                historyIndex++;
+                input.setLength(0);
+                input.append(commandHistory.get(historyIndex));
+            } else {
+                // Reached end - restore original input
+                historyIndex = -1;
+                input.setLength(0);
+                input.append(tempInput);
+            }
+            return true;
+        }
+
         if (keycode == Input.Keys.V && (Gdx.input.isKeyPressed(Input.Keys.CONTROL_LEFT) || Gdx.input.isKeyPressed(Input.Keys.CONTROL_RIGHT))) {
             String clip = Gdx.app.getClipboard().getContents();
-            if (clip != null) input.append(clip);
+            if (clip != null) {
+                input.append(clip);
+                // Exit history navigation when user pastes
+                historyIndex = -1;
+            }
             return true;
         }
 
@@ -194,8 +302,11 @@ public class DebugConsole implements InputProcessor {
         if (character == '\r' || character == '\n') return false;
         if (character == '\b') return false;
         if (character == '`') return false; // Don't append the toggle key
+        if (character == '\t') return false; // Tab handled in keyDown
         if (character >= 32 && character < 127) {
             input.append(character);
+            // Exit history navigation when user types
+            historyIndex = -1;
             return true;
         }
         return false;

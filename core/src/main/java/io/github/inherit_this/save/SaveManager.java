@@ -50,6 +50,7 @@ public class SaveManager {
             data.setMaxStamina(player.getStats().getMaxStamina());
             data.setExperience(player.getStats().getCurrentXP());
             data.setLevel(player.getStats().getLevel());
+            data.setDungeonSeed(player.getStats().getDungeonSeed());
 
             // Save inventory
             int goldAmount = player.getInventory().getGold();
@@ -121,6 +122,16 @@ public class SaveManager {
         // Set level BEFORE XP, because setLevel() resets XP to 0
         player.getStats().setLevel(data.getLevel());
         player.getStats().setCurrentXP(data.getExperience());
+
+        // Apply dungeon seed (or generate new one for old saves)
+        long savedSeed = data.getDungeonSeed();
+        if (savedSeed == 0) {
+            // Old save without seed - generate new one
+            savedSeed = System.nanoTime();
+            Gdx.app.log("SaveManager", "Old save detected, generated new dungeon seed: " + savedSeed);
+        }
+        player.getStats().setDungeonSeed(savedSeed);
+        io.github.inherit_this.world.DungeonManager.getInstance().setPlayerSeed(savedSeed);
 
         // Apply inventory
         player.getInventory().clear();  // This also resets gold to 0

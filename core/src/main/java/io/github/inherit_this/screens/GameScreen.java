@@ -149,6 +149,9 @@ public class GameScreen extends ScreenAdapter {
         }
         player = new Player(spawnX, spawnY, playerTex, world);
 
+        // Initialize dungeon manager with player's seed for consistent dungeon generation
+        io.github.inherit_this.world.DungeonManager.getInstance().setPlayerSeed(player.getStats().getDungeonSeed());
+
         // Initialize input handler
         inputHandler = new io.github.inherit_this.input.InputHandler(camera, player);
 
@@ -182,7 +185,16 @@ public class GameScreen extends ScreenAdapter {
         debugConsole.registerCommand(new InspectCommand(world));
         debugConsole.registerCommand(new RegenWorldCommand(world));
         debugConsole.registerCommand(new ReloadChunkCommand(world, player));
-        debugConsole.registerCommand(new SwitchWorldCommand(this));
+        debugConsole.registerCommand(new TownCommand(this, player));
+        debugConsole.registerCommand(new TestDungeonCommand(
+            player,
+            io.github.inherit_this.world.DungeonManager.getInstance(),
+            this::switchToDungeon
+        ));
+        debugConsole.registerCommand(new SeedCommand(
+            player,
+            io.github.inherit_this.world.DungeonManager.getInstance()
+        ));
 
         // Object spawning command
         debugConsole.registerCommand(new SpawnObjectCommand(player, this));
@@ -524,6 +536,38 @@ public class GameScreen extends ScreenAdapter {
      */
     public WorldProvider getWorld() {
         return world;
+    }
+
+    /**
+     * Switches to a dungeon world (for debug testing).
+     * @param dungeon The dungeon world to switch to
+     */
+    public void switchToDungeon(io.github.inherit_this.world.DungeonWorld dungeon) {
+        // Dispose old world if it's not cached in dungeon manager
+        if (world != null && !io.github.inherit_this.world.DungeonManager.getInstance().isInDungeon()) {
+            world.dispose();
+        }
+
+        // Clear breakable objects (they're world-specific)
+        breakableObjects.clear();
+
+        // Set new world
+        world = dungeon;
+
+        // Update dungeonController so it doesn't override us every frame
+        dungeonController.setCurrentWorld(world);
+
+        // Update player's world reference
+        player.setWorld(world);
+
+        // Update map editor and renderer
+        mapEditor.setWorld(world);
+        gameRenderer.setWorld(world);
+
+        // Preload chunks
+        world.preloadChunks(20);
+
+        Gdx.app.log("GameScreen", "Switched to dungeon level " + dungeon.getConfig().getDungeonLevel());
     }
     private void handleInput() {
         if (Gdx.input.isKeyJustPressed(Input.Keys.GRAVE)) {

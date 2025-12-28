@@ -1,18 +1,20 @@
 package io.github.inherit_this.world;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 /**
- * Central registry of dungeon themes mapped by level ranges.
- * Provides theme selection based on dungeon level and manages theme lifecycle.
+ * Central registry of dungeon themes.
+ * Provides random theme selection based on dungeon seed, similar to FATE.
+ * Each dungeon gets a random theme for variety.
  */
 public class ThemeRegistry {
-    private static final Map<Integer, DungeonTheme> LEVEL_THEMES = new HashMap<>();
+    private static final List<DungeonTheme> ALL_THEMES = new ArrayList<>();
     private static boolean initialized = false;
 
     /**
-     * Initialize the theme registry with default themes.
+     * Initialize the theme registry with all available themes.
      * Called automatically on first access.
      */
     private static void initialize() {
@@ -20,58 +22,65 @@ public class ThemeRegistry {
             return;
         }
 
-        // Level 1-10: Ancient Crypt (Marble + Dark Brick)
-        DungeonTheme ancientCrypt = new DungeonTheme(
+        // Ancient Crypt (Marble + Dark Brick)
+        ALL_THEMES.add(new DungeonTheme(
                 "Ancient Crypt",
                 TileType.MARBLE_TILE,
                 TileType.DARK_BRICK,
                 getMarbleTileVariants(),
                 getDarkBrickVariants()
-        );
+        ));
 
-        for (int level = 1; level <= 10; level++) {
-            LEVEL_THEMES.put(level, ancientCrypt);
-        }
-
-        // Level 11-20: Dark Depths (Dark Granite + Dark Brick)
-        DungeonTheme darkDepths = new DungeonTheme(
+        // Dark Depths (Dark Granite + Dark Brick)
+        ALL_THEMES.add(new DungeonTheme(
                 "Dark Depths",
                 TileType.DARK_GRANITE,
                 TileType.DARK_BRICK,
                 getDarkGraniteVariants(),
                 getDarkBrickVariants()
-        );
+        ));
 
-        for (int level = 11; level <= 20; level++) {
-            LEVEL_THEMES.put(level, darkDepths);
-        }
-
-        // TODO: Add more level ranges and themes as needed
+        // TODO: Add more themes here as new tilesets are created
 
         initialized = true;
     }
 
     /**
-     * Get the appropriate theme for a given dungeon level.
-     * Automatically initializes the registry on first call.
+     * Get a random theme for a dungeon based on its seed.
+     * This provides variety like FATE - each dungeon can have any theme.
+     * The same seed will always return the same theme (deterministic).
      *
-     * @param level The dungeon level (1-based)
-     * @return The theme for this level, or a default theme if level is out of range
+     * @param seed The dungeon seed for random selection
+     * @return A randomly selected theme based on the seed
      */
-    public static DungeonTheme getThemeForLevel(int level) {
+    public static DungeonTheme getThemeForSeed(long seed) {
         if (!initialized) {
             initialize();
         }
 
-        // Check if we have a theme for this specific level
-        if (LEVEL_THEMES.containsKey(level)) {
-            return LEVEL_THEMES.get(level);
+        if (ALL_THEMES.isEmpty()) {
+            throw new IllegalStateException("No themes registered!");
         }
 
-        // For levels beyond defined ranges, cycle through existing themes
-        // This ensures we always return a valid theme
-        int cycledLevel = ((level - 1) % 20) + 1;  // Cycle through 1-20
-        return LEVEL_THEMES.getOrDefault(cycledLevel, LEVEL_THEMES.get(1));
+        // Use seed to deterministically select a theme
+        Random random = new Random(seed);
+        int themeIndex = random.nextInt(ALL_THEMES.size());
+        return ALL_THEMES.get(themeIndex);
+    }
+
+    /**
+     * Get the appropriate theme for a given dungeon level.
+     * DEPRECATED: Use getThemeForSeed() for random theme selection.
+     * Kept for backward compatibility.
+     *
+     * @param level The dungeon level (1-based)
+     * @return A randomly selected theme (now ignores level)
+     * @deprecated Use getThemeForSeed(long seed) instead
+     */
+    @Deprecated
+    public static DungeonTheme getThemeForLevel(int level) {
+        // For backward compatibility, use level as seed
+        return getThemeForSeed(level);
     }
 
     /**
@@ -127,7 +136,7 @@ public class ThemeRegistry {
      */
     private static String[] getDarkBrickVariants() {
         return new String[]{
-                "tiles/dark_brick.png"
+                "tiles/dark_brick_1.png"
         };
     }
 
@@ -136,25 +145,25 @@ public class ThemeRegistry {
      * Should be called when shutting down the application.
      */
     public static void disposeAll() {
-        for (DungeonTheme theme : LEVEL_THEMES.values()) {
+        for (DungeonTheme theme : ALL_THEMES) {
             if (theme != null) {
                 theme.dispose();
             }
         }
-        LEVEL_THEMES.clear();
+        ALL_THEMES.clear();
         initialized = false;
     }
 
     /**
-     * Get the total number of registered level-theme mappings.
+     * Get the total number of registered themes.
      * Useful for testing.
      *
-     * @return Number of level mappings
+     * @return Number of available themes
      */
-    public static int getRegisteredLevelCount() {
+    public static int getRegisteredThemeCount() {
         if (!initialized) {
             initialize();
         }
-        return LEVEL_THEMES.size();
+        return ALL_THEMES.size();
     }
 }

@@ -27,6 +27,7 @@ public class SaveData implements Serializable {
     private float maxStamina;
     private float experience;
     private int level;
+    private long dungeonSeed;  // Persistent seed for dungeon generation
 
     // Inventory
     private int gold;
@@ -81,6 +82,9 @@ public class SaveData implements Serializable {
 
     public int getLevel() { return level; }
     public void setLevel(int level) { this.level = level; }
+
+    public long getDungeonSeed() { return dungeonSeed; }
+    public void setDungeonSeed(long dungeonSeed) { this.dungeonSeed = dungeonSeed; }
 
     public int getGold() { return gold; }
     public void setGold(int gold) { this.gold = gold; }

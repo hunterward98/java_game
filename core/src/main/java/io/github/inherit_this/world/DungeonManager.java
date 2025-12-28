@@ -22,8 +22,8 @@ public class DungeonManager {
     private float townReturnX;
     private float townReturnY;
 
-    // Dungeon generation settings
-    private long baseSeed = 42L;  // Base seed for dungeons
+    // Dungeon generation settings (set by player)
+    private long playerSeed = 0L;  // Player's persistent seed for dungeon generation
 
     private DungeonManager() {
         this.dungeonCache = new HashMap<>();
@@ -59,31 +59,15 @@ public class DungeonManager {
     }
 
     /**
-     * Generate a new dungeon for the specified level.
+     * Generate a new dungeon for the specified level using procedural generation.
      */
     private DungeonWorld generateDungeon(int level) {
-        // Create seed based on base seed + level
-        long seed = baseSeed + level * 1000;
+        // Create seed based on player seed + level
+        // This ensures dungeons are consistent for each player
+        long seed = playerSeed + level * 1000;
 
-        // Determine dungeon style based on level
-        DungeonConfig.DungeonStyle style;
-        DungeonConfig.DungeonLayout layout;
-
-        if (level <= 3) {
-            // Early levels: more open
-            style = DungeonConfig.DungeonStyle.OPEN;
-            layout = DungeonConfig.DungeonLayout.STRAIGHT;
-        } else if (level <= 7) {
-            // Mid levels: mixed
-            style = (level % 2 == 0) ? DungeonConfig.DungeonStyle.OPEN : DungeonConfig.DungeonStyle.NARROW;
-            layout = DungeonConfig.DungeonLayout.WINDING;
-        } else {
-            // Deep levels: tight and winding
-            style = DungeonConfig.DungeonStyle.NARROW;
-            layout = DungeonConfig.DungeonLayout.WINDING;
-        }
-
-        DungeonConfig config = new DungeonConfig(seed, level, 64, 64, style, layout);
+        // Use procedural generation for all dungeons
+        DungeonConfig config = DungeonConfig.createProcedural(seed, level);
         return new DungeonWorld(config);
     }
 
@@ -145,12 +129,20 @@ public class DungeonManager {
     }
 
     /**
-     * Set the base seed for dungeon generation.
+     * Set the player seed for dungeon generation.
+     * Should be called when player is loaded or created.
      */
-    public void setBaseSeed(long seed) {
-        this.baseSeed = seed;
+    public void setPlayerSeed(long seed) {
+        this.playerSeed = seed;
         // Clear cache so new dungeons are generated with new seed
         clearDungeons();
+    }
+
+    /**
+     * Get the current player seed.
+     */
+    public long getPlayerSeed() {
+        return playerSeed;
     }
 
     /**

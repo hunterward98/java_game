@@ -35,19 +35,11 @@ public class DungeonWorld implements WorldProvider {
     }
 
     /**
-     * Create the appropriate generator based on config generation style.
+     * Create the procedural dungeon generator.
      */
     private DungeonGenerator createGenerator(DungeonConfig config) {
-        switch (config.getGenerationStyle()) {
-            case PROCEDURAL:
-                return new ProceduralDungeonGenerator(config);
-            case ROOM_BASED:
-            case MAZE:
-            default:
-                // Legacy generators will be implemented in Phase 5
-                // For now, use procedural as default
-                return new ProceduralDungeonGenerator(config);
-        }
+        // Always use procedural generation for dungeons
+        return new ProceduralDungeonGenerator(config);
     }
 
     @Override

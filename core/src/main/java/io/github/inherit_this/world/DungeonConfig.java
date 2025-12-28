@@ -46,8 +46,9 @@ public class DungeonConfig {
         this.style = style;
         this.layout = layout;
 
-        // Auto-select theme based on dungeon level
-        this.theme = ThemeRegistry.getThemeForLevel(dungeonLevel);
+        // Auto-select theme randomly based on dungeon seed (like FATE)
+        // Same seed = same theme, but different dungeons get random variety
+        this.theme = ThemeRegistry.getThemeForSeed(seed);
 
         // Calculate parameters based on style
         if (style == DungeonStyle.OPEN) {

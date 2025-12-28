@@ -13,10 +13,9 @@ public class DungeonChunk extends Chunk {
 
     private final DungeonGenerator generator;
     private final Tile[][] dungeonTiles;
-    private static final TileTextureManager textureManager = TileTextureManager.getInstance();
 
     public DungeonChunk(int chunkX, int chunkY, Tile[][] tiles, DungeonGenerator generator) {
-        super(chunkX, chunkY, "dungeon");
+        super(chunkX, chunkY, "dungeon", false);  // Don't generate tiles - we provide our own
         this.generator = generator;
         this.dungeonTiles = tiles;
     }
@@ -68,32 +67,27 @@ public class DungeonChunk extends Chunk {
                 float tileWorldX = baseX + localX * Constants.TILE_SIZE;
                 float tileWorldY = baseY + localY * Constants.TILE_SIZE;
 
-                boolean isWall = generator.isWall(worldTileX, worldTileY);
-                boolean isBorder = generator.isBorder(worldTileX, worldTileY);
+                // Get the actual tile we created (which has the themed texture)
+                Tile tile = dungeonTiles[localX][localY];
+                if (tile == null) continue;
+
+                boolean isWall = tile.isSolid();
 
                 if (isWall) {
-                    // Get wall texture
-                    com.badlogic.gdx.graphics.Texture wallTexture =
-                        textureManager.getTexture("tiles/wood_wall.png");
+                    // Use the texture from the actual tile (themed texture)
+                    com.badlogic.gdx.graphics.Texture wallTexture = tile.getTexture();
 
-                    if (isBorder) {
-                        // Create 2-tile tall border wall
-                        // Level 0 (ground level)
-                        createWallModels(models, tileMesh, wallTexture, tileWorldX, tileWorldY,
-                                       worldTileX, worldTileY, 0);
+                    // ALL walls are 2 tiles tall
+                    // Level 0 (ground level)
+                    createWallModels(models, tileMesh, wallTexture, tileWorldX, tileWorldY,
+                                   worldTileX, worldTileY, 0);
 
-                        // Level 1 (one tile up)
-                        createWallModels(models, tileMesh, wallTexture, tileWorldX, tileWorldY,
-                                       worldTileX, worldTileY, 1);
-                    } else {
-                        // Regular wall (1 tile tall)
-                        createWallModels(models, tileMesh, wallTexture, tileWorldX, tileWorldY,
-                                       worldTileX, worldTileY, 0);
-                    }
+                    // Level 1 (one tile up)
+                    createWallModels(models, tileMesh, wallTexture, tileWorldX, tileWorldY,
+                                   worldTileX, worldTileY, 1);
                 } else {
-                    // Floor tile
-                    com.badlogic.gdx.graphics.Texture floorTexture =
-                        textureManager.getTexture("tiles/stone_1.png");
+                    // Floor tile - use the texture from the actual tile (themed texture)
+                    com.badlogic.gdx.graphics.Texture floorTexture = tile.getTexture();
 
                     ModelInstance floorInstance = tileMesh.createTileInstance(
                         floorTexture,
@@ -111,6 +105,7 @@ public class DungeonChunk extends Chunk {
 
     /**
      * Create wall model instances for a tile, checking all 4 directions.
+     * Creates double-sided walls by adding both front and back faces.
      */
     private void createWallModels(List<ModelInstance> models, TileMesh3D tileMesh,
                                  com.badlogic.gdx.graphics.Texture texture,
@@ -150,7 +145,8 @@ public class DungeonChunk extends Chunk {
             }
 
             if (createWall) {
-                ModelInstance wallInstance = tileMesh.createWallInstance(
+                // Create front face (facing outward from wall)
+                ModelInstance wallFront = tileMesh.createWallInstance(
                     texture,
                     tileWorldX,
                     tileWorldY,
@@ -158,9 +154,23 @@ public class DungeonChunk extends Chunk {
                     direction,
                     wallHeight,
                     false,  // not flipped
-                    0       // no texture rotation
+                    1       // 90° texture rotation
                 );
-                models.add(wallInstance);
+                models.add(wallFront);
+
+                // Create back face (facing inward, visible from inside the wall)
+                // We flip it to make the wall double-sided
+                ModelInstance wallBack = tileMesh.createWallInstance(
+                    texture,
+                    tileWorldX,
+                    tileWorldY,
+                    yOffset,
+                    direction,
+                    wallHeight,
+                    true,   // flipped to face opposite direction
+                    1       // 90° texture rotation
+                );
+                models.add(wallBack);
             }
         }
     }

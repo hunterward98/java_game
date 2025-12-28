@@ -15,6 +15,9 @@ public class PlayerStats {
     private int level;
     private float currentXP;
 
+    // Dungeon seed - persistent across saves, ensures same dungeons always generate identically
+    private long dungeonSeed;
+
     // These define the XP system - each level is 12% further than the last.
     private static final float BASE_XP_REQUIRED = 100f;
     private static final float XP_MULTIPLIER = 1.12f;
@@ -35,6 +38,9 @@ public class PlayerStats {
     public PlayerStats() {
         this.level = 1;
         this.currentXP = 0f;
+
+        // Generate random dungeon seed for this character
+        this.dungeonSeed = System.nanoTime();
 
         // Starting stats
         this.maxHealth = 100f;
@@ -294,6 +300,15 @@ public class PlayerStats {
 
     public void setCurrentXP(float xp) {
         this.currentXP = Math.max(0, xp);
+    }
+
+    // Dungeon seed methods
+    public long getDungeonSeed() {
+        return dungeonSeed;
+    }
+
+    public void setDungeonSeed(long seed) {
+        this.dungeonSeed = seed;
     }
 
     /**

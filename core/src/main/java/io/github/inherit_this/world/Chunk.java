@@ -19,11 +19,21 @@ public class Chunk {
     private List<ModelInstance> cachedModels = null;
 
     public Chunk(int chunkX, int chunkY, String biome) {
+        this(chunkX, chunkY, biome, true);
+    }
+
+    /**
+     * Protected constructor for subclasses.
+     * @param generateTiles If true, auto-generate tiles based on biome. If false, subclass will provide tiles.
+     */
+    protected Chunk(int chunkX, int chunkY, String biome, boolean generateTiles) {
         this.chunkX = chunkX;
         this.chunkY = chunkY;
         this.biome = biome;
 
-        generateTiles();
+        if (generateTiles) {
+            generateTiles();
+        }
     }
 
     private void generateTiles() {

@@ -6,6 +6,7 @@ import io.github.inherit_this.combat.DamageInfo;
 import io.github.inherit_this.combat.DamageSource;
 import io.github.inherit_this.items.WeaponEffect;
 import io.github.inherit_this.particles.ParticleSystem;
+import io.github.inherit_this.util.Constants;
 import io.github.inherit_this.world.WorldProvider;
 
 /**
@@ -39,6 +40,10 @@ public abstract class NPC extends Entity {
     // Loot
     protected int goldDrop;
     protected int xpValue;
+
+    // Collision box size in tiles (NPC hitbox is about 1 tile)
+    private static final float COLLISION_HALF_WIDTH = 0.5f;  // 0.5 tiles = 16 pixels
+    private static final float COLLISION_HALF_HEIGHT = 0.5f; // 0.5 tiles = 16 pixels
 
     public enum NPCState {
         IDLE,       // Standing still
@@ -104,7 +109,7 @@ public abstract class NPC extends Entity {
     protected abstract void updateAI(float delta, Player player, ParticleSystem particleSystem);
 
     /**
-     * Move toward a target position.
+     * Move toward a target position with wall collision detection.
      */
     protected void moveToward(Vector2 target, float delta) {
         float dx = target.x - position.x;
@@ -115,12 +120,49 @@ public abstract class NPC extends Entity {
             float moveX = (dx / distance) * speed * delta;
             float moveY = (dy / distance) * speed * delta;
 
-            // Simple movement (no collision for now)
-            position.x += moveX;
-            position.y += moveY;
+            // Calculate new position
+            float newX = position.x + moveX;
+            float newY = position.y + moveY;
+
+            // Check collision and move with sliding
+            if (!isColliding(newX, newY)) {
+                position.x = newX;
+                position.y = newY;
+            } else {
+                // Try sliding along obstacles
+                if (!isColliding(newX, position.y)) {
+                    position.x = newX;
+                }
+                if (!isColliding(position.x, newY)) {
+                    position.y = newY;
+                }
+            }
         } else {
             targetPosition = null;
         }
+    }
+
+    /**
+     * Checks if the NPC collides with solid tiles at the given position.
+     * Uses 4-corner hitbox detection similar to Player collision system.
+     * @param x X position in tiles
+     * @param y Y position in tiles
+     * @return true if colliding with any solid tile
+     */
+    private boolean isColliding(float x, float y) {
+        // Check collision at the four corners of the NPC's hitbox
+        // Positions are in tiles, world.isSolidAtPosition expects pixel coordinates
+        float pixelX = x * Constants.TILE_SIZE;
+        float pixelY = y * Constants.TILE_SIZE;
+        float halfWidthPixels = COLLISION_HALF_WIDTH * Constants.TILE_SIZE;
+        float halfHeightPixels = COLLISION_HALF_HEIGHT * Constants.TILE_SIZE;
+
+        boolean topLeft = world.isSolidAtPosition(pixelX - halfWidthPixels, pixelY + halfHeightPixels);
+        boolean topRight = world.isSolidAtPosition(pixelX + halfWidthPixels, pixelY + halfHeightPixels);
+        boolean bottomLeft = world.isSolidAtPosition(pixelX - halfWidthPixels, pixelY - halfHeightPixels);
+        boolean bottomRight = world.isSolidAtPosition(pixelX + halfWidthPixels, pixelY - halfHeightPixels);
+
+        return topLeft || topRight || bottomLeft || bottomRight;
     }
 
     /**

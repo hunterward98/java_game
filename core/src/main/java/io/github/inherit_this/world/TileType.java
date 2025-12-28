@@ -10,5 +10,8 @@ public enum TileType {
     SAND,
     PATH,
     WATER,
-    VOID  // Used for out-of-bounds tiles
+    VOID,           // Used for out-of-bounds tiles
+    MARBLE_TILE,    // Polished marble floor for dungeons
+    DARK_GRANITE,   // Dark granite floor for dungeons
+    DARK_BRICK      // Dark brick walls for dungeons
 }

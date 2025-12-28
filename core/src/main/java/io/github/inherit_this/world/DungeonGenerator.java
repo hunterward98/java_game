@@ -4,53 +4,39 @@ import io.github.inherit_this.util.Constants;
 import java.util.*;
 
 /**
- * Generates procedural dungeon layouts using maze and room algorithms.
- * Supports seed-based generation for reproducibility.
+ * Abstract base class for dungeon generators.
+ * Provides common infrastructure for dungeon generation algorithms.
+ * Subclasses implement specific generation strategies (procedural, maze-based, room-based).
  */
-public class DungeonGenerator {
+public abstract class DungeonGenerator {
 
-    private final DungeonConfig config;
-    private final Random random;
+    protected final DungeonConfig config;
+    protected final Random random;
 
     // Dungeon grid in TILES (not chunks)
-    private final int widthInTiles;
-    private final int heightInTiles;
-    private boolean[][] walls;  // true = wall, false = floor
+    protected final int widthInTiles;
+    protected final int heightInTiles;
+    protected boolean[][] walls;  // true = wall, false = floor
 
-    // Track rooms for open dungeons
-    private List<Room> rooms;
-
-    public DungeonGenerator(DungeonConfig config) {
+    protected DungeonGenerator(DungeonConfig config) {
         this.config = config;
         this.random = new Random(config.getSeed());
         this.widthInTiles = config.getWidthInChunks() * Constants.CHUNK_SIZE;
         this.heightInTiles = config.getHeightInChunks() * Constants.CHUNK_SIZE;
         this.walls = new boolean[widthInTiles][heightInTiles];
-        this.rooms = new ArrayList<>();
     }
 
     /**
      * Generate the dungeon layout.
+     * Subclasses must implement their specific generation algorithm.
      */
-    public void generate() {
-        // Start with all walls
-        fillWithWalls();
-
-        // Generate based on style
-        if (config.getStyle() == DungeonConfig.DungeonStyle.OPEN) {
-            generateRoomBased();
-        } else {
-            generateMazeBased();
-        }
-
-        // Add 2-tile tall border walls
-        createBorder();
-    }
+    public abstract void generate();
 
     /**
      * Fill entire grid with walls.
+     * Useful helper for subclasses to start generation.
      */
-    private void fillWithWalls() {
+    protected void fillWithWalls() {
         for (int x = 0; x < widthInTiles; x++) {
             for (int y = 0; y < heightInTiles; y++) {
                 walls[x][y] = true;
@@ -59,10 +45,56 @@ public class DungeonGenerator {
     }
 
     /**
+     * Create 2-tile tall border around entire dungeon.
+     * Subclasses can call this to enforce impassable borders.
+     */
+    protected void createBorder() {
+        // Mark all border tiles as walls (they'll be rendered as 2-tile tall walls)
+        for (int x = 0; x < widthInTiles; x++) {
+            walls[x][0] = true;
+            walls[x][heightInTiles - 1] = true;
+        }
+        for (int y = 0; y < heightInTiles; y++) {
+            walls[0][y] = true;
+            walls[widthInTiles - 1][y] = true;
+        }
+    }
+
+    /**
+     * Check if a tile position is a wall.
+     */
+    public boolean isWall(int tileX, int tileY) {
+        if (tileX < 0 || tileX >= widthInTiles || tileY < 0 || tileY >= heightInTiles) {
+            return true;
+        }
+        return walls[tileX][tileY];
+    }
+
+    /**
+     * Check if a tile is on the border (for 2-tile tall walls).
+     */
+    public boolean isBorder(int tileX, int tileY) {
+        return tileX == 0 || tileX == widthInTiles - 1 ||
+               tileY == 0 || tileY == heightInTiles - 1;
+    }
+
+    public int getWidthInTiles() { return widthInTiles; }
+    public int getHeightInTiles() { return heightInTiles; }
+    public DungeonConfig getConfig() { return config; }
+
+    // ====================================================================================
+    // Legacy generation methods below - will be extracted to separate subclasses
+    // These are preserved temporarily for backward compatibility
+    // TODO: Remove after creating MazeBasedDungeonGenerator and RoomBasedDungeonGenerator
+    // ====================================================================================
+
+    /**
+     * @deprecated Will be moved to MazeBasedDungeonGenerator
      * Generate using recursive backtracker maze algorithm.
      * Good for NARROW/WINDING dungeons.
      */
-    private void generateMazeBased() {
+    @Deprecated
+    protected void generateMazeBased() {
         int cellSize = config.getCorridorWidth() + 1;  // Cell size in tiles
         int mazeWidth = (widthInTiles - 2) / cellSize;  // -2 for border
         int mazeHeight = (heightInTiles - 2) / cellSize;
@@ -112,13 +144,16 @@ public class DungeonGenerator {
     }
 
     /**
+     * @deprecated Will be moved to RoomBasedDungeonGenerator
      * Generate using room placement and corridor connections.
      * Good for OPEN dungeons.
      */
-    private void generateRoomBased() {
+    @Deprecated
+    protected void generateRoomBased() {
         int numRooms = (int)(widthInTiles * heightInTiles * config.getRoomDensity() / 1000);
         int attempts = 0;
         int maxAttempts = numRooms * 10;
+        List<Room> rooms = new ArrayList<>();  // Local variable for legacy method
 
         while (rooms.size() < numRooms && attempts < maxAttempts) {
             attempts++;
@@ -156,9 +191,11 @@ public class DungeonGenerator {
     }
 
     /**
+     * @deprecated Will be moved to MazeBasedDungeonGenerator
      * Carve a maze cell (floor area).
      */
-    private void carveMazeCell(int cellX, int cellY, int cellSize) {
+    @Deprecated
+    protected void carveMazeCell(int cellX, int cellY, int cellSize) {
         int tileX = 1 + cellX * cellSize;  // +1 for border
         int tileY = 1 + cellY * cellSize;
 
@@ -174,9 +211,11 @@ public class DungeonGenerator {
     }
 
     /**
+     * @deprecated Will be moved to MazeBasedDungeonGenerator
      * Carve path between two maze cells.
      */
-    private void carvePathBetween(int x1, int y1, int x2, int y2, int cellSize) {
+    @Deprecated
+    protected void carvePathBetween(int x1, int y1, int x2, int y2, int cellSize) {
         int tileX1 = 1 + x1 * cellSize;
         int tileY1 = 1 + y1 * cellSize;
         int tileX2 = 1 + x2 * cellSize;
@@ -197,9 +236,11 @@ public class DungeonGenerator {
     }
 
     /**
+     * @deprecated Will be moved to MazeBasedDungeonGenerator
      * Get unvisited neighbors of a maze cell.
      */
-    private List<int[]> getUnvisitedNeighbors(int x, int y, int width, int height, boolean[][] visited) {
+    @Deprecated
+    protected List<int[]> getUnvisitedNeighbors(int x, int y, int width, int height, boolean[][] visited) {
         List<int[]> neighbors = new ArrayList<>();
 
         // North, East, South, West
@@ -218,9 +259,11 @@ public class DungeonGenerator {
     }
 
     /**
+     * @deprecated Will be moved to MazeBasedDungeonGenerator
      * Add extra connections for more complex mazes.
      */
-    private void addExtraConnections(int mazeWidth, int mazeHeight, int cellSize, boolean[][] visited) {
+    @Deprecated
+    protected void addExtraConnections(int mazeWidth, int mazeHeight, int cellSize, boolean[][] visited) {
         int numConnections = mazeWidth * mazeHeight / 20;
 
         for (int i = 0; i < numConnections; i++) {
@@ -237,9 +280,11 @@ public class DungeonGenerator {
     }
 
     /**
+     * @deprecated Will be moved to RoomBasedDungeonGenerator
      * Carve out a room.
      */
-    private void carveRoom(Room room) {
+    @Deprecated
+    protected void carveRoom(Room room) {
         for (int x = room.x; x < room.x + room.width; x++) {
             for (int y = room.y; y < room.y + room.height; y++) {
                 if (x >= 1 && x < widthInTiles - 1 && y >= 1 && y < heightInTiles - 1) {
@@ -250,9 +295,11 @@ public class DungeonGenerator {
     }
 
     /**
+     * @deprecated Will be moved to RoomBasedDungeonGenerator
      * Connect two rooms with a corridor.
      */
-    private void connectRooms(Room room1, Room room2) {
+    @Deprecated
+    protected void connectRooms(Room room1, Room room2) {
         int x1 = room1.centerX();
         int y1 = room1.centerY();
         int x2 = room2.centerX();
@@ -270,7 +317,9 @@ public class DungeonGenerator {
         }
     }
 
-    private void createHorizontalCorridor(int x1, int x2, int y) {
+    /** @deprecated Will be moved to RoomBasedDungeonGenerator */
+    @Deprecated
+    protected void createHorizontalCorridor(int x1, int x2, int y) {
         int startX = Math.min(x1, x2);
         int endX = Math.max(x1, x2);
 
@@ -284,7 +333,9 @@ public class DungeonGenerator {
         }
     }
 
-    private void createVerticalCorridor(int y1, int y2, int x) {
+    /** @deprecated Will be moved to RoomBasedDungeonGenerator */
+    @Deprecated
+    protected void createVerticalCorridor(int y1, int y2, int x) {
         int startY = Math.min(y1, y2);
         int endY = Math.max(y1, y2);
 
@@ -299,46 +350,11 @@ public class DungeonGenerator {
     }
 
     /**
-     * Create 2-tile tall border around entire dungeon.
-     */
-    private void createBorder() {
-        // Mark all border tiles as walls (they'll be rendered as 2-tile tall walls)
-        for (int x = 0; x < widthInTiles; x++) {
-            walls[x][0] = true;
-            walls[x][heightInTiles - 1] = true;
-        }
-        for (int y = 0; y < heightInTiles; y++) {
-            walls[0][y] = true;
-            walls[widthInTiles - 1][y] = true;
-        }
-    }
-
-    /**
-     * Check if a tile position is a wall.
-     */
-    public boolean isWall(int tileX, int tileY) {
-        if (tileX < 0 || tileX >= widthInTiles || tileY < 0 || tileY >= heightInTiles) {
-            return true;
-        }
-        return walls[tileX][tileY];
-    }
-
-    /**
-     * Check if a tile is on the border (for 2-tile tall walls).
-     */
-    public boolean isBorder(int tileX, int tileY) {
-        return tileX == 0 || tileX == widthInTiles - 1 ||
-               tileY == 0 || tileY == heightInTiles - 1;
-    }
-
-    public int getWidthInTiles() { return widthInTiles; }
-    public int getHeightInTiles() { return heightInTiles; }
-    public DungeonConfig getConfig() { return config; }
-
-    /**
+     * @deprecated Will be moved to RoomBasedDungeonGenerator
      * Simple room class for room-based generation.
      */
-    private static class Room {
+    @Deprecated
+    protected static class Room {
         int x, y, width, height;
 
         Room(int x, int y, int width, int height) {

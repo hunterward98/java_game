@@ -4,10 +4,12 @@ import com.badlogic.gdx.graphics.Texture;
 import io.github.inherit_this.util.Constants;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 /**
  * Procedural dungeon world that generates dungeon chunks based on a DungeonGenerator.
  * Unlike ProceduralWorld which generates infinite terrain, DungeonWorld has fixed bounds.
+ * Supports themed dungeons with varied textures based on dungeon level.
  */
 public class DungeonWorld implements WorldProvider {
 
@@ -24,12 +26,28 @@ public class DungeonWorld implements WorldProvider {
 
     public DungeonWorld(DungeonConfig config) {
         this.config = config;
-        this.generator = new DungeonGenerator(config);
+        this.generator = createGenerator(config);
         this.maxChunkX = config.getWidthInChunks() - 1;
         this.maxChunkY = config.getHeightInChunks() - 1;
 
         // Generate the dungeon layout
         generator.generate();
+    }
+
+    /**
+     * Create the appropriate generator based on config generation style.
+     */
+    private DungeonGenerator createGenerator(DungeonConfig config) {
+        switch (config.getGenerationStyle()) {
+            case PROCEDURAL:
+                return new ProceduralDungeonGenerator(config);
+            case ROOM_BASED:
+            case MAZE:
+            default:
+                // Legacy generators will be implemented in Phase 5
+                // For now, use procedural as default
+                return new ProceduralDungeonGenerator(config);
+        }
     }
 
     @Override
@@ -50,13 +68,14 @@ public class DungeonWorld implements WorldProvider {
 
     /**
      * Generate a dungeon chunk based on the dungeon layout.
+     * Uses theme system for texture selection with per-chunk randomization.
      */
     private Chunk generateDungeonChunk(int chunkX, int chunkY) {
         Tile[][] tiles = new Tile[Constants.CHUNK_SIZE][Constants.CHUNK_SIZE];
 
-        // Get textures
-        Texture floorTexture = textureManager.getTexture("tiles/stone_1.png");
-        Texture wallTexture = textureManager.getTexture("tiles/wood_wall.png");
+        // Get theme and create seeded random for consistent variant selection
+        DungeonTheme theme = config.getTheme();
+        Random chunkRand = new Random(config.getSeed() ^ pack(chunkX, chunkY));
 
         // Calculate world tile offset for this chunk
         int baseTileX = chunkX * Constants.CHUNK_SIZE;
@@ -72,20 +91,26 @@ public class DungeonWorld implements WorldProvider {
                 boolean isBorder = generator.isBorder(worldTileX, worldTileY);
 
                 if (isWall) {
+                    // Get random wall texture variant from theme
+                    Texture wallTexture = theme.getRandomWallTexture(chunkRand);
+                    TileType wallType = theme.getWallType();
+
                     if (isBorder) {
                         // Border walls - 2 tiles tall (level 0 and level 1)
-                        // We'll need to handle this properly with multiple layers
-                        // For now, create a wall at level 0
-                        tiles[localX][localY] = new Tile(wallTexture, true, TileType.STONE,
+                        tiles[localX][localY] = new Tile(wallTexture, true, wallType,
                             TileLayer.WALL, -1f, 0, 0);
                     } else {
                         // Regular wall
-                        tiles[localX][localY] = new Tile(wallTexture, true, TileType.STONE,
+                        tiles[localX][localY] = new Tile(wallTexture, true, wallType,
                             TileLayer.WALL, -1f, 0, 0);
                     }
                 } else {
-                    // Floor
-                    tiles[localX][localY] = new Tile(floorTexture, false, TileType.STONE,
+                    // Get random floor texture variant from theme
+                    Texture floorTexture = theme.getRandomFloorTexture(chunkRand);
+                    TileType floorType = theme.getFloorType();
+
+                    // Floor tile
+                    tiles[localX][localY] = new Tile(floorTexture, false, floorType,
                         TileLayer.GROUND, -1f, 0, 0);
                 }
             }

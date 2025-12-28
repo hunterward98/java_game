@@ -20,7 +20,7 @@ public class MaterialTypeTest {
         @DisplayName("Should have all expected material types")
         void testAllValues() {
             ParticleSystem.MaterialType[] types = ParticleSystem.MaterialType.values();
-            assertEquals(5, types.length, "Should have exactly 5 material types");
+            assertEquals(6, types.length, "Should have exactly 6 material types");
         }
 
         @Test
@@ -54,6 +54,12 @@ public class MaterialTypeTest {
         }
 
         @Test
+        @DisplayName("Should have CURSED material type")
+        void testCursedExists() {
+            assertNotNull(ParticleSystem.MaterialType.CURSED);
+        }
+
+        @Test
         @DisplayName("valueOf should work for all types")
         void testValueOf() {
             assertEquals(ParticleSystem.MaterialType.WOOD,
@@ -66,6 +72,8 @@ public class MaterialTypeTest {
                 ParticleSystem.MaterialType.valueOf("MANA"));
             assertEquals(ParticleSystem.MaterialType.STAMINA,
                 ParticleSystem.MaterialType.valueOf("STAMINA"));
+            assertEquals(ParticleSystem.MaterialType.CURSED,
+                ParticleSystem.MaterialType.valueOf("CURSED"));
         }
 
         @Test
@@ -125,6 +133,9 @@ public class MaterialTypeTest {
                         break;
                     case STAMINA:
                         particleType = "Stamina particles";
+                        break;
+                    case CURSED:
+                        particleType = "Cursed particles";
                         break;
                     default:
                         particleType = null;
@@ -216,6 +227,9 @@ public class MaterialTypeTest {
 
             // STAMINA for stamina drain effects
             assertNotNull(ParticleSystem.MaterialType.STAMINA);
+
+            // CURSED for cursed mushroom dripping effects
+            assertNotNull(ParticleSystem.MaterialType.CURSED);
         }
 
         @Test

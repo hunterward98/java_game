@@ -431,7 +431,7 @@ class PlayerStatsTest {
             io.github.inherit_this.combat.DamageInfo.attackWithEffects(10, weaponStats);
 
         // Apply damage (no particles for testing)
-        stats.takeDamage(damageInfo, null, 0f, 0f, 0f);
+        stats.takeDamage(damageInfo, null, null);
 
         // Verify all three stats were drained
         assertEquals(90f, stats.getCurrentHealth(), "Health should be reduced by 10");
@@ -468,7 +468,7 @@ class PlayerStatsTest {
             io.github.inherit_this.combat.DamageInfo.attackWithEffects(0, weaponStats);
 
         // Apply damage (no particles for testing)
-        stats.takeDamage(damageInfo, null, 0f, 0f, 0f);
+        stats.takeDamage(damageInfo, null, null);
 
         // Verify only mana was drained
         assertEquals(100f, stats.getCurrentHealth(), "Health should not change");
@@ -505,7 +505,7 @@ class PlayerStatsTest {
             io.github.inherit_this.combat.DamageInfo.attackWithEffects(0, weaponStats);
 
         // Apply damage (no particles for testing)
-        stats.takeDamage(damageInfo, null, 0f, 0f, 0f);
+        stats.takeDamage(damageInfo, null, null);
 
         // Verify only stamina was drained
         assertEquals(100f, stats.getCurrentHealth(), "Health should not change");

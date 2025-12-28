@@ -218,8 +218,15 @@ public class GameScreen extends ScreenAdapter {
         // Initialize combat manager with particle system
         combatManager = new io.github.inherit_this.combat.CombatManager(player, particleSystem);
 
-        // Register DrainCommand now that particleSystem is initialized
+        // Register commands that require late initialization
         debugConsole.registerCommand(new io.github.inherit_this.debug.DrainCommand(player, particleSystem));
+
+        // Load enemy texture for spawn command (reuse player texture for now)
+        com.badlogic.gdx.graphics.Texture enemyTexture = new com.badlogic.gdx.graphics.Texture("character.png");
+        enemyTexture.setFilter(com.badlogic.gdx.graphics.Texture.TextureFilter.Nearest,
+                              com.badlogic.gdx.graphics.Texture.TextureFilter.Nearest);
+        debugConsole.registerCommand(new io.github.inherit_this.debug.SpawnCommand(
+            player, combatManager, world, enemyTexture));
 
         // Initialize rendering system
         gameRenderer = new io.github.inherit_this.rendering.GameRenderer(

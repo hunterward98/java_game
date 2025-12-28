@@ -37,6 +37,8 @@ public class ParticleSystem {
     private Texture staminaParticle1;
     private Texture staminaParticle2;
     private Texture staminaParticle3;
+    private Texture cursedParticle1;
+    private Texture cursedParticle2;
 
     private static final float PARTICLE_SIZE = 4f; // 4x4 pixels
 
@@ -65,6 +67,8 @@ public class ParticleSystem {
             staminaParticle1 = new Texture(Gdx.files.internal("particles/stamina_particle_1.png"));
             staminaParticle2 = new Texture(Gdx.files.internal("particles/stamina_particle_2.png"));
             staminaParticle3 = new Texture(Gdx.files.internal("particles/stamina_particle_3.png"));
+            cursedParticle1 = new Texture(Gdx.files.internal("particles/curse_particle_1.png"));
+            cursedParticle2 = new Texture(Gdx.files.internal("particles/curse_particle_2.png"));
 
             Gdx.app.log("ParticleSystem", "Loaded particle textures");
         } catch (Exception e) {
@@ -80,7 +84,8 @@ public class ParticleSystem {
         STONE,
         BLOOD,      // Red droplets for health damage
         MANA,       // Blue sparkles for mana drain
-        STAMINA     // Yellow/green particles for stamina drain
+        STAMINA,    // Yellow/green particles for stamina drain
+        CURSED      // Purple/green dripping particles for cursed mushroom
     }
 
     /**
@@ -190,6 +195,8 @@ public class ParticleSystem {
                 return new Texture[]{manaParticle1, manaParticle2, manaParticle3};
             case STAMINA:
                 return new Texture[]{staminaParticle1, staminaParticle2, staminaParticle3};
+            case CURSED:
+                return new Texture[]{cursedParticle1, cursedParticle2};
             default:
                 return new Texture[]{woodParticle1, woodParticle2};
         }
@@ -290,6 +297,15 @@ public class ParticleSystem {
                 maxLifetime = 1.5f;
                 gravity = -250f;  // Medium gravity between blood and mana
                 break;
+            case CURSED:
+                baseColor = new Color(0.6f, 0.3f, 0.8f, 1.0f);  // Purple/magenta
+                particleSize = PARTICLE_SIZE;
+                minLifetime = 1.0f;  // Longer lifetime to see the drip
+                maxLifetime = 2.0f;
+                gravity = -400f;  // Strong gravity for dripping effect
+                minSpeed = 20f;  // Very low initial speed
+                maxSpeed = 50f;  // Slow dripping motion
+                break;
             default:
                 return;  // Don't create particles for WOOD/STONE via this method
         }
@@ -301,25 +317,43 @@ public class ParticleSystem {
             Texture texture = textures[(int) (Math.random() * textures.length)];
             TextureRegion region = new TextureRegion(texture);
 
-            // Random direction (spherical coordinates) with more variation
-            float angle = (float) (Math.random() * Math.PI * 2);
-            float elevation = (float) (Math.random() * Math.PI / 2); // 0 to 90 degrees (increased from 60)
-
-            // Random speed with more variation
-            float speed = minSpeed + (float) Math.random() * (maxSpeed - minSpeed);
-            float velocityX = (float) (Math.cos(angle) * Math.cos(elevation)) * speed;
-            float velocityY = (float) Math.sin(elevation) * speed;
-            float velocityZ = (float) (Math.sin(angle) * Math.cos(elevation)) * speed;
-
-            // Randomize particle behavior: ~40% float up, ~60% fall down
+            float velocityX, velocityY, velocityZ;
             float particleGravity = gravity;
-            if (Math.random() < 0.4f) {
-                // This particle floats upward
-                particleGravity = Math.abs(gravity) * 0.5f;  // Positive gravity (weaker)
-                velocityY += speed * 0.5f;  // Strong upward boost
+
+            // Special dripping behavior for CURSED particles
+            if (type == MaterialType.CURSED) {
+                // Mostly downward with minimal horizontal spread
+                float speed = minSpeed + (float) Math.random() * (maxSpeed - minSpeed);
+                float angle = (float) (Math.random() * Math.PI * 2);
+
+                // Very small horizontal component (10-20% of speed)
+                float horizontalSpread = speed * (0.1f + (float) Math.random() * 0.1f);
+                velocityX = (float) Math.cos(angle) * horizontalSpread;
+                velocityZ = (float) Math.sin(angle) * horizontalSpread;
+
+                // Mostly downward with slight upward start to simulate dripping
+                velocityY = -(speed * 0.3f) + (float) Math.random() * 20f;
             } else {
-                // This particle falls down
-                velocityY += speed * 0.2f;  // Slight upward bias before falling
+                // Normal combat particle behavior for blood/mana/stamina
+                // Random direction (spherical coordinates) with more variation
+                float angle = (float) (Math.random() * Math.PI * 2);
+                float elevation = (float) (Math.random() * Math.PI / 2); // 0 to 90 degrees
+
+                // Random speed with more variation
+                float speed = minSpeed + (float) Math.random() * (maxSpeed - minSpeed);
+                velocityX = (float) (Math.cos(angle) * Math.cos(elevation)) * speed;
+                velocityY = (float) Math.sin(elevation) * speed;
+                velocityZ = (float) (Math.sin(angle) * Math.cos(elevation)) * speed;
+
+                // Randomize particle behavior: ~40% float up, ~60% fall down
+                if (Math.random() < 0.4f) {
+                    // This particle floats upward
+                    particleGravity = Math.abs(gravity) * 0.5f;  // Positive gravity (weaker)
+                    velocityY += speed * 0.5f;  // Strong upward boost
+                } else {
+                    // This particle falls down
+                    velocityY += speed * 0.2f;  // Slight upward bias before falling
+                }
             }
 
             // Random lifetime
@@ -341,6 +375,150 @@ public class ParticleSystem {
                     velocityX, velocityY, velocityZ,
                     lifetime, particleGravity, tintColor, particleSize
             );
+
+            particles.add(particle);
+        }
+    }
+
+    /**
+     * Creates a combat particle effect attached to an entity.
+     * Particles will follow the entity until they detach naturally.
+     *
+     * @param type Material type (BLOOD, MANA, STAMINA, or CURSED)
+     * @param entity Entity to attach particles to
+     * @param offsetX X offset from entity center (in pixels)
+     * @param offsetY Y offset from entity center (in pixels)
+     * @param offsetZ Z offset from entity center (in pixels)
+     * @param particleCount Number of particles to spawn
+     * @param attachDuration How long particles stay attached (0 = until hit ground)
+     */
+    public void createCombatEffectAttached(MaterialType type, io.github.inherit_this.entities.Entity entity,
+                                           float offsetX, float offsetY, float offsetZ,
+                                           int particleCount, float attachDuration) {
+        // Get particle textures for this type
+        Texture[] textures = getTexturesForMaterial(type);
+        if (textures == null || textures.length == 0) {
+            return;
+        }
+
+        // Calculate world position for initial spawn
+        final float TILE_SIZE = 32f;
+        float worldX = entity.getPosition().x * TILE_SIZE + offsetX;
+        float worldY = offsetY;
+        float worldZ = entity.getPosition().y * TILE_SIZE + offsetZ;
+
+        // Define color and physics properties based on type
+        Color baseColor;
+        float particleSize;
+        float minLifetime, maxLifetime;
+        float gravity;
+        float minSpeed = 100f;
+        float maxSpeed = 250f;
+
+        switch (type) {
+            case BLOOD:
+                baseColor = new Color(0.8f, 0.2f, 0.2f, 1.0f);
+                particleSize = PARTICLE_SIZE / 2f;  // Half size for blood droplets
+                minLifetime = 0.5f;
+                maxLifetime = 1.5f;
+                gravity = -400f;  // Stronger gravity for faster fall
+                minSpeed = 120f;  // Higher initial speed for splatter
+                maxSpeed = 280f;
+                break;
+            case MANA:
+                baseColor = new Color(0.3f, 0.5f, 1.0f, 1.0f);
+                particleSize = PARTICLE_SIZE;
+                minLifetime = 0.5f;
+                maxLifetime = 1.5f;
+                gravity = -200f;
+                minSpeed = 80f;
+                maxSpeed = 200f;
+                break;
+            case STAMINA:
+                baseColor = new Color(0.9f, 0.8f, 0.3f, 1.0f);
+                particleSize = PARTICLE_SIZE;
+                minLifetime = 0.5f;
+                maxLifetime = 1.5f;
+                gravity = -250f;
+                break;
+            case CURSED:
+                baseColor = new Color(0.6f, 0.3f, 0.8f, 1.0f);
+                particleSize = PARTICLE_SIZE;
+                minLifetime = 1.0f;
+                maxLifetime = 2.0f;
+                gravity = -400f;
+                minSpeed = 20f;
+                maxSpeed = 50f;
+                break;
+            default:
+                return;
+        }
+
+        // Create particles
+        for (int i = 0; i < particleCount; i++) {
+            Texture texture = textures[(int) (Math.random() * textures.length)];
+            TextureRegion region = new TextureRegion(texture);
+
+            float velocityX, velocityY, velocityZ;
+            float particleGravity = gravity;
+
+            // Special dripping behavior for CURSED particles
+            if (type == MaterialType.CURSED) {
+                float speed = minSpeed + (float) Math.random() * (maxSpeed - minSpeed);
+                float angle = (float) (Math.random() * Math.PI * 2);
+
+                float horizontalSpread = speed * (0.1f + (float) Math.random() * 0.1f);
+                velocityX = (float) Math.cos(angle) * horizontalSpread;
+                velocityZ = (float) Math.sin(angle) * horizontalSpread;
+                velocityY = -(speed * 0.3f) + (float) Math.random() * 20f;
+            } else if (type == MaterialType.BLOOD) {
+                // Blood splatter: strong horizontal spread, minimal upward velocity
+                float angle = (float) (Math.random() * Math.PI * 2);
+                float speed = minSpeed + (float) Math.random() * (maxSpeed - minSpeed);
+
+                // Strong horizontal velocity (80-100% of speed)
+                float horizontalFactor = 0.8f + (float) Math.random() * 0.2f;
+                velocityX = (float) Math.cos(angle) * speed * horizontalFactor;
+                velocityZ = (float) Math.sin(angle) * speed * horizontalFactor;
+
+                // Minimal upward velocity (0-20% of speed) for quick fall
+                velocityY = (float) Math.random() * speed * 0.2f;
+            } else {
+                // Normal combat particle behavior (mana, stamina)
+                float angle = (float) (Math.random() * Math.PI * 2);
+                float elevation = (float) (Math.random() * Math.PI / 2);
+
+                float speed = minSpeed + (float) Math.random() * (maxSpeed - minSpeed);
+                velocityX = (float) (Math.cos(angle) * Math.cos(elevation)) * speed;
+                velocityY = (float) Math.sin(elevation) * speed;
+                velocityZ = (float) (Math.sin(angle) * Math.cos(elevation)) * speed;
+
+                if (Math.random() < 0.4f) {
+                    particleGravity = Math.abs(gravity) * 0.5f;
+                    velocityY += speed * 0.5f;
+                } else {
+                    velocityY += speed * 0.2f;
+                }
+            }
+
+            float lifetime = minLifetime + (float) (Math.random() * (maxLifetime - minLifetime));
+
+            Color tintColor = new Color(
+                    baseColor.r * (0.85f + (float) Math.random() * 0.3f),
+                    baseColor.g * (0.85f + (float) Math.random() * 0.3f),
+                    baseColor.b * (0.85f + (float) Math.random() * 0.3f),
+                    1.0f
+            );
+            tintColor.clamp();
+
+            Particle particle = new Particle(
+                    region, worldX, worldY, worldZ,
+                    velocityX, velocityY, velocityZ,
+                    lifetime, particleGravity, tintColor, particleSize
+            );
+
+            // Attach to entity
+            particle.attachTo(entity, offsetX, offsetY, offsetZ, attachDuration);
 
             particles.add(particle);
         }

@@ -5,10 +5,12 @@ import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector3;
+import io.github.inherit_this.entities.Entity;
 
 /**
  * Represents a single particle with physics (velocity, gravity) and lifetime.
  * Rendered as 2D sprite projected from 3D world space (like player rendering).
+ * Can optionally attach to an entity to follow it before detaching.
  */
 public class Particle {
     private TextureRegion textureRegion;
@@ -19,6 +21,12 @@ public class Particle {
     private float gravity;
     private Color tintColor;
     private float size;
+
+    // Attachment system
+    private Entity attachedTo;
+    private Vector3 attachmentOffset;  // Offset from entity position
+    private float attachmentDuration;  // How long to stay attached (0 = detach immediately)
+    private float attachmentTimer;     // Time spent attached
 
     /**
      * Creates a new particle.
@@ -45,6 +53,40 @@ public class Particle {
         this.gravity = gravity;
         this.tintColor = new Color(tintColor);
         this.size = size;
+        this.attachedTo = null;
+        this.attachmentOffset = null;
+        this.attachmentDuration = 0f;
+        this.attachmentTimer = 0f;
+    }
+
+    /**
+     * Attach this particle to an entity. While attached, particle will follow entity position.
+     * @param entity Entity to attach to
+     * @param offsetX X offset from entity's tile position
+     * @param offsetY Y offset from entity's tile position
+     * @param offsetZ Z offset from entity's tile position
+     * @param duration How long to stay attached (seconds, 0 = never detach naturally)
+     */
+    public void attachTo(Entity entity, float offsetX, float offsetY, float offsetZ, float duration) {
+        this.attachedTo = entity;
+        this.attachmentOffset = new Vector3(offsetX, offsetY, offsetZ);
+        this.attachmentDuration = duration;
+        this.attachmentTimer = 0f;
+    }
+
+    /**
+     * Detach from entity. Particle will continue with its current velocity.
+     */
+    public void detach() {
+        this.attachedTo = null;
+        this.attachmentOffset = null;
+    }
+
+    /**
+     * Check if particle is attached to an entity.
+     */
+    public boolean isAttached() {
+        return attachedTo != null;
     }
 
     /**
@@ -58,21 +100,49 @@ public class Particle {
             return false;
         }
 
-        // Apply velocity
-        position.x += velocity.x * delta;
-        position.y += velocity.y * delta;
-        position.z += velocity.z * delta;
+        // Handle attachment
+        if (attachedTo != null) {
+            attachmentTimer += delta;
 
-        // Apply gravity to velocity
-        velocity.y += gravity * delta;
+            // Update position to follow entity (convert tile position to pixels)
+            final float TILE_SIZE = 32f;
+            float entityWorldX = attachedTo.getPosition().x * TILE_SIZE;
+            float entityWorldZ = attachedTo.getPosition().y * TILE_SIZE;
 
-        // Ground collision - particles settle on the ground
-        if (position.y <= 0) {
-            position.y = 0;
-            velocity.y = 0;
-            // Slow down horizontal movement when on ground (friction)
-            velocity.x *= 0.95f;
-            velocity.z *= 0.95f;
+            position.x = entityWorldX + attachmentOffset.x;
+            position.y = attachmentOffset.y;  // Y offset is already in pixels
+            position.z = entityWorldZ + attachmentOffset.z;
+
+            // Apply velocity while attached (for dripping effect)
+            position.x += velocity.x * delta;
+            position.y += velocity.y * delta;
+            position.z += velocity.z * delta;
+
+            // Apply gravity to velocity while attached
+            velocity.y += gravity * delta;
+
+            // Check if we should detach (duration expired or hit ground)
+            if ((attachmentDuration > 0 && attachmentTimer >= attachmentDuration) || position.y <= 0) {
+                detach();
+            }
+        } else {
+            // Not attached - normal physics
+            // Apply velocity
+            position.x += velocity.x * delta;
+            position.y += velocity.y * delta;
+            position.z += velocity.z * delta;
+
+            // Apply gravity to velocity
+            velocity.y += gravity * delta;
+
+            // Ground collision - particles settle on the ground
+            if (position.y <= 0) {
+                position.y = 0;
+                velocity.y = 0;
+                // Slow down horizontal movement when on ground (friction)
+                velocity.x *= 0.95f;
+                velocity.z *= 0.95f;
+            }
         }
 
         return true;

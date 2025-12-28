@@ -133,19 +133,26 @@ public class PlayerStats {
      *
      * @param damageInfo Damage information including amount, source, and effects
      * @param particles Particle system for visual effects (null to disable particles)
-     * @param worldX World X position in pixels for particle spawn
-     * @param worldY World Y position in pixels for particle spawn
-     * @param worldZ World Z position in pixels for particle spawn
+     * @param player Player entity for particle attachment
      */
-    public void takeDamage(DamageInfo damageInfo, ParticleSystem particles, float worldX, float worldY, float worldZ) {
+    public void takeDamage(DamageInfo damageInfo, ParticleSystem particles, Player player) {
         // Apply base damage
         currentHealth = Math.max(0, currentHealth - damageInfo.getBaseDamage());
 
         // Process weapon effects for ATTACK damage (not natural drains)
         if (damageInfo.getSource() == DamageSource.ATTACK) {
-            // Emit blood particles only if there's actual health damage AND particles available
-            if (damageInfo.getBaseDamage() > 0 && particles != null) {
-                particles.createCombatEffect(ParticleSystem.MaterialType.BLOOD, worldX, worldY, worldZ, 10);
+            // Emit blood particles attached to player so they follow the player
+            if (damageInfo.getBaseDamage() > 0 && particles != null && player != null) {
+                // Particles spawn at player's chest level and fall/splatter quickly
+                particles.createCombatEffectAttached(
+                    ParticleSystem.MaterialType.BLOOD,
+                    player,
+                    0f,    // Center X
+                    20f,   // Chest height
+                    0f,    // Center Z
+                    6,     // 6 particles (reduced for performance)
+                    0.05f  // Detach almost immediately for quick fall/splatter
+                );
             }
 
             // Process weapon effects (always, regardless of particles)
@@ -153,8 +160,14 @@ public class PlayerStats {
                 float manaDrained = Math.min(currentMana, damageInfo.getManaDrainAmount());
                 currentMana -= manaDrained;
                 // Emit particles only if available and mana was actually drained
-                if (manaDrained > 0 && particles != null) {
-                    particles.createCombatEffect(ParticleSystem.MaterialType.MANA, worldX, worldY, worldZ, 8);
+                if (manaDrained > 0 && particles != null && player != null) {
+                    particles.createCombatEffectAttached(
+                        ParticleSystem.MaterialType.MANA,
+                        player,
+                        0f, 25f, 0f,  // Head level (mana drain from head)
+                        8,
+                        0.3f  // Stay attached briefly
+                    );
                 }
             }
 
@@ -162,8 +175,14 @@ public class PlayerStats {
                 float staminaDrained = Math.min(currentStamina, damageInfo.getStaminaDrainAmount());
                 currentStamina -= staminaDrained;
                 // Emit particles only if available and stamina was actually drained
-                if (staminaDrained > 0 && particles != null) {
-                    particles.createCombatEffect(ParticleSystem.MaterialType.STAMINA, worldX, worldY, worldZ, 8);
+                if (staminaDrained > 0 && particles != null && player != null) {
+                    particles.createCombatEffectAttached(
+                        ParticleSystem.MaterialType.STAMINA,
+                        player,
+                        0f, 15f, 0f,  // Torso level (stamina drain from body)
+                        8,
+                        0.3f  // Stay attached briefly
+                    );
                 }
             }
 

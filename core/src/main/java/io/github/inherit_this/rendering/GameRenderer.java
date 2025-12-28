@@ -1,6 +1,7 @@
 package io.github.inherit_this.rendering;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.Texture;
@@ -8,9 +9,11 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g3d.Environment;
 import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.graphics.g3d.ModelInstance;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector3;
 import io.github.inherit_this.combat.CombatManager;
 import io.github.inherit_this.entities.BreakableObject;
+import io.github.inherit_this.entities.Enemy;
 import io.github.inherit_this.entities.InteractableObject;
 import io.github.inherit_this.entities.NPC;
 import io.github.inherit_this.entities.Player;
@@ -31,6 +34,7 @@ public class GameRenderer {
     private final Player player;
     private final InputHandler inputHandler;
     private final CombatManager combatManager;
+    private final ShapeRenderer shapeRenderer;
 
     // References that may change
     private WorldProvider world;
@@ -50,6 +54,7 @@ public class GameRenderer {
         this.player = player;
         this.inputHandler = inputHandler;
         this.combatManager = combatManager;
+        this.shapeRenderer = new ShapeRenderer();
     }
 
     /**
@@ -324,8 +329,8 @@ public class GameRenderer {
             }
 
             // Convert NPC's tile position to pixel world position
-            float worldX = npc.getPosition().x;
-            float worldZ = npc.getPosition().y;
+            float worldX = npc.getPosition().x * Constants.TILE_SIZE;
+            float worldZ = npc.getPosition().y * Constants.TILE_SIZE;
 
             // Project 3D world position to 2D screen position
             Vector3 worldPos = new Vector3(worldX, 0, worldZ);
@@ -336,9 +341,9 @@ public class GameRenderer {
                 screenPos.y >= 0 && screenPos.y <= Gdx.graphics.getHeight() &&
                 screenPos.z >= 0 && screenPos.z <= 1) {
 
-                // Calculate distance-based scale
-                float distToCamera = camera.position.dst(worldPos);
-                float scale = Math.min(1.0f, 400f / distToCamera);
+                // Calculate distance-based scale (match player scaling formula)
+                float cameraDistance = inputHandler.getCameraDistance();
+                float scale = (300f / cameraDistance) * 1.15f;
 
                 // Draw the sprite centered at the screen position
                 Texture tex = npc.getTexture();
@@ -352,6 +357,30 @@ public class GameRenderer {
                     width, height
                 );
 
+                // Debug visualization for console-spawned NPCs
+                // TEMPORARILY DISABLED - investigating rendering issue
+                /*
+                if (npc instanceof Enemy && ((Enemy) npc).isDebugSpawned()) {
+                    batch.end();
+
+                    shapeRenderer.setProjectionMatrix(batch.getProjectionMatrix());
+                    shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+                    shapeRenderer.setColor(Color.YELLOW);
+
+                    // Draw outline box
+                    float x = screenPos.x - width / 2f;
+                    float y = screenPos.y - height / 2f + yOffset;
+                    shapeRenderer.rect(x, y, width, height);
+
+                    // Draw crosshair at center
+                    shapeRenderer.line(screenPos.x - 10, screenPos.y, screenPos.x + 10, screenPos.y);
+                    shapeRenderer.line(screenPos.x, screenPos.y - 10, screenPos.x, screenPos.y + 10);
+
+                    shapeRenderer.end();
+                    batch.begin();
+                }
+                */
+
                 // TODO: Render health bar above NPC
             }
         }
@@ -364,5 +393,12 @@ public class GameRenderer {
 
     public int getChunksCulledLastFrame() {
         return chunksCulledLastFrame;
+    }
+
+    /**
+     * Dispose of resources.
+     */
+    public void dispose() {
+        shapeRenderer.dispose();
     }
 }

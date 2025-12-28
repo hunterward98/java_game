@@ -16,6 +16,13 @@ public class Enemy extends NPC {
     private float wanderChangeTimer = 0f;
     private static final float WANDER_CHANGE_INTERVAL = 3f; // Change direction every 3 seconds
 
+    // Cursed mushroom particle emission
+    private float particleEmissionTimer = 0f;
+    private static final float PARTICLE_EMISSION_INTERVAL = 0.8f; // Emit particles every 0.8 seconds
+
+    // Debug flag for console-spawned NPCs
+    private boolean debugSpawned = false;
+
     public Enemy(Texture texture, float x, float y, String name, WorldProvider world) {
         super(texture, x, y, name, NPCType.HOSTILE, world);
 
@@ -23,6 +30,26 @@ public class Enemy extends NPC {
         this.detectionRange = 10f;  // Can see player from 10 tiles away
         this.attackRange = 1.2f;    // Melee range
         this.speed = 4f;            // Slightly slower than player
+    }
+
+    /**
+     * Create enemy with scaled stats from template.
+     */
+    public Enemy(Texture texture, float x, float y, String name, WorldProvider world,
+                io.github.inherit_this.combat.NPCScaling.ScaledStats stats) {
+        super(texture, x, y, name, NPCType.HOSTILE, world);
+
+        // Apply scaled stats
+        this.maxHealth = stats.maxHealth;
+        this.currentHealth = stats.maxHealth;
+        this.damage = stats.damage;
+        this.speed = stats.speed;
+        this.detectionRange = stats.detectionRange;
+        this.attackRange = stats.attackRange;
+        this.attackCooldown = stats.attackCooldown;
+        this.goldDrop = stats.goldDrop;
+        this.xpValue = stats.xpValue;
+        // Intelligence will be used for future AI improvements
     }
 
     @Override
@@ -114,14 +141,8 @@ public class Enemy extends NPC {
                                 // Create basic damage info (enemies don't have weapon effects yet)
                                 DamageInfo damageInfo = DamageInfo.attack(damage);
 
-                                // Calculate player position in pixels (assuming TILE_SIZE = 32)
-                                final float TILE_SIZE = 32f;
-                                float playerX = targetPlayer.getPosition().x * TILE_SIZE;
-                                float playerY = targetPlayer.getPosition().y * TILE_SIZE;
-                                float playerZ = 0f; // Ground level
-
-                                // Deal damage with particle emission
-                                targetPlayer.getStats().takeDamage(damageInfo, particleSystem, playerX, playerY, playerZ);
+                                // Deal damage - particles will be attached to player
+                                targetPlayer.getStats().takeDamage(damageInfo, particleSystem, targetPlayer);
                             }
                         }
                     } else {
@@ -168,6 +189,26 @@ public class Enemy extends NPC {
                 // Do nothing when dead
                 break;
         }
+
+        // Special behavior: Cursed Mushroom drips particles continuously
+        if (name.equals("Cursed_Mushroom") && state != NPCState.DEAD) {
+            particleEmissionTimer += delta;
+            if (particleEmissionTimer >= PARTICLE_EMISSION_INTERVAL) {
+                // Emit cursed dripping particles attached to the mushroom
+                // Particles start at mushroom center, drip down, then detach when they hit ground
+                particleSystem.createCombatEffectAttached(
+                    ParticleSystem.MaterialType.CURSED,
+                    this,  // Attach to this enemy
+                    0f,    // No X offset (center)
+                    16f,   // Start at top of mushroom (half tile height)
+                    0f,    // No Z offset (center)
+                    3,     // Emit 3 particles at a time for slow drip effect
+                    0f     // Duration 0 = detach when hitting ground
+                );
+
+                particleEmissionTimer = 0f;
+            }
+        }
     }
 
     @Override
@@ -180,5 +221,19 @@ public class Enemy extends NPC {
             player.getStats().addXP(xpValue);
             player.getInventory().addGold(goldDrop);
         }
+    }
+
+    /**
+     * Mark this NPC as debug-spawned for visualization.
+     */
+    public void setDebugSpawned(boolean debug) {
+        this.debugSpawned = debug;
+    }
+
+    /**
+     * Check if this NPC was spawned via debug console.
+     */
+    public boolean isDebugSpawned() {
+        return debugSpawned;
     }
 }

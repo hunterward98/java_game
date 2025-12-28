@@ -129,11 +129,8 @@ public abstract class NPC extends Entity {
      * @param damageInfo Damage information including amount, source, and effects
      * @param attacker The entity that dealt the damage
      * @param particles Particle system for visual effects (null to disable particles)
-     * @param worldX World X position in pixels for particle spawn
-     * @param worldY World Y position in pixels for particle spawn
-     * @param worldZ World Z position in pixels for particle spawn
      */
-    public void takeDamage(DamageInfo damageInfo, Entity attacker, ParticleSystem particles, float worldX, float worldY, float worldZ) {
+    public void takeDamage(DamageInfo damageInfo, Entity attacker, ParticleSystem particles) {
         if (state == NPCState.DEAD) {
             return;
         }
@@ -141,9 +138,17 @@ public abstract class NPC extends Entity {
         // Apply base damage
         currentHealth -= damageInfo.getBaseDamage();
 
-        // Emit blood particles for attack damage
+        // Emit blood particles attached to NPC for attack damage
         if (damageInfo.getSource() == DamageSource.ATTACK && particles != null) {
-            particles.createCombatEffect(ParticleSystem.MaterialType.BLOOD, worldX, worldY, worldZ, 10);
+            particles.createCombatEffectAttached(
+                ParticleSystem.MaterialType.BLOOD,
+                this,   // Attach to this NPC
+                0f,     // Center X
+                20f,    // Chest height
+                0f,     // Center Z
+                6,      // 6 particles (reduced for performance)
+                0.05f   // Detach almost immediately for quick fall/splatter
+            );
 
             // Process life steal - heal the attacker
             if (damageInfo.hasEffect(WeaponEffect.LIFE_STEAL) && attacker instanceof Player) {

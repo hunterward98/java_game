@@ -321,7 +321,7 @@ class PlayerTest {
         boolean attacked = player.attack(mockEnemy);
 
         assertTrue(attacked, "Attack should succeed when off cooldown");
-        verify(mockEnemy).takeDamage(any(), eq(player), any(), anyFloat(), anyFloat(), anyFloat());
+        verify(mockEnemy).takeDamage(any(), eq(player), any());
     }
 
     @Test
@@ -444,7 +444,7 @@ class PlayerTest {
         player.attack(mockEnemy);
 
         // Verify takeDamage was called (damage is wrapped in DamageInfo now)
-        verify(mockEnemy).takeDamage(any(), eq(player), any(), anyFloat(), anyFloat(), anyFloat());
+        verify(mockEnemy).takeDamage(any(), eq(player), any());
     }
 
     @Test

@@ -270,14 +270,8 @@ public class Player extends Entity {
      * @param particles The particle system for visual effects (can be null)
      */
     public void takeDamage(io.github.inherit_this.combat.DamageInfo damageInfo, ParticleSystem particles) {
-        // Calculate player position for particle emission (same as break effects)
-        // In 3D world: X = horizontal, Y = vertical height, Z = depth (tile row)
-        float playerX = (position.x + 0.5f) * io.github.inherit_this.util.Constants.TILE_SIZE;
-        float playerY = io.github.inherit_this.util.Constants.TILE_SIZE / 2f;
-        float playerZ = (position.y + 0.5f) * io.github.inherit_this.util.Constants.TILE_SIZE;
-
-        // Delegate to stats with calculated position
-        stats.takeDamage(damageInfo, particles, playerX, playerY, playerZ);
+        // Delegate to stats - particles will be attached to this player entity
+        stats.takeDamage(damageInfo, particles, this);
     }
 
     /**
@@ -329,13 +323,8 @@ public class Player extends Entity {
             // Create damage info with weapon effects
             DamageInfo damageInfo = DamageInfo.attackWithEffects(totalDamage, weaponStats);
 
-            // Calculate NPC position in pixels for particle emission
-            float npcX = target.getPosition().x * Constants.TILE_SIZE;
-            float npcY = target.getPosition().y * Constants.TILE_SIZE;
-            float npcZ = 0f;  // Ground level
-
-            // Deal damage with weapon effects and particle emission
-            target.takeDamage(damageInfo, this, particleSystem, npcX, npcY, npcZ);
+            // Deal damage with weapon effects - particles will be attached to NPC
+            target.takeDamage(damageInfo, this, particleSystem);
 
             System.out.println("Player attacks " + target.getName() + " for " + totalDamage + " damage!");
             return true;

@@ -5,11 +5,11 @@ package io.github.inherit_this.world;
  * Defines min/max dimensions for each category.
  */
 public enum RoomSize {
-    SMALL(6, 12),       // Standard small rooms
-    MEDIUM(12, 20),     // Medium rooms
-    LARGE(20, 35),      // Large multi-chunk rooms
-    HUGE(35, 50),       // Very large rooms (boss arenas, grand halls)
-    MASSIVE(50, 80);    // Massive special rooms (throne rooms, plazas)
+    SMALL(12, 24),      // Standard small rooms
+    MEDIUM(24, 40),     // Medium rooms
+    LARGE(40, 70),      // Large multi-chunk rooms
+    HUGE(70, 100),      // Very large rooms (boss arenas, grand halls)
+    MASSIVE(100, 160);  // Massive special rooms (throne rooms, plazas)
 
     private final int min;
     private final int max;

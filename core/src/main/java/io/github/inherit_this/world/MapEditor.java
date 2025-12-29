@@ -90,7 +90,6 @@ public class MapEditor {
             this.staticWorld = (StaticWorld) world;
         } else {
             this.staticWorld = null;
-            Gdx.app.log("MapEditor", "Cannot edit non-static worlds. Switch to a StaticWorld first.");
         }
     }
 

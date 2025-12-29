@@ -101,9 +101,16 @@ public class DungeonWorld implements WorldProvider {
                     Texture floorTexture = theme.getRandomFloorTexture(chunkRand);
                     TileType floorType = theme.getFloorType();
 
+                    // Random rotation for granite and marble to break up patterns
+                    int rotation = 0;
+                    if (floorType == TileType.MARBLE_TILE || floorType == TileType.DARK_GRANITE) {
+                        int[] rotations = {0, 90, 180, 270};
+                        rotation = rotations[chunkRand.nextInt(rotations.length)];
+                    }
+
                     // Floor tile
                     tiles[localX][localY] = new Tile(floorTexture, false, floorType,
-                        TileLayer.GROUND, -1f, 0, 0);
+                        TileLayer.GROUND, -1f, 0, rotation);
                 }
             }
         }

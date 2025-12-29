@@ -376,8 +376,16 @@ public class GameScreen extends ScreenAdapter {
         // Render breakable objects (world to screen projection)
         gameRenderer.renderBreakableObjects(batch);
 
+        // Update hovered NPC for tooltips
+        float mouseX = Gdx.input.getX();
+        float mouseY = Gdx.graphics.getHeight() - Gdx.input.getY();
+        gameRenderer.updateHoveredNPC(mouseX, mouseY);
+
         // Render NPCs (world to screen projection)
         gameRenderer.renderNPCs(batch);
+
+        // Render NPC tooltips (if hovering over an NPC)
+        gameRenderer.renderNPCTooltip(batch, mouseX, mouseY);
 
         // Render player sprite with perspective scaling
         // Scale inversely with camera distance for proper perspective

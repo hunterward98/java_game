@@ -11,14 +11,13 @@ import java.util.stream.Collectors;
  *
  * Algorithm steps:
  * 1. Generate rooms by type with appropriate sizes
- * 2. Balance density to target range (20-30%)
+ * 2. Balance density to target range (33-44%)
  * 3. Separate overlapping rooms using physics simulation
- * 4. Select "main rooms" exceeding size threshold
- * 5. Create Delaunay triangulation of main room centers
- * 6. Reduce to Minimum Spanning Tree
- * 7. Add back 8-10% of removed edges for loops
- * 8. Carve rooms and hallways with variable widths
- * 9. Create impassable border
+ * 4. Delaunay triangulation on ALL rooms
+ * 5. Reduce to Minimum Spanning Tree (pure tree - exactly one path between rooms)
+ * 6. Mark larger rooms for boss spawning and special loot
+ * 7. Carve rooms and hallways with variable widths (3, 5, or 7 tiles)
+ * 8. Create impassable border
  */
 public class ProceduralDungeonGenerator extends DungeonGenerator {
 
@@ -27,7 +26,7 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
     private List<DelaunayTriangulator.Edge> hallwayEdges;
 
     // Configuration
-    private static final int TARGET_ROOM_COUNT = 200;        // Rooms for 384×384 dungeon
+    private static final int TARGET_ROOM_COUNT = 300;        // Rooms for 384×384 dungeon
     private static final float MAIN_ROOM_THRESHOLD = 1.25f;  // Rooms > 1.25x mean size
     private static final float LOOP_EDGE_PERCENT = 0.10f;    // Add back 10% of removed edges
     private static final int MAX_SEPARATION_ITERATIONS = 100;
@@ -35,9 +34,9 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
     private static final float STABILITY_THRESHOLD = 0.1f;
 
     // Density balancing
-    private static final float MIN_DENSITY = 0.20f;          // 20% minimum coverage
-    private static final float MAX_DENSITY = 0.30f;          // 30% maximum coverage
-    private static final float TARGET_DENSITY = 0.25f;       // 25% target coverage
+    private static final float MIN_DENSITY = 0.33f;          // 33% minimum coverage
+    private static final float MAX_DENSITY = 0.44f;          // 44% maximum coverage
+    private static final float TARGET_DENSITY = 0.385f;      // 38.5% target coverage
 
     public ProceduralDungeonGenerator(DungeonConfig config) {
         super(config);
@@ -92,21 +91,21 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
         float ellipseWidth = widthInTiles * 0.9f;
         float ellipseHeight = heightInTiles * 0.9f;
 
-        // 1. Generate 1-2 BOSS rooms (guaranteed, HUGE or MASSIVE)
-        generateRoomsByType(RoomType.BOSS, 2, centerX, centerY, ellipseWidth, ellipseHeight);
+        // 1. Generate 2-3 BOSS rooms (guaranteed, HUGE or MASSIVE)
+        generateRoomsByType(RoomType.BOSS, 3, centerX, centerY, ellipseWidth, ellipseHeight);
 
-        // 2. Generate 5-8 LARGE special rooms (BARRACKS, PLAZAS)
-        generateRoomsByType(RoomType.BARRACKS, 3, centerX, centerY, ellipseWidth, ellipseHeight);
-        generateRoomsByType(RoomType.PLAZA, 3, centerX, centerY, ellipseWidth, ellipseHeight);
+        // 2. Generate LARGE special rooms (BARRACKS, PLAZAS)
+        generateRoomsByType(RoomType.BARRACKS, 5, centerX, centerY, ellipseWidth, ellipseHeight);
+        generateRoomsByType(RoomType.PLAZA, 5, centerX, centerY, ellipseWidth, ellipseHeight);
 
-        // 3. Generate 15-25 MEDIUM rooms (TREASURE, LIBRARY, ARMORY)
-        generateRoomsByType(RoomType.TREASURE, 8, centerX, centerY, ellipseWidth, ellipseHeight);
-        generateRoomsByType(RoomType.LIBRARY, 5, centerX, centerY, ellipseWidth, ellipseHeight);
-        generateRoomsByType(RoomType.ARMORY, 5, centerX, centerY, ellipseWidth, ellipseHeight);
-        generateRoomsByType(RoomType.SHRINE, 7, centerX, centerY, ellipseWidth, ellipseHeight);
+        // 3. Generate MEDIUM rooms (TREASURE, LIBRARY, ARMORY, SHRINE)
+        generateRoomsByType(RoomType.TREASURE, 12, centerX, centerY, ellipseWidth, ellipseHeight);
+        generateRoomsByType(RoomType.LIBRARY, 8, centerX, centerY, ellipseWidth, ellipseHeight);
+        generateRoomsByType(RoomType.ARMORY, 8, centerX, centerY, ellipseWidth, ellipseHeight);
+        generateRoomsByType(RoomType.SHRINE, 10, centerX, centerY, ellipseWidth, ellipseHeight);
 
-        // 4. Generate 5-10 SECRET rooms (off-path treasures)
-        generateRoomsByType(RoomType.SECRET, 7, centerX, centerY, ellipseWidth, ellipseHeight);
+        // 4. Generate SECRET rooms (off-path treasures)
+        generateRoomsByType(RoomType.SECRET, 10, centerX, centerY, ellipseWidth, ellipseHeight);
 
         // 5. Fill remaining with STANDARD rooms to reach target count
         int remaining = TARGET_ROOM_COUNT - rooms.size();

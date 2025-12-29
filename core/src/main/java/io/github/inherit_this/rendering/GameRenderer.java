@@ -18,6 +18,7 @@ import io.github.inherit_this.entities.InteractableObject;
 import io.github.inherit_this.entities.NPC;
 import io.github.inherit_this.entities.Player;
 import io.github.inherit_this.input.InputHandler;
+import io.github.inherit_this.ui.NPCTooltip;
 import io.github.inherit_this.util.Constants;
 import io.github.inherit_this.world.*;
 
@@ -35,6 +36,7 @@ public class GameRenderer {
     private final InputHandler inputHandler;
     private final CombatManager combatManager;
     private final ShapeRenderer shapeRenderer;
+    private final NPCTooltip npcTooltip;
 
     // References that may change
     private WorldProvider world;
@@ -46,6 +48,9 @@ public class GameRenderer {
     private int chunksRenderedLastFrame = 0;
     private int chunksCulledLastFrame = 0;
 
+    // NPC tooltip tracking
+    private NPC hoveredNPC = null;
+
     public GameRenderer(PerspectiveCamera camera, ModelBatch modelBatch, Environment environment,
                         Player player, InputHandler inputHandler, CombatManager combatManager) {
         this.camera = camera;
@@ -55,6 +60,7 @@ public class GameRenderer {
         this.inputHandler = inputHandler;
         this.combatManager = combatManager;
         this.shapeRenderer = new ShapeRenderer();
+        this.npcTooltip = new NPCTooltip();
     }
 
     /**
@@ -362,32 +368,110 @@ public class GameRenderer {
                     width, height
                 );
 
-                // Debug visualization for console-spawned NPCs
-                // TEMPORARILY DISABLED - investigating rendering issue
-                /*
-                if (npc instanceof Enemy && ((Enemy) npc).isDebugSpawned()) {
-                    batch.end();
-
-                    shapeRenderer.setProjectionMatrix(batch.getProjectionMatrix());
-                    shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-                    shapeRenderer.setColor(Color.YELLOW);
-
-                    // Draw outline box
-                    float x = screenPos.x - width / 2f;
-                    float y = screenPos.y - height / 2f + yOffset;
-                    shapeRenderer.rect(x, y, width, height);
-
-                    // Draw crosshair at center
-                    shapeRenderer.line(screenPos.x - 10, screenPos.y, screenPos.x + 10, screenPos.y);
-                    shapeRenderer.line(screenPos.x, screenPos.y - 10, screenPos.x, screenPos.y + 10);
-
-                    shapeRenderer.end();
-                    batch.begin();
+                // Render health bar above NPC (only when damaged)
+                if (npc.getCurrentHealth() < npc.getMaxHealth()) {
+                    renderNPCHealthBar(batch, npc, screenPos.x, screenPos.y + height / 2f + yOffset + 10f, scale);
                 }
-                */
-
-                // TODO: Render health bar above NPC
             }
+        }
+    }
+
+    /**
+     * Renders a health bar above an NPC's head.
+     */
+    private void renderNPCHealthBar(SpriteBatch batch, NPC npc, float centerX, float y, float scale) {
+        float barWidth = 40f * scale;
+        float barHeight = 4f * scale;
+        float healthPercent = (float) npc.getCurrentHealth() / npc.getMaxHealth();
+
+        batch.end(); // End sprite batch to draw shapes
+
+        shapeRenderer.setProjectionMatrix(batch.getProjectionMatrix());
+
+        // Draw background (black)
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0.2f, 0.2f, 0.2f, 0.8f);
+        shapeRenderer.rect(centerX - barWidth / 2f, y, barWidth, barHeight);
+        shapeRenderer.end();
+
+        // Draw health (red to green gradient based on health)
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        float red = 1.0f - healthPercent;
+        float green = healthPercent;
+        shapeRenderer.setColor(red, green, 0f, 1f);
+        shapeRenderer.rect(centerX - barWidth / 2f, y, barWidth * healthPercent, barHeight);
+        shapeRenderer.end();
+
+        // Draw border
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(Color.WHITE);
+        shapeRenderer.rect(centerX - barWidth / 2f, y, barWidth, barHeight);
+        shapeRenderer.end();
+
+        batch.begin(); // Resume sprite batch
+    }
+
+    /**
+     * Update which NPC is currently hovered by the mouse.
+     * Call this once per frame before rendering tooltips.
+     */
+    public void updateHoveredNPC(float mouseX, float mouseY) {
+        hoveredNPC = null;
+        float closestDistance = Float.MAX_VALUE;
+
+        for (NPC npc : combatManager.getAllNPCs()) {
+            if (npc.isDead()) {
+                continue;
+            }
+
+            // Convert NPC's tile position to pixel world position
+            float worldX = npc.getPosition().x * Constants.TILE_SIZE;
+            float worldZ = npc.getPosition().y * Constants.TILE_SIZE;
+
+            // Project 3D world position to 2D screen position
+            Vector3 worldPos = new Vector3(worldX, 0, worldZ);
+            Vector3 screenPos = camera.project(worldPos);
+
+            // Check if NPC is on screen
+            if (screenPos.x >= 0 && screenPos.x <= Gdx.graphics.getWidth() &&
+                screenPos.y >= 0 && screenPos.y <= Gdx.graphics.getHeight() &&
+                screenPos.z >= 0 && screenPos.z <= 1) {
+
+                // Calculate distance-based scale (match player scaling formula)
+                float cameraDistance = inputHandler.getCameraDistance();
+                float scale = (300f / cameraDistance) * 1.15f;
+
+                // Calculate sprite bounds
+                Texture tex = npc.getTexture();
+                float width = tex.getWidth() * scale;
+                float height = tex.getHeight() * scale;
+                float yOffset = 10f * scale;
+
+                float spriteX = screenPos.x - width / 2f;
+                float spriteY = screenPos.y - height / 2f + yOffset;
+
+                // Check if mouse is over this NPC sprite
+                if (mouseX >= spriteX && mouseX <= spriteX + width &&
+                    mouseY >= spriteY && mouseY <= spriteY + height) {
+
+                    // Use closest NPC to camera if multiple overlap
+                    float distance = screenPos.z;
+                    if (distance < closestDistance) {
+                        closestDistance = distance;
+                        hoveredNPC = npc;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Render tooltip for the currently hovered NPC.
+     * Call this after rendering all NPCs.
+     */
+    public void renderNPCTooltip(SpriteBatch batch, float mouseX, float mouseY) {
+        if (hoveredNPC != null) {
+            npcTooltip.render(batch, hoveredNPC, mouseX, mouseY);
         }
     }
 
@@ -405,5 +489,6 @@ public class GameRenderer {
      */
     public void dispose() {
         shapeRenderer.dispose();
+        npcTooltip.dispose();
     }
 }

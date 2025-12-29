@@ -10,14 +10,15 @@ import java.util.stream.Collectors;
  * Generates elaborate dungeons with natural-looking room placement and connections.
  *
  * Algorithm steps:
- * 1. Generate rooms in elliptical area with normal distribution
- * 2. Separate overlapping rooms using physics simulation
- * 3. Select "main rooms" exceeding size threshold
- * 4. Create Delaunay triangulation of main room centers
- * 5. Reduce to Minimum Spanning Tree
- * 6. Add back 8-10% of removed edges for loops
- * 7. Carve rooms and hallways
- * 8. Create impassable border
+ * 1. Generate rooms by type with appropriate sizes
+ * 2. Balance density to target range (20-30%)
+ * 3. Separate overlapping rooms using physics simulation
+ * 4. Select "main rooms" exceeding size threshold
+ * 5. Create Delaunay triangulation of main room centers
+ * 6. Reduce to Minimum Spanning Tree
+ * 7. Add back 8-10% of removed edges for loops
+ * 8. Carve rooms and hallways with variable widths
+ * 9. Create impassable border
  */
 public class ProceduralDungeonGenerator extends DungeonGenerator {
 
@@ -26,14 +27,17 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
     private List<DelaunayTriangulator.Edge> hallwayEdges;
 
     // Configuration
-    private static final int TARGET_ROOM_COUNT = 90;
-    private static final int MIN_ROOM_SIZE = 5;
-    private static final int MAX_ROOM_SIZE = 15;
+    private static final int TARGET_ROOM_COUNT = 200;        // Rooms for 384×384 dungeon
     private static final float MAIN_ROOM_THRESHOLD = 1.25f;  // Rooms > 1.25x mean size
     private static final float LOOP_EDGE_PERCENT = 0.10f;    // Add back 10% of removed edges
     private static final int MAX_SEPARATION_ITERATIONS = 100;
     private static final float VELOCITY_DAMPING = 0.95f;
     private static final float STABILITY_THRESHOLD = 0.1f;
+
+    // Density balancing
+    private static final float MIN_DENSITY = 0.20f;          // 20% minimum coverage
+    private static final float MAX_DENSITY = 0.30f;          // 30% maximum coverage
+    private static final float TARGET_DENSITY = 0.25f;       // 25% target coverage
 
     public ProceduralDungeonGenerator(DungeonConfig config) {
         super(config);
@@ -47,31 +51,31 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
         // Start with all walls
         fillWithWalls();
 
-        // Step 1: Generate rooms in elliptical area
-        generateRoomsInEllipse();
+        // Step 1: Generate rooms by type with appropriate sizes
+        generateRoomsWithVariety();
 
-        // Step 2: Separate overlapping rooms with physics
+        // Step 2: Balance density to target range (20-30%)
+        balanceDensity();
+
+        // Step 3: Separate overlapping rooms with physics
         separateRooms();
 
-        // Step 3: Select main rooms for triangulation
-        selectMainRooms();
-
-        // Step 4: Delaunay triangulation
-        List<Vector2> mainRoomCenters = mainRooms.stream()
+        // Step 4: Delaunay triangulation on ALL rooms (not just main rooms)
+        List<Vector2> allRoomCenters = rooms.stream()
             .map(DungeonRoom::center)
             .collect(Collectors.toList());
 
         DelaunayTriangulator triangulator = new DelaunayTriangulator();
-        List<DelaunayTriangulator.Edge> triangulation = triangulator.triangulate(mainRoomCenters);
+        List<DelaunayTriangulator.Edge> triangulation = triangulator.triangulate(allRoomCenters);
 
-        // Step 5: Compute MST
+        // Step 5: Compute MST (pure tree - ensures all rooms connected with exactly one path)
         MinimumSpanningTree mstComputer = new MinimumSpanningTree();
-        List<DelaunayTriangulator.Edge> mst = mstComputer.compute(triangulation);
+        hallwayEdges = mstComputer.compute(triangulation);
 
-        // Step 6: Add loop edges (8-10% of removed edges)
-        hallwayEdges = addLoopEdges(mst, triangulation);
+        // Step 6: Mark larger rooms for future boss spawning, loot, etc.
+        markImportantRooms();
 
-        // Step 7: Carve rooms and hallways
+        // Step 7: Carve rooms and hallways with variable widths
         carveRoomsAndHallways();
 
         // Step 8: Create impassable border
@@ -79,39 +83,179 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
     }
 
     /**
-     * Generate rooms randomly positioned within an elliptical area.
-     * Uses normal distribution for natural clustering toward center.
+     * Generate rooms with variety in types and sizes.
+     * Creates boss rooms, barracks, treasure rooms, plazas, and standard rooms.
      */
-    private void generateRoomsInEllipse() {
-        // Ellipse dimensions (slightly smaller than dungeon to leave border)
-        float ellipseWidth = widthInTiles * 0.9f;
-        float ellipseHeight = heightInTiles * 0.9f;
+    private void generateRoomsWithVariety() {
         float centerX = widthInTiles / 2f;
         float centerY = heightInTiles / 2f;
+        float ellipseWidth = widthInTiles * 0.9f;
+        float ellipseHeight = heightInTiles * 0.9f;
 
-        for (int i = 0; i < TARGET_ROOM_COUNT; i++) {
-            // Use normal distribution for position (centered at dungeon center)
-            float nx = (float) random.nextGaussian() * 0.3f;  // Standard deviation = 0.3
+        // 1. Generate 1-2 BOSS rooms (guaranteed, HUGE or MASSIVE)
+        generateRoomsByType(RoomType.BOSS, 2, centerX, centerY, ellipseWidth, ellipseHeight);
+
+        // 2. Generate 5-8 LARGE special rooms (BARRACKS, PLAZAS)
+        generateRoomsByType(RoomType.BARRACKS, 3, centerX, centerY, ellipseWidth, ellipseHeight);
+        generateRoomsByType(RoomType.PLAZA, 3, centerX, centerY, ellipseWidth, ellipseHeight);
+
+        // 3. Generate 15-25 MEDIUM rooms (TREASURE, LIBRARY, ARMORY)
+        generateRoomsByType(RoomType.TREASURE, 8, centerX, centerY, ellipseWidth, ellipseHeight);
+        generateRoomsByType(RoomType.LIBRARY, 5, centerX, centerY, ellipseWidth, ellipseHeight);
+        generateRoomsByType(RoomType.ARMORY, 5, centerX, centerY, ellipseWidth, ellipseHeight);
+        generateRoomsByType(RoomType.SHRINE, 7, centerX, centerY, ellipseWidth, ellipseHeight);
+
+        // 4. Generate 5-10 SECRET rooms (off-path treasures)
+        generateRoomsByType(RoomType.SECRET, 7, centerX, centerY, ellipseWidth, ellipseHeight);
+
+        // 5. Fill remaining with STANDARD rooms to reach target count
+        int remaining = TARGET_ROOM_COUNT - rooms.size();
+        generateRoomsByType(RoomType.STANDARD, remaining, centerX, centerY, ellipseWidth, ellipseHeight);
+    }
+
+    /**
+     * Generate a specific number of rooms of a given type.
+     */
+    private void generateRoomsByType(RoomType type, int count, float centerX, float centerY,
+                                     float ellipseWidth, float ellipseHeight) {
+        for (int i = 0; i < count; i++) {
+            // Random position using Gaussian distribution
+            float nx = (float) random.nextGaussian() * 0.3f;
             float ny = (float) random.nextGaussian() * 0.3f;
-
-            // Clamp to ellipse bounds
             nx = Math.max(-1f, Math.min(1f, nx));
             ny = Math.max(-1f, Math.min(1f, ny));
 
-            // Convert to tile coordinates within ellipse
             float x = centerX + nx * ellipseWidth / 2f;
             float y = centerY + ny * ellipseHeight / 2f;
 
-            // Random room size (normal distribution around mean)
-            int avgSize = (MIN_ROOM_SIZE + MAX_ROOM_SIZE) / 2;
-            int width = MIN_ROOM_SIZE + (int) (Math.abs(random.nextGaussian()) * (avgSize - MIN_ROOM_SIZE));
-            int height = MIN_ROOM_SIZE + (int) (Math.abs(random.nextGaussian()) * (avgSize - MIN_ROOM_SIZE));
+            // Get random allowed size for this room type
+            RoomSize sizeCategory = type.getRandomAllowedSize(random);
+            int width = sizeCategory.getRandomSize(random);
+            int height = sizeCategory.getRandomSize(random);
 
-            width = Math.min(MAX_ROOM_SIZE, width);
-            height = Math.min(MAX_ROOM_SIZE, height);
-
-            DungeonRoom room = new DungeonRoom(x, y, width, height);
+            DungeonRoom room = new DungeonRoom(x, y, width, height, type, sizeCategory);
             rooms.add(room);
+        }
+    }
+
+    /**
+     * Calculate current density (room area / total dungeon area).
+     */
+    private float calculateDensity() {
+        int totalRoomArea = 0;
+        for (DungeonRoom room : rooms) {
+            totalRoomArea += room.getArea();
+        }
+        int totalDungeonArea = widthInTiles * heightInTiles;
+        return (float) totalRoomArea / totalDungeonArea;
+    }
+
+    /**
+     * Balance density to target range (20-30%) by adjusting room sizes.
+     * Grows smaller rooms if density too low, shrinks larger rooms if too high.
+     */
+    private void balanceDensity() {
+        float density = calculateDensity();
+        int iterations = 0;
+        final int MAX_BALANCE_ITERATIONS = 10;
+
+        while ((density < MIN_DENSITY || density > MAX_DENSITY) && iterations < MAX_BALANCE_ITERATIONS) {
+            if (density < MIN_DENSITY) {
+                // Density too low - grow some smaller rooms
+                growSmallerRooms();
+            } else if (density > MAX_DENSITY) {
+                // Density too high - shrink some larger rooms
+                shrinkLargerRooms();
+            }
+
+            density = calculateDensity();
+            iterations++;
+        }
+    }
+
+    /**
+     * Grow smaller rooms to increase density.
+     */
+    private void growSmallerRooms() {
+        // Sort rooms by area (smallest first)
+        rooms.sort(Comparator.comparingInt(DungeonRoom::getArea));
+
+        // Grow bottom 20% of rooms
+        int roomsToGrow = Math.max(1, rooms.size() / 5);
+        for (int i = 0; i < roomsToGrow && i < rooms.size(); i++) {
+            DungeonRoom room = rooms.get(i);
+
+            // Get next larger size category if available
+            RoomSize currentSize = room.sizeCategory;
+            RoomSize nextSize = getNextLargerSize(currentSize);
+
+            if (nextSize != null && room.type.allowsSize(nextSize)) {
+                // Upgrade to next size category
+                room.sizeCategory = nextSize;
+                room.width = nextSize.getRandomSize(random);
+                room.height = nextSize.getRandomSize(random);
+            } else {
+                // Just grow within current category
+                room.width = Math.min(room.width + 2, currentSize.getMax());
+                room.height = Math.min(room.height + 2, currentSize.getMax());
+            }
+        }
+    }
+
+    /**
+     * Shrink larger rooms to decrease density.
+     */
+    private void shrinkLargerRooms() {
+        // Sort rooms by area (largest first)
+        rooms.sort((r1, r2) -> Integer.compare(r2.getArea(), r1.getArea()));
+
+        // Shrink top 20% of rooms
+        int roomsToShrink = Math.max(1, rooms.size() / 5);
+        for (int i = 0; i < roomsToShrink && i < rooms.size(); i++) {
+            DungeonRoom room = rooms.get(i);
+
+            // Get next smaller size category if available
+            RoomSize currentSize = room.sizeCategory;
+            RoomSize nextSize = getNextSmallerSize(currentSize);
+
+            if (nextSize != null && room.type.allowsSize(nextSize)) {
+                // Downgrade to next size category
+                room.sizeCategory = nextSize;
+                room.width = nextSize.getRandomSize(random);
+                room.height = nextSize.getRandomSize(random);
+            } else {
+                // Just shrink within current category
+                room.width = Math.max(room.width - 2, currentSize.getMin());
+                room.height = Math.max(room.height - 2, currentSize.getMin());
+            }
+        }
+    }
+
+    /**
+     * Get the next larger room size category.
+     */
+    private RoomSize getNextLargerSize(RoomSize current) {
+        switch (current) {
+            case SMALL: return RoomSize.MEDIUM;
+            case MEDIUM: return RoomSize.LARGE;
+            case LARGE: return RoomSize.HUGE;
+            case HUGE: return RoomSize.MASSIVE;
+            case MASSIVE: return null;
+            default: return null;
+        }
+    }
+
+    /**
+     * Get the next smaller room size category.
+     */
+    private RoomSize getNextSmallerSize(RoomSize current) {
+        switch (current) {
+            case MASSIVE: return RoomSize.HUGE;
+            case HUGE: return RoomSize.LARGE;
+            case LARGE: return RoomSize.MEDIUM;
+            case MEDIUM: return RoomSize.SMALL;
+            case SMALL: return null;
+            default: return null;
         }
     }
 
@@ -205,72 +349,26 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
     }
 
     /**
-     * Select "main rooms" that exceed size threshold.
-     * These will be used for Delaunay triangulation.
+     * Mark important rooms (larger rooms for boss spawns, special loot, etc.).
+     * All rooms are now connected, but we still want to track which are "important".
      */
-    private void selectMainRooms() {
-        // Calculate mean room size
-        float totalSize = 0;
+    private void markImportantRooms() {
+        // Mark BOSS, PLAZA, and BARRACKS rooms as "main rooms" for gameplay purposes
         for (DungeonRoom room : rooms) {
-            totalSize += (room.width + room.height) / 2f;
-        }
-        float meanSize = totalSize / rooms.size();
-
-        // Select rooms larger than threshold
-        for (DungeonRoom room : rooms) {
-            float avgDimension = (room.width + room.height) / 2f;
-            if (avgDimension >= meanSize * MAIN_ROOM_THRESHOLD) {
+            if (room.type == RoomType.BOSS ||
+                room.type == RoomType.PLAZA ||
+                room.type == RoomType.BARRACKS) {
                 room.isMainRoom = true;
                 mainRooms.add(room);
             }
         }
-
-        // Ensure we have at least 3 main rooms for triangulation
-        if (mainRooms.size() < 3) {
-            // Add largest rooms until we have 3
-            rooms.sort((r1, r2) -> Integer.compare(r2.getArea(), r1.getArea()));
-            for (int i = 0; i < Math.min(3, rooms.size()) && mainRooms.size() < 3; i++) {
-                if (!rooms.get(i).isMainRoom) {
-                    rooms.get(i).isMainRoom = true;
-                    mainRooms.add(rooms.get(i));
-                }
-            }
-        }
     }
 
-    /**
-     * Add loop edges back to MST for alternate paths.
-     * Adds the specified percentage of removed edges, prioritizing shorter edges.
-     */
-    private List<DelaunayTriangulator.Edge> addLoopEdges(
-            List<DelaunayTriangulator.Edge> mst,
-            List<DelaunayTriangulator.Edge> triangulation) {
-
-        // Start with MST edges
-        List<DelaunayTriangulator.Edge> result = new ArrayList<>(mst);
-
-        // Find edges that were removed (in triangulation but not in MST)
-        List<DelaunayTriangulator.Edge> removedEdges = new ArrayList<>();
-        for (DelaunayTriangulator.Edge edge : triangulation) {
-            if (!mst.contains(edge)) {
-                removedEdges.add(edge);
-            }
-        }
-
-        // Sort removed edges by length (prefer shorter loops)
-        removedEdges.sort(Comparator.comparingDouble(DelaunayTriangulator.Edge::length));
-
-        // Add back a percentage of removed edges
-        int edgesToAdd = Math.max(1, (int) (removedEdges.size() * LOOP_EDGE_PERCENT));
-        for (int i = 0; i < Math.min(edgesToAdd, removedEdges.size()); i++) {
-            result.add(removedEdges.get(i));
-        }
-
-        return result;
-    }
+    // Removed addLoopEdges() - no longer needed since we use pure MST (tree structure)
 
     /**
      * Carve all rooms and hallways into the walls array.
+     * Uses variable hallway widths (3, 5, or 7) based on connected room types.
      */
     private void carveRoomsAndHallways() {
         // Carve all rooms (not just main rooms)
@@ -278,9 +376,36 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
             carveRoom(room);
         }
 
-        // Carve hallways between connected rooms
-        HallwayGenerator hallwayGen = new HallwayGenerator(3, random);
-        hallwayGen.carveHallways(walls, hallwayEdges);
+        // Carve hallways with variable widths based on room types
+        for (DelaunayTriangulator.Edge edge : hallwayEdges) {
+            // Find rooms connected by this edge
+            DungeonRoom room1 = findRoomByCenter(edge.a);
+            DungeonRoom room2 = findRoomByCenter(edge.b);
+
+            // Determine hallway width (use max of both rooms for grand corridors)
+            int width1 = room1 != null ? room1.getHallwayWidth() : 3;
+            int width2 = room2 != null ? room2.getHallwayWidth() : 3;
+            int hallwayWidth = Math.max(width1, width2);
+
+            // Carve hallway with appropriate width
+            HallwayGenerator hallwayGen = new HallwayGenerator(hallwayWidth, random);
+            hallwayGen.carveHallway(walls, edge.a, edge.b);
+        }
+    }
+
+    /**
+     * Find a room by its center point (used for hallway connection).
+     */
+    private DungeonRoom findRoomByCenter(Vector2 center) {
+        // Search ALL rooms now (not just main rooms)
+        for (DungeonRoom room : rooms) {
+            Vector2 roomCenter = room.center();
+            float dist = roomCenter.dst(center);
+            if (dist < 1.0f) {  // Close enough to be considered the same point
+                return room;
+            }
+        }
+        return null;
     }
 
     /**

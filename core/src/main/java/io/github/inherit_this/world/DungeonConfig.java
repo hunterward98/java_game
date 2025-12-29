@@ -80,13 +80,13 @@ public class DungeonConfig {
         return new DungeonConfig(System.nanoTime(), dungeonLevel, style, layout);
     }
 
-    // Factory method for procedural dungeon generation (512x512 tiles)
+    // Factory method for procedural dungeon generation (384×384 tiles)
     public static DungeonConfig createProcedural(int dungeonLevel) {
         return new DungeonConfig(
             System.nanoTime(),
             dungeonLevel,
-            64,  // 64x64 chunks = 512x512 tiles
-            64,
+            48,  // 48×48 chunks = 384×384 tiles
+            48,
             GenerationStyle.PROCEDURAL,
             DungeonStyle.OPEN,      // Procedural works best with OPEN style
             DungeonLayout.WINDING   // Complex paths from MST algorithm
@@ -98,8 +98,8 @@ public class DungeonConfig {
         return new DungeonConfig(
             seed,
             dungeonLevel,
-            64,
-            64,
+            48,  // 48×48 chunks = 384×384 tiles
+            48,
             GenerationStyle.PROCEDURAL,
             DungeonStyle.OPEN,
             DungeonLayout.WINDING

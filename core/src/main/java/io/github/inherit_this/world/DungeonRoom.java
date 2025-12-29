@@ -22,6 +22,10 @@ public class DungeonRoom {
     // Whether this room is selected as a "main room" for Delaunay triangulation
     public boolean isMainRoom;
 
+    // Room type and size category
+    public RoomType type;
+    public RoomSize sizeCategory;
+
     /**
      * Create a new dungeon room.
      *
@@ -31,6 +35,20 @@ public class DungeonRoom {
      * @param height Height in tiles
      */
     public DungeonRoom(float x, float y, int width, int height) {
+        this(x, y, width, height, RoomType.STANDARD, RoomSize.MEDIUM);
+    }
+
+    /**
+     * Create a new dungeon room with specific type and size.
+     *
+     * @param x X position in tiles
+     * @param y Y position in tiles
+     * @param width Width in tiles
+     * @param height Height in tiles
+     * @param type Room type
+     * @param sizeCategory Size category
+     */
+    public DungeonRoom(float x, float y, int width, int height, RoomType type, RoomSize sizeCategory) {
         this.x = x;
         this.y = y;
         this.width = width;
@@ -38,6 +56,8 @@ public class DungeonRoom {
         this.velocityX = 0f;
         this.velocityY = 0f;
         this.isMainRoom = false;
+        this.type = type;
+        this.sizeCategory = sizeCategory;
     }
 
     /**
@@ -115,9 +135,17 @@ public class DungeonRoom {
         return Math.abs(velocityX) < threshold && Math.abs(velocityY) < threshold;
     }
 
+    /**
+     * Get the hallway width appropriate for connecting to this room.
+     * Returns 3, 5, or 7 tiles based on room type.
+     */
+    public int getHallwayWidth() {
+        return type != null ? type.getHallwayWidth() : 3;
+    }
+
     @Override
     public String toString() {
-        return String.format("Room[x=%.1f, y=%.1f, w=%d, h=%d, main=%b]",
-                x, y, width, height, isMainRoom);
+        return String.format("Room[x=%.1f, y=%.1f, w=%d, h=%d, type=%s, size=%s, main=%b]",
+                x, y, width, height, type, sizeCategory, isMainRoom);
     }
 }

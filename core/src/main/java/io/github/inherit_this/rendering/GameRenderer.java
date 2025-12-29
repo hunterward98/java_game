@@ -141,6 +141,11 @@ public class GameRenderer {
     private void renderChunk3D(int cx, int cy) {
         Chunk chunk = world.getOrCreateChunk(cx, cy);
 
+        // Chunk can be null for dungeons when outside bounds
+        if (chunk == null) {
+            return;
+        }
+
         // Get cached models (created once, reused every frame)
         List<ModelInstance> models = chunk.getCachedModels();
 

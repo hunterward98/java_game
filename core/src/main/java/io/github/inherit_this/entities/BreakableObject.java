@@ -18,8 +18,8 @@ public class BreakableObject extends Entity {
     private int maxHealth;
     private int currentHealth;
     private List<LootDrop> lootTable;
-    private int goldMin;
-    private int goldMax;
+    private int coinsMin;
+    private int coinsMax;
     private int xpReward;  // XP awarded when broken
     private boolean destroyed;
 
@@ -33,16 +33,16 @@ public class BreakableObject extends Entity {
      * @param x X position in tiles
      * @param y Y position in tiles
      * @param maxHealth How many hits it takes to break
-     * @param goldMin Minimum gold dropped
-     * @param goldMax Maximum gold dropped
+     * @param coinsMin Minimum coins dropped
+     * @param coinsMax Maximum coins dropped
      */
-    public BreakableObject(Texture texture, float x, float y, int maxHealth, int goldMin, int goldMax) {
+    public BreakableObject(Texture texture, float x, float y, int maxHealth, int coinsMin, int coinsMax) {
         super(texture, x, y);
         this.name = "Object";
         this.maxHealth = maxHealth;
         this.currentHealth = maxHealth;
-        this.goldMin = goldMin;
-        this.goldMax = goldMax;
+        this.coinsMin = coinsMin;
+        this.coinsMax = coinsMax;
         this.xpReward = 0;
         this.lootTable = new ArrayList<>();
         this.destroyed = false;
@@ -57,16 +57,16 @@ public class BreakableObject extends Entity {
      * @param x X position in tiles
      * @param y Y position in tiles
      * @param maxHealth How many hits it takes to break
-     * @param goldMin Minimum gold dropped
-     * @param goldMax Maximum gold dropped
+     * @param coinsMin Minimum coins dropped
+     * @param coinsMax Maximum coins dropped
      */
-    public BreakableObject(Model model, Texture texture, float x, float y, int maxHealth, int goldMin, int goldMax) {
+    public BreakableObject(Model model, Texture texture, float x, float y, int maxHealth, int coinsMin, int coinsMax) {
         super(texture, x, y);
         this.name = "Object";
         this.maxHealth = maxHealth;
         this.currentHealth = maxHealth;
-        this.goldMin = goldMin;
-        this.goldMax = goldMax;
+        this.coinsMin = coinsMin;
+        this.coinsMax = coinsMax;
         this.xpReward = 0;
         this.lootTable = new ArrayList<>();
         this.destroyed = false;
@@ -111,10 +111,10 @@ public class BreakableObject extends Entity {
     public List<LootResult> generateLoot() {
         List<LootResult> results = new ArrayList<>();
 
-        // Add gold
-        int gold = goldMin + (int)(Math.random() * (goldMax - goldMin + 1));
-        if (gold > 0) {
-            results.add(new LootResult(null, 0, gold, 0));
+        // Add coins
+        int coins = coinsMin + (int)(Math.random() * (coinsMax - coinsMin + 1));
+        if (coins > 0) {
+            results.add(new LootResult(null, 0, coins, 0));
         }
 
         // Add XP
@@ -214,25 +214,25 @@ public class BreakableObject extends Entity {
      * Result of loot generation.
      */
     public static class LootResult {
-        public final Item item;      // null if this is gold/xp
+        public final Item item;      // null if this is coins/xp
         public final int quantity;   // Item quantity
-        public final int gold;       // Gold amount
+        public final int coins;      // Coins amount
         public final int xp;         // XP amount
 
-        public LootResult(Item item, int quantity, int gold, int xp) {
+        public LootResult(Item item, int quantity, int coins, int xp) {
             this.item = item;
             this.quantity = quantity;
-            this.gold = gold;
+            this.coins = coins;
             this.xp = xp;
         }
 
         // Legacy constructor for backward compatibility
-        public LootResult(Item item, int quantity, int gold) {
-            this(item, quantity, gold, 0);
+        public LootResult(Item item, int quantity, int coins) {
+            this(item, quantity, coins, 0);
         }
 
-        public boolean isGold() {
-            return item == null && gold > 0;
+        public boolean isCoins() {
+            return item == null && coins > 0;
         }
 
         public boolean isItem() {

@@ -38,7 +38,7 @@ public abstract class NPC extends Entity {
     protected float timeSinceLastAttack;
 
     // Loot
-    protected int goldDrop;
+    protected int coinsDrop;
     protected int xpValue;
 
     // Collision box size in tiles (NPC hitbox is about 1 tile)
@@ -71,7 +71,7 @@ public abstract class NPC extends Entity {
         this.detectionRange = 8f;  // tiles
         this.attackRange = 1.5f;   // tiles
         this.attackCooldown = 1.0f; // seconds
-        this.goldDrop = 10;
+        this.coinsDrop = 10;
         this.xpValue = 25;
     }
 
@@ -291,7 +291,7 @@ public abstract class NPC extends Entity {
     public int getMaxHealth() { return maxHealth; }
     public NPCState getState() { return state; }
     public boolean isDead() { return state == NPCState.DEAD; }
-    public int getGoldDrop() { return goldDrop; }
+    public int getCoinsDrop() { return coinsDrop; }
     public int getXPValue() { return xpValue; }
     public int getDamage() { return damage; }
 }

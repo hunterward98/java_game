@@ -162,7 +162,7 @@ public class GameScreen extends ScreenAdapter {
         inputHandler = new io.github.inherit_this.input.InputHandler(camera, player);
 
         // Initialize inventory, equipment, and hotbar UI
-        inventoryUI = new InventoryUI(player.getInventory());
+        inventoryUI = new InventoryUI(player.getInventory(), player.getStats());
         equipmentUI = new EquipmentUI(player.getEquipment());
         hotbarUI = new HotbarUI(player.getInventory(), player.getStats());
 
@@ -296,9 +296,20 @@ public class GameScreen extends ScreenAdapter {
 
     @Override
     public void render(float delta) {
-        // Clear screen - any void will be sky blue
-        ScreenUtils.clear(0.53f, 0.81f, 0.92f, 1f);
+        // Clear screen - sky blue for overworld, dark for dungeons
+        boolean inDungeon = world instanceof io.github.inherit_this.world.DungeonWorld;
+
+        if (inDungeon) {
+            // Dark background for dungeons
+            ScreenUtils.clear(0.05f, 0.05f, 0.08f, 1f);
+        } else {
+            // Sky blue for overworld
+            ScreenUtils.clear(0.53f, 0.81f, 0.92f, 1f);
+        }
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
+
+        // Update fog based on location
+        updateFog(inDungeon);
 
         // Track play time
         updatePlayTime();
@@ -443,6 +454,7 @@ public class GameScreen extends ScreenAdapter {
         // Render breakable object tooltip if hovering
         if (!debugConsole.isOpen() && !inventoryOpen) {
             renderBreakableObjectTooltip(batch);
+            renderDroppedItemTooltip(batch);
         }
 
         // Render particle effects (projected from 3D world to 2D screen, like player)
@@ -472,6 +484,28 @@ public class GameScreen extends ScreenAdapter {
      */
     private void updatePlayTime() {
         playTimeMillis = System.currentTimeMillis() - sessionStartTime;
+    }
+
+    /**
+     * Updates fog rendering based on whether the player is in a dungeon.
+     * Dungeons get atmospheric fog to soften distant/unloaded areas.
+     * Uses LibGDX's shader-based fog (ColorAttribute.Fog).
+     */
+    private void updateFog(boolean inDungeon) {
+        if (inDungeon) {
+            // Add dark fog for dungeons if not already present
+            if (!environment.has(ColorAttribute.Fog)) {
+                // Dark gray fog that matches the dungeon atmosphere
+                // The fog color should match the clear color for seamless blending
+                // This creates atmospheric depth and hides distant unloaded areas
+                environment.set(new ColorAttribute(ColorAttribute.Fog, 0.05f, 0.05f, 0.08f, 1f));
+            }
+        } else {
+            // Remove fog for overworld
+            if (environment.has(ColorAttribute.Fog)) {
+                environment.remove(ColorAttribute.Fog);
+            }
+        }
     }
 
     /**
@@ -621,16 +655,17 @@ public class GameScreen extends ScreenAdapter {
 
         Random random = new Random();
         int dungeonLevel = dungeon.getConfig().getDungeonLevel();
+        int playerLevel = player.getStats().getLevel();
         int totalLootSpawned = 0;
 
         // Spawn loot in rooms based on lootValue
-        // Higher dungeon levels = more coins clustered at each spawn point (not more spawn points)
+        // Reduced spawn points by 80%, but each stack contains multiple coins
         for (io.github.inherit_this.world.DungeonRoom room : rooms) {
             int lootValue = room.lootValue;
 
-            // Number of spawn locations based on loot value (not affected by dungeon level)
-            // This keeps the number of items consistent, just makes them more valuable
-            int numSpawnPoints = Math.max(1, lootValue / 2 + random.nextInt(Math.max(1, lootValue / 2)));
+            // Reduced spawn points by 80% (multiply by 0.2)
+            int baseSpawnPoints = Math.max(1, lootValue / 2 + random.nextInt(Math.max(1, lootValue / 2)));
+            int numSpawnPoints = Math.max(1, (int)(baseSpawnPoints * 0.2));
 
             for (int i = 0; i < numSpawnPoints; i++) {
                 // Find a random floor tile within the room (avoiding edges)
@@ -640,29 +675,28 @@ public class GameScreen extends ScreenAdapter {
 
                 // Make sure it's not a wall
                 if (!generator.isWall(rx, ry)) {
-                    // Spawn multiple coins at this location based on dungeon level
-                    // Level 1: 1-3 coins, Level 10: 1-12 coins, Level 50: 1-52 coins
-                    int coinsAtLocation = 1 + random.nextInt(dungeonLevel + 2);
+                    // Calculate coin stack quantity based on formula:
+                    // min = 5 * dungeonLevel + playerLevel
+                    // max = 6 * dungeonLevel + 3 * playerLevel
+                    int minCoins = 5 * dungeonLevel + playerLevel;
+                    int maxCoins = 6 * dungeonLevel + 3 * playerLevel;
+                    int coinQuantity = minCoins + random.nextInt(Math.max(1, maxCoins - minCoins + 1));
 
-                    for (int c = 0; c < coinsAtLocation; c++) {
-                        // Slight position variation so coins don't overlap exactly
-                        float offsetX = (random.nextFloat() - 0.5f) * 0.3f;
-                        float offsetY = (random.nextFloat() - 0.5f) * 0.3f;
-
-                        io.github.inherit_this.entities.DroppedItem droppedItem =
-                            new io.github.inherit_this.entities.DroppedItem(coins, rx + offsetX, ry + offsetY);
-                        droppedItems.add(droppedItem);
-                        totalLootSpawned++;
-                    }
+                    // Spawn a single coin stack at this location
+                    io.github.inherit_this.entities.DroppedItem droppedItem =
+                        new io.github.inherit_this.entities.DroppedItem(coins, rx, ry, coinQuantity);
+                    droppedItems.add(droppedItem);
+                    totalLootSpawned += coinQuantity;
                 }
             }
         }
 
         // Spawn scattered loot in hallways (less dense than rooms but still visible)
-        // Sample 5-10% of floor tiles for hallway loot
+        // Reduced hallway samples by 80% (multiply by 0.2)
         int width = generator.getWidthInTiles();
         int height = generator.getHeightInTiles();
-        int hallwaySamples = (width * height) / 15; // Check about 6-7% of tiles
+        int baseHallwaySamples = (width * height) / 15; // Check about 6-7% of tiles
+        int hallwaySamples = Math.max(1, (int)(baseHallwaySamples * 0.2)); // Reduced by 80%
 
         for (int i = 0; i < hallwaySamples; i++) {
             int x = 10 + random.nextInt(width - 20);  // Stay away from borders
@@ -670,23 +704,23 @@ public class GameScreen extends ScreenAdapter {
 
             // Check if it's a floor tile (not wall) and not in any room
             if (!generator.isWall(x, y) && !isInAnyRoom(rooms, x, y)) {
-                // Hallways have about half the loot of rooms
-                // Level 1: 1-2 coins, Level 10: 1-6 coins, Level 50: 1-26 coins
-                int coinsAtLocation = 1 + random.nextInt(Math.max(2, (dungeonLevel + 1) / 2));
+                // Hallways have about half the coin value of rooms
+                int minCoins = (5 * dungeonLevel + playerLevel) / 2;
+                int maxCoins = (6 * dungeonLevel + 3 * playerLevel) / 2;
+                int coinQuantity = minCoins + random.nextInt(Math.max(1, maxCoins - minCoins + 1));
 
-                for (int c = 0; c < coinsAtLocation; c++) {
-                    float offsetX = (random.nextFloat() - 0.5f) * 0.3f;
-                    float offsetY = (random.nextFloat() - 0.5f) * 0.3f;
-
-                    io.github.inherit_this.entities.DroppedItem droppedItem =
-                        new io.github.inherit_this.entities.DroppedItem(coins, x + offsetX, y + offsetY);
-                    droppedItems.add(droppedItem);
-                    totalLootSpawned++;
-                }
+                // Spawn a single coin stack at this location
+                io.github.inherit_this.entities.DroppedItem droppedItem =
+                    new io.github.inherit_this.entities.DroppedItem(coins, x, y, coinQuantity);
+                droppedItems.add(droppedItem);
+                totalLootSpawned += coinQuantity;
             }
         }
 
-        Gdx.app.log("GameScreen", "Spawned " + totalLootSpawned + " coins in dungeon (level " + dungeonLevel + ")");
+        // Spawn breakable objects (pots and crates) in rooms
+        int objectsSpawned = spawnBreakableObjectsInRooms(rooms, generator, dungeonLevel, random);
+
+        Gdx.app.log("GameScreen", "Spawned " + totalLootSpawned + " coins and " + objectsSpawned + " breakable objects in dungeon (level " + dungeonLevel + ")");
     }
 
     /**
@@ -700,6 +734,52 @@ public class GameScreen extends ScreenAdapter {
             }
         }
         return false;
+    }
+
+    /**
+     * Spawns breakable objects (pots and crates) in dungeon rooms.
+     * Number of objects scales with room loot value, difficulty scales with dungeon level.
+     * @return Total number of objects spawned
+     */
+    private int spawnBreakableObjectsInRooms(List<io.github.inherit_this.world.DungeonRoom> rooms,
+                                              io.github.inherit_this.world.DungeonGenerator generator,
+                                              int dungeonLevel, Random random) {
+        int objectsSpawned = 0;
+        int playerLevel = player.getStats().getLevel(); // Get current player level for loot scaling
+
+        for (io.github.inherit_this.world.DungeonRoom room : rooms) {
+            int lootValue = room.lootValue;
+
+            // Number of breakable objects based on room loot value
+            // Small rooms (lootValue ~3): 1-2 objects
+            // Medium rooms (lootValue ~5): 2-3 objects
+            // Large rooms (lootValue ~8): 3-5 objects
+            int numObjects = Math.max(1, lootValue / 3 + random.nextInt(Math.max(1, lootValue / 3)));
+
+            for (int i = 0; i < numObjects; i++) {
+                // Find a random floor tile within the room (avoiding edges)
+                int margin = 2; // Stay away from walls
+                int rx = (int) room.x + margin + random.nextInt(Math.max(1, room.width - margin * 2));
+                int ry = (int) room.y + margin + random.nextInt(Math.max(1, room.height - margin * 2));
+
+                // Make sure it's not a wall
+                if (!generator.isWall(rx, ry)) {
+                    // Randomly choose between pot (70%) and crate (30%)
+                    // Pots are more common but have less loot
+                    BreakableObject obj;
+                    if (random.nextFloat() < 0.7f) {
+                        obj = BreakableObjectFactory.createPot(rx, ry, playerLevel, dungeonLevel);
+                    } else {
+                        obj = BreakableObjectFactory.createCrate(rx, ry, playerLevel, dungeonLevel);
+                    }
+
+                    breakableObjects.add(obj);
+                    objectsSpawned++;
+                }
+            }
+        }
+
+        return objectsSpawned;
     }
 
     private void handleInput() {
@@ -741,6 +821,12 @@ public class GameScreen extends ScreenAdapter {
         world = dungeonController.getCurrentWorld();  // Sync world after portal use
         mapEditor.setWorld(world);
         gameRenderer.setWorld(world);
+
+        // Handle left-click to pickup dropped items
+        if (!debugConsole.isOpen() && !inventoryOpen && Gdx.input.justTouched() &&
+            Gdx.input.isButtonPressed(Input.Buttons.LEFT)) {
+            handleItemPickup();
+        }
 
         // Update nearby interactable object
         updateNearbyInteractable();
@@ -976,6 +1062,55 @@ public class GameScreen extends ScreenAdapter {
     }
 
     /**
+     * Renders a tooltip for dropped items (coins) when player is near.
+     */
+    private void renderDroppedItemTooltip(SpriteBatch batch) {
+        float playerX = player.getPosition().x;
+        float playerY = player.getPosition().y;
+        float pickupRange = 2.0f; // Same range as pickup
+
+        // Find nearest dropped item
+        io.github.inherit_this.entities.DroppedItem nearestItem = null;
+        float nearestDist = pickupRange;
+
+        for (io.github.inherit_this.entities.DroppedItem item : droppedItems) {
+            if (item.isPickedUp()) continue;
+
+            float dist = item.getPosition().dst(playerX, playerY);
+            if (dist < nearestDist) {
+                nearestDist = dist;
+                nearestItem = item;
+            }
+        }
+
+        // Show tooltip for nearest item if it's currency (coins)
+        if (nearestItem != null && nearestItem.getItem().getType() == io.github.inherit_this.items.ItemType.CURRENCY) {
+            BitmapFont tooltipFont = FontManager.getInstance().getTooltipFont();
+            String text = "Coins " + nearestItem.getQuantity();
+
+            // Position tooltip at center of screen (above player)
+            float textX = Gdx.graphics.getWidth() / 2f;
+            float textY = Gdx.graphics.getHeight() / 2f + 100;
+
+            // Center the text
+            com.badlogic.gdx.graphics.g2d.GlyphLayout layout = new com.badlogic.gdx.graphics.g2d.GlyphLayout(tooltipFont, text);
+            float bgX = textX - layout.width / 2;
+            float bgY = textY - layout.height / 2;
+
+            // Draw text shadow (black outline)
+            tooltipFont.setColor(0, 0, 0, 1);
+            tooltipFont.draw(batch, text, bgX - 1, bgY - 1);
+            tooltipFont.draw(batch, text, bgX + 1, bgY - 1);
+            tooltipFont.draw(batch, text, bgX - 1, bgY + 1);
+            tooltipFont.draw(batch, text, bgX + 1, bgY + 1);
+
+            // Draw main text in gold/yellow color for coins
+            tooltipFont.setColor(0.9f, 0.8f, 0.2f, 1);
+            tooltipFont.draw(batch, text, bgX, bgY);
+        }
+    }
+
+    /**
      * Handles right-click interactions with breakable objects.
      * Damages/breaks objects and gives loot to the player.
      */
@@ -1021,10 +1156,10 @@ public class GameScreen extends ScreenAdapter {
                     // Generate and give loot to player
                     java.util.List<BreakableObject.LootResult> loot = obj.generateLoot();
                     for (BreakableObject.LootResult result : loot) {
-                        if (result.isGold()) {
-                            player.getInventory().addGold(result.gold);
+                        if (result.isCoins()) {
+                            player.getStats().addCoins(result.coins);
                             SoundManager.getInstance().playWithVariation(SoundType.LOOT_GOLD, 0.7f);
-                            Gdx.app.log("Loot", "Received " + result.gold + " gold");
+                            Gdx.app.log("Loot", "Received " + result.coins + " coins");
                         } else if (result.isXP()) {
                             int levelsGained = player.getStats().addXP(result.xp);
                             if (levelsGained > 0) {
@@ -1107,6 +1242,59 @@ public class GameScreen extends ScreenAdapter {
                     // TODO: Open blessing/buff UI
                     Gdx.app.log("Interaction", "Activated shrine!");
                     break;
+            }
+        }
+    }
+
+    /**
+     * Handles picking up dropped items when the player left-clicks near them.
+     * Coins are automatically added to gold, other items go to inventory.
+     */
+    private void handleItemPickup() {
+        float playerX = player.getPosition().x;
+        float playerY = player.getPosition().y;
+        float pickupRange = 2.0f; // Can pick up items within 2 tiles
+
+        // Find the nearest item in range
+        DroppedItem nearestItem = null;
+        float nearestDistance = Float.MAX_VALUE;
+
+        for (DroppedItem item : droppedItems) {
+            if (item.isPickedUp()) continue;
+
+            if (item.isInRange(playerX, playerY, pickupRange)) {
+                float dx = playerX - item.getPosition().x;
+                float dy = playerY - item.getPosition().y;
+                float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestItem = item;
+                }
+            }
+        }
+
+        // Pick up the nearest item
+        if (nearestItem != null) {
+            // Check if it's currency (coins) - add to coin counter instead of inventory
+            if (nearestItem.getItem().getType() == io.github.inherit_this.items.ItemType.CURRENCY) {
+                int coinAmount = nearestItem.getQuantity();
+                nearestItem.pickup(); // Mark as picked up
+                player.getStats().addCoins(coinAmount);
+                SoundManager.getInstance().play(SoundType.INVENTORY_PICKUP, 0.6f);
+                Gdx.app.log("Pickup", "Picked up " + coinAmount + " coins (Total: " + player.getStats().getCoins() + ")");
+            } else {
+                // Other items go to inventory
+                boolean added = inventoryUI.getInventory().addItem(nearestItem.getItem(), 1);
+
+                if (added) {
+                    nearestItem.pickup(); // Mark as picked up
+                    SoundManager.getInstance().play(SoundType.INVENTORY_PICKUP, 0.7f);
+                    Gdx.app.log("Pickup", "Picked up " + nearestItem.getItem().getName());
+                } else {
+                    // Inventory full
+                    Gdx.app.log("Pickup", "Inventory full! Cannot pick up " + nearestItem.getItem().getName());
+                }
             }
         }
     }

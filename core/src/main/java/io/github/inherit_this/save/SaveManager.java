@@ -53,9 +53,9 @@ public class SaveManager {
             data.setDungeonSeed(player.getStats().getDungeonSeed());
 
             // Save inventory
-            int goldAmount = player.getInventory().getGold();
-            data.setGold(goldAmount);
-            Gdx.app.log("SaveManager", "Saving gold: " + goldAmount);
+            int coinsAmount = player.getStats().getCoins();
+            data.setCoins(coinsAmount);
+            Gdx.app.log("SaveManager", "Saving coins: " + coinsAmount);
             data.setInventoryItems(serializeInventory(player.getInventory()));
 
             // Save equipment
@@ -134,12 +134,12 @@ public class SaveManager {
         io.github.inherit_this.world.DungeonManager.getInstance().setPlayerSeed(savedSeed);
 
         // Apply inventory
-        player.getInventory().clear();  // This also resets gold to 0
+        player.getInventory().clear();
         deserializeInventory(data.getInventoryItems(), player.getInventory());
-        int goldToRestore = data.getGold();
-        Gdx.app.log("SaveManager", "Restoring gold: " + goldToRestore);
-        player.getInventory().addGold(goldToRestore);  // Add gold AFTER deserializing items
-        Gdx.app.log("SaveManager", "Gold after restore: " + player.getInventory().getGold());
+        int coinsToRestore = data.getCoins();
+        Gdx.app.log("SaveManager", "Restoring coins: " + coinsToRestore);
+        player.getStats().setCoins(coinsToRestore);
+        Gdx.app.log("SaveManager", "Coins after restore: " + player.getStats().getCoins());
 
         // Apply equipment
         deserializeEquipment(data.getEquippedItems(), player.getEquipment());

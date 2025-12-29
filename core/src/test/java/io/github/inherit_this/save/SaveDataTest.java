@@ -177,17 +177,17 @@ class SaveDataTest {
     class Inventory {
 
         @Test
-        @DisplayName("Should set and get gold")
-        void testGold() {
-            saveData.setGold(500);
-            assertEquals(500, saveData.getGold(), "Gold should match");
+        @DisplayName("Should set and get coins")
+        void testCoins() {
+            saveData.setCoins(500);
+            assertEquals(500, saveData.getCoins(), "Coins should match");
         }
 
         @Test
-        @DisplayName("Should handle zero gold")
-        void testZeroGold() {
-            saveData.setGold(0);
-            assertEquals(0, saveData.getGold());
+        @DisplayName("Should handle zero coins")
+        void testZeroCoins() {
+            saveData.setCoins(0);
+            assertEquals(0, saveData.getCoins());
         }
 
         @Test
@@ -319,7 +319,7 @@ class SaveDataTest {
             saveData.setMaxMana(50f);
             saveData.setLevel(10);
             saveData.setExperience(500f);
-            saveData.setGold(1000);
+            saveData.setCoins(1000);
 
             List<SavedItemStack> items = new ArrayList<>();
             items.add(new SavedItemStack("test_item", 5, 0, 0));
@@ -343,7 +343,7 @@ class SaveDataTest {
             assertEquals(20.3f, deserialized.getPlayerY(), 0.001f);
             assertEquals(75f, deserialized.getHealth(), 0.001f);
             assertEquals(10, deserialized.getLevel());
-            assertEquals(1000, deserialized.getGold());
+            assertEquals(1000, deserialized.getCoins());
             assertEquals(1, deserialized.getInventoryItems().size());
             assertEquals("test_item", deserialized.getInventoryItems().get(0).getItemId());
         }
@@ -352,7 +352,7 @@ class SaveDataTest {
         @DisplayName("Should maintain data integrity after serialization")
         void testDataIntegrity() throws Exception {
             saveData.setCharacterName("IntegrityTest");
-            saveData.setGold(12345);
+            saveData.setCoins(12345);
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ObjectOutputStream oos = new ObjectOutputStream(baos);
@@ -365,7 +365,7 @@ class SaveDataTest {
             ois.close();
 
             assertEquals("IntegrityTest", deserialized.getCharacterName());
-            assertEquals(12345, deserialized.getGold());
+            assertEquals(12345, deserialized.getCoins());
         }
     }
 
@@ -519,7 +519,7 @@ class SaveDataTest {
             assertEquals(0f, empty.getPlayerX(), 0.001f);
             assertEquals(0f, empty.getPlayerY(), 0.001f);
             assertEquals(0f, empty.getHealth(), 0.001f);
-            assertEquals(0, empty.getGold());
+            assertEquals(0, empty.getCoins());
             assertEquals(0, empty.getLevel());
             assertNotNull(empty.getInventoryItems());
             assertNotNull(empty.getEquippedItems());

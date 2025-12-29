@@ -15,7 +15,7 @@ import io.github.inherit_this.util.FontManager;
 
 /**
  * Hotbar UI displayed at the bottom of the screen.
- * Shows 5 quick-access item slots, stat bars (XP, Health, Mana, Stamina), and gold.
+ * Shows 5 quick-access item slots, stat bars (XP, Health, Mana, Stamina), and coins.
  */
 public class HotbarUI {
     private final Inventory inventory;
@@ -105,9 +105,9 @@ public class HotbarUI {
         // Calculate total width needed
         int slotsWidth = NUM_HOTBAR_SLOTS * HOTBAR_SLOT_SIZE + (NUM_HOTBAR_SLOTS - 1) * HOTBAR_SLOT_PADDING;
         int barsWidth = 200; // Width for stat bars
-        int goldWidth = 100; // Width for gold display
+        int coinsWidth = 100; // Width for coins display
 
-        uiWidth = PANEL_PADDING * 2 + slotsWidth + PANEL_PADDING + barsWidth + PANEL_PADDING + goldWidth;
+        uiWidth = PANEL_PADDING * 2 + slotsWidth + PANEL_PADDING + barsWidth + PANEL_PADDING + coinsWidth;
 
         // Height is determined by the taller element (bars are ~68px, slots are 56px)
         // Total bars height = 4 bars * 14px + 3 padding * 4px = 68px
@@ -227,13 +227,13 @@ public class HotbarUI {
         font.draw(batch, "Stam: " + (int)stats.getCurrentStamina() + "/" + (int)stats.getMaxStamina(),
                   Math.round(barsStartX), Math.round(barsY + BAR_HEIGHT + 2));
 
-        // Draw gold (use integer coordinates for pixel-perfect rendering)
-        float goldX = barsStartX + barWidth + PANEL_PADDING;
-        float goldY = uiY + uiHeight / 2;
-        font.setColor(XP_BAR_COLOR); // Gold color
-        font.draw(batch, "Gold", Math.round(goldX), Math.round(goldY + 20));
+        // Draw coins (use integer coordinates for pixel-perfect rendering)
+        float coinsX = barsStartX + barWidth + PANEL_PADDING;
+        float coinsY = uiY + uiHeight / 2;
+        font.setColor(XP_BAR_COLOR); // Gold/yellow color for coins
+        font.draw(batch, "Coins", Math.round(coinsX), Math.round(coinsY + 20));
         font.setColor(Color.WHITE);
-        font.draw(batch, "" + inventory.getGold(), Math.round(goldX), Math.round(goldY));
+        font.draw(batch, "" + stats.getCoins(), Math.round(coinsX), Math.round(coinsY));
 
         // Draw XP progress (use integer coordinates for pixel-perfect rendering)
         if (!stats.isMaxLevel()) {

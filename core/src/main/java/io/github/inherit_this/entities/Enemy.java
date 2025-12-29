@@ -47,7 +47,7 @@ public class Enemy extends NPC {
         this.detectionRange = stats.detectionRange;
         this.attackRange = stats.attackRange;
         this.attackCooldown = stats.attackCooldown;
-        this.goldDrop = stats.goldDrop;
+        this.coinsDrop = stats.coinsDrop;
         this.xpValue = stats.xpValue;
         // Intelligence will be used for future AI improvements
     }
@@ -215,11 +215,11 @@ public class Enemy extends NPC {
     protected void onDeath(Entity killer) {
         super.onDeath(killer);
 
-        // Give XP and gold to player
+        // Give XP and coins to player
         if (killer instanceof Player) {
             Player player = (Player) killer;
             player.getStats().addXP(xpValue);
-            player.getInventory().addGold(goldDrop);
+            player.getStats().addCoins(coinsDrop);
         }
     }
 

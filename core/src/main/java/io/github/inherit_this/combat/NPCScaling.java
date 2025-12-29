@@ -16,12 +16,12 @@ public class NPCScaling {
         public final float detectionRange;
         public final float attackRange;
         public final float attackCooldown;
-        public final int goldDrop;
+        public final int coinsDrop;
         public final int xpValue;
         public final float intelligence;
 
         public ScaledStats(int maxHealth, int damage, float speed, float detectionRange,
-                          float attackRange, float attackCooldown, int goldDrop, int xpValue,
+                          float attackRange, float attackCooldown, int coinsDrop, int xpValue,
                           float intelligence) {
             this.maxHealth = maxHealth;
             this.damage = damage;
@@ -29,7 +29,7 @@ public class NPCScaling {
             this.detectionRange = detectionRange;
             this.attackRange = attackRange;
             this.attackCooldown = attackCooldown;
-            this.goldDrop = goldDrop;
+            this.coinsDrop = coinsDrop;
             this.xpValue = xpValue;
             this.intelligence = intelligence;
         }
@@ -74,8 +74,8 @@ public class NPCScaling {
         float scaledCooldown = template.getAttackCooldown() / (1.0f + playerLevel * 0.01f) / difficulty.getAiSpeedMultiplier();
         scaledCooldown = Math.max(0.3f, scaledCooldown); // Min cooldown of 0.3s
 
-        // Gold and XP scale with levels and difficulty
-        int scaledGold = Math.round(template.getBaseGold() * levelMultiplier * difficulty.getLootMultiplier());
+        // Coins and XP scale with levels and difficulty
+        int scaledCoins = Math.round(template.getBaseGold() * levelMultiplier * difficulty.getLootMultiplier());
         int scaledXP = Math.round(template.getBaseXP() * levelMultiplier);
 
         // Intelligence increases slightly with dungeon level and difficulty
@@ -90,7 +90,7 @@ public class NPCScaling {
             scaledDetection,
             scaledAttackRange,
             scaledCooldown,
-            scaledGold,
+            scaledCoins,
             scaledXP,
             scaledIntelligence
         );

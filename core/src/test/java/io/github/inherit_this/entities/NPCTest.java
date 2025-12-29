@@ -87,7 +87,7 @@ class NPCTest {
             assertEquals(100, npc.getMaxHealth(), "Default max health should be 100");
             assertEquals(100, npc.getCurrentHealth(), "Default current health should be 100");
             assertEquals(10, npc.getDamage(), "Default damage should be 10");
-            assertEquals(10, npc.getGoldDrop(), "Default gold drop should be 10");
+            assertEquals(10, npc.getCoinsDrop(), "Default coins drop should be 10");
             assertEquals(25, npc.getXPValue(), "Default XP value should be 25");
         }
 
@@ -359,12 +359,12 @@ class NPCTest {
         void testEnemyDropsLoot() {
             PlayerStats stats = mockPlayer.getStats();
             int initialXP = (int) stats.getCurrentXP();
+            int initialCoins = stats.getCoins();
 
             when(mockPlayer.getInventory()).thenReturn(new io.github.inherit_this.items.Inventory(8, 6));
 
-            int initialGold = mockPlayer.getInventory().getGold();
             int expectedXP = enemy.getXPValue();
-            int expectedGold = enemy.getGoldDrop();
+            int expectedCoins = enemy.getCoinsDrop();
 
             // Kill enemy
             enemy.takeDamage(1000, mockPlayer);
@@ -375,9 +375,9 @@ class NPCTest {
             assertEquals(initialXP + expectedXP, stats.getCurrentXP(), 0.01f,
                     "Player should receive XP from enemy");
 
-            // Gold should have been added
-            assertEquals(initialGold + expectedGold, mockPlayer.getInventory().getGold(),
-                    "Player should receive gold from enemy");
+            // Coins should have been added
+            assertEquals(initialCoins + expectedCoins, stats.getCoins(),
+                    "Player should receive coins from enemy");
         }
 
         @Test

@@ -12,7 +12,24 @@ public class DroppedItem {
     private final Item item;
     private final Vector2 position; // Position in tiles
     private final Texture texture;
+    private final int quantity; // Quantity (1 for regular items, can be multiple for currency)
     private boolean pickedUp;
+
+    /**
+     * Create a dropped item at a specific position with a specific quantity.
+     * @param item The item that was dropped
+     * @param tileX X position in tiles
+     * @param tileY Y position in tiles
+     * @param texture Texture to display (can be different from item texture)
+     * @param quantity Number of items in this stack
+     */
+    public DroppedItem(Item item, float tileX, float tileY, Texture texture, int quantity) {
+        this.item = item;
+        this.position = new Vector2(tileX, tileY);
+        this.texture = texture;
+        this.quantity = Math.max(1, quantity);
+        this.pickedUp = false;
+    }
 
     /**
      * Create a dropped item at a specific position.
@@ -22,17 +39,21 @@ public class DroppedItem {
      * @param texture Texture to display (can be different from item texture)
      */
     public DroppedItem(Item item, float tileX, float tileY, Texture texture) {
-        this.item = item;
-        this.position = new Vector2(tileX, tileY);
-        this.texture = texture;
-        this.pickedUp = false;
+        this(item, tileX, tileY, texture, 1);
     }
 
     /**
      * Create a dropped item using the item's default icon.
      */
     public DroppedItem(Item item, float tileX, float tileY) {
-        this(item, tileX, tileY, item.getIcon());
+        this(item, tileX, tileY, item.getIcon(), 1);
+    }
+
+    /**
+     * Create a dropped item using the item's default icon with a specific quantity.
+     */
+    public DroppedItem(Item item, float tileX, float tileY, int quantity) {
+        this(item, tileX, tileY, item.getIcon(), quantity);
     }
 
     /**
@@ -60,5 +81,6 @@ public class DroppedItem {
     public Item getItem() { return item; }
     public Vector2 getPosition() { return position; }
     public Texture getTexture() { return texture; }
+    public int getQuantity() { return quantity; }
     public boolean isPickedUp() { return pickedUp; }
 }

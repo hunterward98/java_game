@@ -39,7 +39,7 @@ class BreakableObjectTest {
         when(mockTexture.getWidth()).thenReturn(32);
         when(mockTexture.getHeight()).thenReturn(32);
 
-        // Create 2D breakable object at (10, 15) with 50 health, 5-10 gold
+        // Create 2D breakable object at (10, 15) with 50 health, 5-10 coins
         breakableObject2D = new BreakableObject(mockTexture, 10f, 15f, 50, 5, 10);
 
         // Create 3D breakable object
@@ -163,28 +163,28 @@ class BreakableObjectTest {
         // Generate loot multiple times to verify item drops
         List<BreakableObject.LootResult> loot = breakableObject2D.generateLoot();
 
-        // Should have gold and item (with 100% drop chance)
+        // Should have coins and item (with 100% drop chance)
         boolean hasItem = loot.stream().anyMatch(BreakableObject.LootResult::isItem);
         assertTrue(hasItem, "Loot should contain the added item");
     }
 
     @Test
-    @DisplayName("GenerateLoot should include gold")
-    void testGenerateLootGold() {
+    @DisplayName("GenerateLoot should include coins")
+    void testGenerateLootCoins() {
         List<BreakableObject.LootResult> loot = breakableObject2D.generateLoot();
 
-        // Should have at least one gold entry
-        boolean hasGold = loot.stream().anyMatch(BreakableObject.LootResult::isGold);
-        assertTrue(hasGold, "Loot should contain gold");
+        // Should have at least one coins entry
+        boolean hasCoins = loot.stream().anyMatch(BreakableObject.LootResult::isCoins);
+        assertTrue(hasCoins, "Loot should contain coins");
 
-        // Gold amount should be in range
-        int goldAmount = loot.stream()
-                .filter(BreakableObject.LootResult::isGold)
-                .mapToInt(l -> l.gold)
+        // Coins amount should be in range
+        int coinsAmount = loot.stream()
+                .filter(BreakableObject.LootResult::isCoins)
+                .mapToInt(l -> l.coins)
                 .sum();
 
-        assertTrue(goldAmount >= 5 && goldAmount <= 10,
-                "Gold amount should be between 5 and 10");
+        assertTrue(coinsAmount >= 5 && coinsAmount <= 10,
+                "Coins amount should be between 5 and 10");
     }
 
     @Test
@@ -272,12 +272,12 @@ class BreakableObjectTest {
     }
 
     @Test
-    @DisplayName("LootResult should correctly identify gold")
-    void testLootResultIsGold() {
-        BreakableObject.LootResult goldResult = new BreakableObject.LootResult(null, 0, 10, 0);
-        assertTrue(goldResult.isGold(), "Should be identified as gold");
-        assertFalse(goldResult.isItem(), "Should not be identified as item");
-        assertFalse(goldResult.isXP(), "Should not be identified as XP");
+    @DisplayName("LootResult should correctly identify coins")
+    void testLootResultIsCoins() {
+        BreakableObject.LootResult coinsResult = new BreakableObject.LootResult(null, 0, 10, 0);
+        assertTrue(coinsResult.isCoins(), "Should be identified as coins");
+        assertFalse(coinsResult.isItem(), "Should not be identified as item");
+        assertFalse(coinsResult.isXP(), "Should not be identified as XP");
     }
 
     @Test
@@ -285,7 +285,7 @@ class BreakableObjectTest {
     void testLootResultIsItem() {
         BreakableObject.LootResult itemResult = new BreakableObject.LootResult(mockItem, 5, 0, 0);
         assertTrue(itemResult.isItem(), "Should be identified as item");
-        assertFalse(itemResult.isGold(), "Should not be identified as gold");
+        assertFalse(itemResult.isCoins(), "Should not be identified as coins");
         assertFalse(itemResult.isXP(), "Should not be identified as XP");
     }
 
@@ -294,7 +294,7 @@ class BreakableObjectTest {
     void testLootResultIsXP() {
         BreakableObject.LootResult xpResult = new BreakableObject.LootResult(null, 0, 0, 25);
         assertTrue(xpResult.isXP(), "Should be identified as XP");
-        assertFalse(xpResult.isGold(), "Should not be identified as gold");
+        assertFalse(xpResult.isCoins(), "Should not be identified as coins");
         assertFalse(xpResult.isItem(), "Should not be identified as item");
     }
 
@@ -304,7 +304,7 @@ class BreakableObjectTest {
         BreakableObject.LootResult result = new BreakableObject.LootResult(mockItem, 3, 50);
         assertEquals(mockItem, result.item, "Item should match");
         assertEquals(3, result.quantity, "Quantity should match");
-        assertEquals(50, result.gold, "Gold should match");
+        assertEquals(50, result.coins, "Coins should match");
         assertEquals(0, result.xp, "XP should default to 0");
     }
 
@@ -326,17 +326,17 @@ class BreakableObjectTest {
     }
 
     @Test
-    @DisplayName("Object with zero gold range should generate no gold")
-    void testZeroGoldRange() {
-        BreakableObject noGold = new BreakableObject(mockTexture, 0f, 0f, 10, 0, 0);
+    @DisplayName("Object with zero coins range should generate no coins")
+    void testZeroCoinsRange() {
+        BreakableObject noCoins = new BreakableObject(mockTexture, 0f, 0f, 10, 0, 0);
 
-        List<BreakableObject.LootResult> loot = noGold.generateLoot();
+        List<BreakableObject.LootResult> loot = noCoins.generateLoot();
 
-        boolean hasGold = loot.stream()
-                .filter(BreakableObject.LootResult::isGold)
-                .anyMatch(l -> l.gold > 0);
+        boolean hasCoins = loot.stream()
+                .filter(BreakableObject.LootResult::isCoins)
+                .anyMatch(l -> l.coins > 0);
 
-        assertFalse(hasGold, "Should not generate gold when range is 0-0");
+        assertFalse(hasCoins, "Should not generate coins when range is 0-0");
     }
 
     @Test

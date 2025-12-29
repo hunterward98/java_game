@@ -455,8 +455,13 @@ public class GameRenderer {
                     continue;
                 }
 
-                float width = tex.getWidth() * scale;
-                float height = tex.getHeight() * scale;
+                // Apply scale with minimum size to ensure visibility
+                // Small items like coins (16x16) get boosted to at least 24 pixels
+                float minDimension = Math.min(tex.getWidth(), tex.getHeight());
+                float sizeBoost = minDimension < 24 ? 600.0f / minDimension : 1.0f;
+
+                float width = tex.getWidth() * scale * sizeBoost;
+                float height = tex.getHeight() * scale * sizeBoost;
 
                 batch.draw(tex,
                     screenPos.x - width / 2f,

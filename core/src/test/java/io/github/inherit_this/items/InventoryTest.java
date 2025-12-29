@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Comprehensive tests for the grid-based Inventory system.
- * Tests item placement, stacking, removal, gold management, and edge cases.
+ * Tests item placement, stacking, removal, and edge cases.
  */
 class InventoryTest {
 
@@ -100,12 +100,6 @@ class InventoryTest {
         }
 
         @Test
-        @DisplayName("Should start with zero gold")
-        void testInitialGold() {
-            assertEquals(0, inventory.getGold(), "Should start with 0 gold");
-        }
-
-        @Test
         @DisplayName("Should start with empty grid")
         void testEmptyGrid() {
             for (int x = 0; x < inventory.getGridWidth(); x++) {
@@ -117,66 +111,7 @@ class InventoryTest {
         }
     }
 
-    // ==================== Gold Management Tests ====================
-
-    @Nested
-    @DisplayName("Gold Management")
-    class GoldManagement {
-
-        @Test
-        @DisplayName("setGold should set gold amount")
-        void testSetGold() {
-            inventory.setGold(500);
-            assertEquals(500, inventory.getGold(), "Gold should be set to 500");
-        }
-
-        @Test
-        @DisplayName("setGold should not allow negative gold")
-        void testSetGoldNegative() {
-            inventory.setGold(-100);
-            assertEquals(0, inventory.getGold(), "Negative gold should be clamped to 0");
-        }
-
-        @Test
-        @DisplayName("addGold should increase gold amount")
-        void testAddGold() {
-            inventory.setGold(100);
-            inventory.addGold(50);
-            assertEquals(150, inventory.getGold(), "Gold should be 150 after adding 50");
-        }
-
-        @Test
-        @DisplayName("addGold with negative amount should decrease gold")
-        void testAddGoldNegative() {
-            inventory.setGold(100);
-            inventory.addGold(-30);
-            assertEquals(70, inventory.getGold(), "Gold should be 70 after adding -30");
-        }
-
-        @Test
-        @DisplayName("addGold should not go below zero")
-        void testAddGoldBelowZero() {
-            inventory.setGold(50);
-            inventory.addGold(-100);
-            assertEquals(0, inventory.getGold(), "Gold should be clamped at 0");
-        }
-
-        @Test
-        @DisplayName("removeGold should decrease gold amount")
-        void testRemoveGold() {
-            inventory.setGold(100);
-            inventory.removeGold(30);
-            assertEquals(70, inventory.getGold(), "Gold should be 70 after removing 30");
-        }
-
-        @Test
-        @DisplayName("removeGold should not go below zero")
-        void testRemoveGoldBelowZero() {
-            inventory.setGold(50);
-            inventory.removeGold(100);
-            assertEquals(0, inventory.getGold(), "Gold should be clamped at 0");
-        }
-    }
+    // Note: Gold/coins management has been moved to PlayerStats
 
     // ==================== Position Validation Tests ====================
 
@@ -578,23 +513,12 @@ class InventoryTest {
             }
         }
 
-        @Test
-        @DisplayName("Should reset gold to zero")
-        void testClearResetsGold() {
-            inventory.setGold(500);
-            inventory.addItem(smallItem, 5);
-
-            inventory.clear();
-
-            assertEquals(0, inventory.getGold(), "Gold should be reset to 0");
-        }
 
         @Test
         @DisplayName("Clear should work on empty inventory")
         void testClearEmptyInventory() {
             inventory.clear();
 
-            assertEquals(0, inventory.getGold(), "Gold should be 0");
             assertNull(inventory.getItemAt(0, 0), "Grid should still be empty");
         }
     }
@@ -680,13 +604,10 @@ class InventoryTest {
         void testMultipleOperationsIntegrity() {
             inventory.addItem(smallItem, 15);     // 2 stacks
             inventory.addItem(largeItem, 1);      // 1 large item
-            inventory.setGold(100);
             inventory.removeItem(0, 0);           // Remove first stack
-            inventory.addGold(50);
             inventory.addItem(tallItem, 1);
 
             assertTrue(inventory.countItem(smallItem.getId()) >= 5, "Should still have small items");
-            assertEquals(150, inventory.getGold(), "Gold should be 150");
             assertNotNull(inventory.getItemAt(2, 0), "Large item should still exist");
         }
     }

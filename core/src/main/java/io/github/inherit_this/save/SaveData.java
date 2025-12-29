@@ -30,7 +30,7 @@ public class SaveData implements Serializable {
     private long dungeonSeed;  // Persistent seed for dungeon generation
 
     // Inventory
-    private int gold;
+    private int coins;
     private List<SavedItemStack> inventoryItems;
 
     // Equipment
@@ -86,8 +86,8 @@ public class SaveData implements Serializable {
     public long getDungeonSeed() { return dungeonSeed; }
     public void setDungeonSeed(long dungeonSeed) { this.dungeonSeed = dungeonSeed; }
 
-    public int getGold() { return gold; }
-    public void setGold(int gold) { this.gold = gold; }
+    public int getCoins() { return coins; }
+    public void setCoins(int coins) { this.coins = coins; }
 
     public List<SavedItemStack> getInventoryItems() { return inventoryItems; }
     public void setInventoryItems(List<SavedItemStack> inventoryItems) { this.inventoryItems = inventoryItems; }

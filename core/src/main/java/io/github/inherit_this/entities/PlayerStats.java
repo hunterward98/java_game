@@ -15,6 +15,9 @@ public class PlayerStats {
     private int level;
     private float currentXP;
 
+    // Currency
+    private int coins;
+
     // Dungeon seed - persistent across saves, ensures same dungeons always generate identically
     private long dungeonSeed;
 
@@ -38,6 +41,7 @@ public class PlayerStats {
     public PlayerStats() {
         this.level = 1;
         this.currentXP = 0f;
+        this.coins = 0;
 
         // Generate random dungeon seed for this character
         this.dungeonSeed = System.nanoTime();
@@ -264,6 +268,24 @@ public class PlayerStats {
     public float getMaxStamina() { return maxStamina; }
     public boolean isAlive() { return currentHealth > 0; }
     public boolean isMaxLevel() { return level >= MAX_LEVEL; }
+    public int getCoins() { return coins; }
+
+    // Coin management
+    public void addCoins(int amount) {
+        this.coins = Math.max(0, this.coins + amount);
+    }
+
+    public boolean removeCoins(int amount) {
+        if (this.coins >= amount) {
+            this.coins -= amount;
+            return true;
+        }
+        return false;
+    }
+
+    public void setCoins(int coins) {
+        this.coins = Math.max(0, coins);
+    }
 
     // Setters for testing/debugging and save/load
     public void setLevel(int level) {

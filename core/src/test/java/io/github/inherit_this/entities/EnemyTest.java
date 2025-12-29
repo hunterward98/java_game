@@ -160,13 +160,13 @@ class EnemyTest extends LibGdxTestBase {
         }
 
         @Test
-        @DisplayName("onDeath should give gold to player")
+        @DisplayName("onDeath should give coins to player")
         @org.junit.jupiter.api.Disabled("Requires particle texture assets")
-        void testOnDeathGivesGold() {
+        void testOnDeathGivesCoins() {
             int massiveDamage = enemy.getCurrentHealth() + 100;
             enemy.takeDamage(massiveDamage, mockPlayer);
 
-            verify(mockInventory, atLeastOnce()).addGold(anyInt());
+            verify(mockPlayerStats, atLeastOnce()).addCoins(anyInt());
         }
     }
 
@@ -259,7 +259,7 @@ class EnemyTest extends LibGdxTestBase {
 
             assertEquals(NPC.NPCState.DEAD, enemy.getState(), "Should be dead");
             verify(mockPlayerStats).addXP(anyInt());
-            verify(mockInventory).addGold(anyInt());
+            verify(mockPlayerStats).addCoins(anyInt());
         }
     }
 

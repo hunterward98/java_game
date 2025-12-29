@@ -8,13 +8,11 @@ public class Inventory {
     private final int gridWidth;
     private final int gridHeight;
     private final ItemStack[][] grid;  // Grid of item stacks
-    private int gold;
 
     public Inventory(int gridWidth, int gridHeight) {
         this.gridWidth = gridWidth;
         this.gridHeight = gridHeight;
         this.grid = new ItemStack[gridWidth][gridHeight];
-        this.gold = 0;
     }
 
     public int getGridWidth() {
@@ -23,22 +21,6 @@ public class Inventory {
 
     public int getGridHeight() {
         return gridHeight;
-    }
-
-    public int getGold() {
-        return gold;
-    }
-
-    public void setGold(int amount) {
-        gold = Math.max(0, amount);
-    }
-
-    public void addGold(int amount) {
-        gold = Math.max(0, gold + amount);
-    }
-
-    public void removeGold(int amount) {
-        gold = Math.max(0, gold - amount);
     }
 
     /**
@@ -213,6 +195,5 @@ public class Inventory {
                 grid[x][y] = null;
             }
         }
-        gold = 0;
     }
 }

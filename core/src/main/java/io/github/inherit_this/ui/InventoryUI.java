@@ -12,6 +12,7 @@ import io.github.inherit_this.items.ItemStack;
 import io.github.inherit_this.util.FontManager;
 import io.github.inherit_this.audio.SoundManager;
 import io.github.inherit_this.audio.SoundType;
+import io.github.inherit_this.entities.PlayerStats;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -20,6 +21,7 @@ import java.util.Set;
  */
 public class InventoryUI {
     private final Inventory inventory;
+    private final PlayerStats stats;
     private final ShapeRenderer shapeRenderer;
     private final BitmapFont font;
     private final ItemTooltip tooltip;
@@ -46,8 +48,9 @@ public class InventoryUI {
     private float uiWidth;
     private float uiHeight;
 
-    public InventoryUI(Inventory inventory) {
+    public InventoryUI(Inventory inventory, PlayerStats stats) {
         this.inventory = inventory;
+        this.stats = stats;
         this.shapeRenderer = new ShapeRenderer();
         this.font = FontManager.getInstance().getInventoryFont(); // Use smaller font for inventory cells
         this.tooltip = new ItemTooltip();
@@ -75,7 +78,7 @@ public class InventoryUI {
 
     private void calculateUIBounds() {
         uiWidth = inventory.getGridWidth() * (CELL_SIZE + CELL_PADDING) + UI_PADDING * 2;
-        uiHeight = inventory.getGridHeight() * (CELL_SIZE + CELL_PADDING) + UI_PADDING * 2 + 40; // +40 for title/gold
+        uiHeight = inventory.getGridHeight() * (CELL_SIZE + CELL_PADDING) + UI_PADDING * 2 + 40; // +40 for title/coins
 
         // Center on screen (will be adjusted by camera in actual game)
         uiX = -uiWidth / 2;
@@ -193,10 +196,10 @@ public class InventoryUI {
             drawDraggedItem(this.batch, draggedItem, mouseX, mouseY);
         }
 
-        // Draw title and gold (use integer coordinates for pixel-perfect rendering)
+        // Draw title and coins (use integer coordinates for pixel-perfect rendering)
         font.setColor(Color.WHITE);
         font.draw(batch, "Inventory", Math.round(uiX + UI_PADDING), Math.round(uiY + uiHeight - UI_PADDING));
-        font.draw(batch, "Gold: " + inventory.getGold(), Math.round(uiX + uiWidth - 100), Math.round(uiY + uiHeight - UI_PADDING));
+        font.draw(batch, "Coins: " + stats.getCoins(), Math.round(uiX + uiWidth - 100), Math.round(uiY + uiHeight - UI_PADDING));
 
         // Draw tooltip for hovered item (if not dragging)
         if (draggedItem == null) {

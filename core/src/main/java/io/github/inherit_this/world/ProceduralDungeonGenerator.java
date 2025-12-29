@@ -132,7 +132,8 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
             int width = sizeCategory.getRandomSize(random);
             int height = sizeCategory.getRandomSize(random);
 
-            DungeonRoom room = new DungeonRoom(x, y, width, height, type, sizeCategory);
+            // Create room with dungeon level for loot scaling
+            DungeonRoom room = new DungeonRoom(x, y, width, height, type, sizeCategory, config.getDungeonLevel());
             rooms.add(room);
         }
     }
@@ -425,6 +426,14 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
                 }
             }
         }
+    }
+
+    /**
+     * Gets the list of all rooms in this dungeon.
+     * Used for spawning loot and other room-based logic.
+     */
+    public List<DungeonRoom> getRooms() {
+        return rooms;
     }
 
     /**

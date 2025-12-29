@@ -26,6 +26,12 @@ public class DungeonRoom {
     public RoomType type;
     public RoomSize sizeCategory;
 
+    // Loot value - determines how much loot/items should spawn in this room
+    public int lootValue;
+
+    // Dungeon level (for scaling loot)
+    private int dungeonLevel;
+
     /**
      * Create a new dungeon room.
      *
@@ -35,7 +41,7 @@ public class DungeonRoom {
      * @param height Height in tiles
      */
     public DungeonRoom(float x, float y, int width, int height) {
-        this(x, y, width, height, RoomType.STANDARD, RoomSize.MEDIUM);
+        this(x, y, width, height, RoomType.STANDARD, RoomSize.MEDIUM, 1);
     }
 
     /**
@@ -47,8 +53,9 @@ public class DungeonRoom {
      * @param height Height in tiles
      * @param type Room type
      * @param sizeCategory Size category
+     * @param dungeonLevel Dungeon level (1-100+) for scaling loot
      */
-    public DungeonRoom(float x, float y, int width, int height, RoomType type, RoomSize sizeCategory) {
+    public DungeonRoom(float x, float y, int width, int height, RoomType type, RoomSize sizeCategory, int dungeonLevel) {
         this.x = x;
         this.y = y;
         this.width = width;
@@ -58,6 +65,53 @@ public class DungeonRoom {
         this.isMainRoom = false;
         this.type = type;
         this.sizeCategory = sizeCategory;
+        this.dungeonLevel = dungeonLevel;
+        this.lootValue = calculateLootValue();
+    }
+
+    /**
+     * Calculate loot value based on room type, size, and dungeon level.
+     * Higher value = more loot should spawn.
+     * Loot scales significantly with dungeon level to reward deeper exploration.
+     */
+    private int calculateLootValue() {
+        // Base value from room size (area / 100)
+        int baseValue = getArea() / 100;
+
+        // Scale base value with dungeon level
+        // Level 1: 1x, Level 10: 2x, Level 50: 6x, Level 100: 11x
+        float levelScaling = 1.0f + (dungeonLevel * 0.1f);
+        baseValue = (int) (baseValue * levelScaling);
+
+        // Multiplier based on room type
+        float multiplier;
+        switch (type) {
+            case TREASURE:
+                multiplier = 3.0f;      // Treasure rooms have 3x loot
+                break;
+            case BOSS:
+                multiplier = 2.5f;      // Boss rooms have 2.5x loot
+                break;
+            case SECRET:
+                multiplier = 2.0f;      // Secret rooms have 2x loot
+                break;
+            case ARMORY:
+            case LIBRARY:
+                multiplier = 1.5f;      // Special rooms have 1.5x loot
+                break;
+            case BARRACKS:
+            case PLAZA:
+                multiplier = 1.2f;      // Large rooms have 1.2x loot
+                break;
+            case SHRINE:
+                multiplier = 1.0f;      // Shrines have normal loot
+                break;
+            default:
+                multiplier = 0.8f;      // Standard rooms have 0.8x loot
+                break;
+        }
+
+        return Math.max(1, (int) (baseValue * multiplier));
     }
 
     /**

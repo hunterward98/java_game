@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector3;
 import io.github.inherit_this.combat.CombatManager;
 import io.github.inherit_this.entities.BreakableObject;
+import io.github.inherit_this.entities.DroppedItem;
 import io.github.inherit_this.entities.Enemy;
 import io.github.inherit_this.entities.InteractableObject;
 import io.github.inherit_this.entities.NPC;
@@ -43,6 +44,7 @@ public class GameRenderer {
     private MapEditor mapEditor;
     private List<BreakableObject> breakableObjects;
     private List<InteractableObject> interactableObjects;
+    private List<DroppedItem> droppedItems;
 
     // Performance tracking
     private int chunksRenderedLastFrame = 0;
@@ -89,6 +91,13 @@ public class GameRenderer {
      */
     public void setInteractableObjects(List<InteractableObject> interactableObjects) {
         this.interactableObjects = interactableObjects;
+    }
+
+    /**
+     * Set the dropped items list.
+     */
+    public void setDroppedItems(List<DroppedItem> droppedItems) {
+        this.droppedItems = droppedItems;
     }
 
     /**
@@ -409,6 +418,53 @@ public class GameRenderer {
         shapeRenderer.end();
 
         batch.begin(); // Resume sprite batch
+    }
+
+    /**
+     * Renders dropped items as 2D sprites projected from their 3D world positions.
+     * Should be called during the SpriteBatch rendering phase.
+     */
+    public void renderDroppedItems(SpriteBatch batch) {
+        if (droppedItems == null) return;
+
+        for (DroppedItem item : droppedItems) {
+            if (item.isPickedUp()) continue;
+
+            // Convert item's tile position to pixel world position
+            float worldX = item.getPosition().x * Constants.TILE_SIZE;
+            float worldZ = item.getPosition().y * Constants.TILE_SIZE;
+
+            // Project 3D world position to 2D screen position
+            Vector3 worldPos = new Vector3(worldX, 0, worldZ);
+            Vector3 screenPos = camera.project(worldPos);
+
+            // Check if item is on screen
+            if (screenPos.x >= 0 && screenPos.x <= Gdx.graphics.getWidth() &&
+                screenPos.y >= 0 && screenPos.y <= Gdx.graphics.getHeight() &&
+                screenPos.z >= 0 && screenPos.z <= 1) {
+
+                // Calculate distance-based scale using actual 3D distance to item
+                float distToCamera = camera.position.dst(worldPos);
+                float scale = Math.min(1.0f, 400f / distToCamera);
+
+                // Draw the item centered at the screen position
+                Texture tex = item.getTexture();
+                if (tex == null) {
+                    com.badlogic.gdx.Gdx.app.error("GameRenderer",
+                        "Dropped item has null texture! Item: " + item.getItem().getName());
+                    continue;
+                }
+
+                float width = tex.getWidth() * scale;
+                float height = tex.getHeight() * scale;
+
+                batch.draw(tex,
+                    screenPos.x - width / 2f,
+                    screenPos.y - height / 2f,
+                    width, height
+                );
+            }
+        }
     }
 
     /**

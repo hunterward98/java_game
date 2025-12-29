@@ -93,7 +93,8 @@ public class DungeonChunk extends Chunk {
                         floorTexture,
                         tileWorldX,
                         tileWorldY,
-                        0f
+                        0f,
+                        tile.getTextureRotation()  // Apply texture rotation for variety
                     );
                     models.add(floorInstance);
                 }

@@ -36,14 +36,24 @@ public class ItemRegistry {
      * @param expectedHeight Expected height in grid cells (will be multiplied by 32)
      */
     private Texture loadTexture(String path, int expectedWidth, int expectedHeight) {
+        // Convert grid cells to pixels
+        int expectedPixelWidth = expectedWidth * 32;
+        int expectedPixelHeight = expectedHeight * 32;
+        return loadTexturePixels(path, expectedPixelWidth, expectedPixelHeight);
+    }
+
+    /**
+     * Loads a texture with exact pixel dimensions, falling back to placeholder.png if file doesn't exist or size is incorrect.
+     * @param path The path to the texture file
+     * @param expectedPixelWidth Expected width in pixels
+     * @param expectedPixelHeight Expected height in pixels
+     */
+    private Texture loadTexturePixels(String path, int expectedPixelWidth, int expectedPixelHeight) {
         if (Gdx.files.internal(path).exists()) {
             Texture tex = new Texture(path);
             tex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
 
             // Verify texture dimensions match expected size
-            int expectedPixelWidth = expectedWidth * 32;
-            int expectedPixelHeight = expectedHeight * 32;
-
             if (tex.getWidth() != expectedPixelWidth || tex.getHeight() != expectedPixelHeight) {
                 Gdx.app.log("ItemRegistry", "Asset size mismatch for " + path +
                     ": expected " + expectedPixelWidth + "x" + expectedPixelHeight +
@@ -53,6 +63,22 @@ public class ItemRegistry {
                 return placeholderTexture;
             }
 
+            return tex;
+        } else {
+            Gdx.app.log("ItemRegistry", "Asset not found: " + path + ", using placeholder.png");
+            return placeholderTexture;
+        }
+    }
+
+    /**
+     * Loads a texture without size validation (useful for ground items that don't need grid constraints).
+     * Falls back to placeholder.png if file doesn't exist.
+     * @param path The path to the texture file
+     */
+    private Texture loadTextureNoValidation(String path) {
+        if (Gdx.files.internal(path).exists()) {
+            Texture tex = new Texture(path);
+            tex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
             return tex;
         } else {
             Gdx.app.log("ItemRegistry", "Asset not found: " + path + ", using placeholder.png");
@@ -291,6 +317,19 @@ public class ItemRegistry {
             1, 2,
             1,
             60
+        ));
+
+        // Currency (1x1 size, highly stackable)
+        register(new Item(
+            "coins",
+            "Coins",
+            "Gold coins. The universal currency.",
+            ItemType.CURRENCY,
+            ItemRarity.COMMON,
+            loadTextureNoValidation("objects/coins.png"),  // No size validation - use any size for ground rendering
+            1, 1,
+            999,  // Highly stackable
+            1     // Worth 1 gold each
         ));
     }
 

@@ -11,5 +11,6 @@ public enum ItemType {
     MATERIAL,    // Ore, wood, cloth
     TOOL,        // Pickaxes, fishing rods
     QUEST,       // Quest-specific items
+    CURRENCY,    // Coins, gems, tokens
     MISC         // Everything else
 }

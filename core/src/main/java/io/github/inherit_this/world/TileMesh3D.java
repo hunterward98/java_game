@@ -22,11 +22,13 @@ public class TileMesh3D {
     private static TileMesh3D instance;
     private ModelBuilder modelBuilder;
     private Map<Texture, Model> tileModels;
+    private Map<String, Model> floorModels; // Cache for floors with different UV rotations (key: texture + rotation)
     private Map<String, Model> wallModels;  // Cache for walls with different UV rotations (key: texture + rotation)
 
     private TileMesh3D() {
         modelBuilder = new ModelBuilder();
         tileModels = new HashMap<>();
+        floorModels = new HashMap<>();
         wallModels = new HashMap<>();
     }
 
@@ -49,6 +51,19 @@ public class TileMesh3D {
     }
 
     /**
+     * Gets or creates a floor model with rotated UVs.
+     * @param texture The texture to use
+     * @param textureRotation Rotation in 90° increments (0-3: 0°, 90°, 180°, 270°)
+     */
+    public Model getFloorModel(Texture texture, int textureRotation) {
+        String key = texture.toString() + "_" + textureRotation;
+        if (!floorModels.containsKey(key)) {
+            floorModels.put(key, createFloorPlane(texture, textureRotation));
+        }
+        return floorModels.get(key);
+    }
+
+    /**
      * Gets or creates a wall model with rotated UVs.
      * @param texture The texture to use
      * @param textureRotation Rotation in 90° increments (0-3: 0°, 90°, 180°, 270°)
@@ -63,9 +78,22 @@ public class TileMesh3D {
 
     /**
      * Creates a ModelInstance positioned at specific world coordinates.
+     * @param texture The texture to use
+     * @param worldX World X position in pixels
+     * @param worldY World Y position in pixels (Z in 3D space)
+     * @param worldZ Height (Y in 3D space)
+     * @param textureRotation Rotation in 90° increments (0-3: 0°, 90°, 180°, 270°)
      */
-    public ModelInstance createTileInstance(Texture texture, float worldX, float worldY, float worldZ) {
-        Model model = getTileModel(texture);
+    public ModelInstance createTileInstance(Texture texture, float worldX, float worldY, float worldZ, int textureRotation) {
+        Model model;
+        if (textureRotation == 0) {
+            // Use simple non-rotated model for better performance
+            model = getTileModel(texture);
+        } else {
+            // Use rotated UV model
+            model = getFloorModel(texture, textureRotation);
+        }
+
         ModelInstance instance = new ModelInstance(model);
 
         // Position the tile in world space
@@ -77,6 +105,14 @@ public class TileMesh3D {
         );
 
         return instance;
+    }
+
+    /**
+     * Creates a ModelInstance positioned at specific world coordinates (no rotation).
+     * @deprecated Use createTileInstance with textureRotation parameter
+     */
+    public ModelInstance createTileInstance(Texture texture, float worldX, float worldY, float worldZ) {
+        return createTileInstance(texture, worldX, worldY, worldZ, 0);
     }
 
     /**
@@ -221,6 +257,88 @@ public class TileMesh3D {
     }
 
     /**
+     * Creates a flat horizontal plane mesh with rotated UVs for floor tiles.
+     * @param texture The texture to apply
+     * @param textureRotation UV rotation in 90° increments (0-3: 0°, 90°, 180°, 270°)
+     */
+    private Model createFloorPlane(Texture texture, int textureRotation) {
+        Material material = new Material(
+            TextureAttribute.createDiffuse(texture),
+            new com.badlogic.gdx.graphics.g3d.attributes.BlendingAttribute(
+                com.badlogic.gdx.graphics.GL20.GL_SRC_ALPHA,
+                com.badlogic.gdx.graphics.GL20.GL_ONE_MINUS_SRC_ALPHA
+            )
+        );
+
+        float size = Constants.TILE_SIZE;
+        float halfSize = size / 2f;
+
+        // Create a horizontal plane with rotated UV coordinates
+        modelBuilder.begin();
+
+        // Build mesh manually to control UV coordinates
+        com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo v1 = new com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo();
+        com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo v2 = new com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo();
+        com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo v3 = new com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo();
+        com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo v4 = new com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo();
+
+        // Base UV coordinates
+        float u1, v1_uv, u2, v2_uv, u3, v3_uv, u4, v4_uv;
+
+        // Apply texture rotation by rotating UVs
+        switch (textureRotation) {
+            case 0: // No rotation
+                u1 = 0; v1_uv = 0;  // bottom-left
+                u2 = 0; v2_uv = 1;  // top-left
+                u3 = 1; v3_uv = 1;  // top-right
+                u4 = 1; v4_uv = 0;  // bottom-right
+                break;
+            case 1: // 90° clockwise
+                u1 = 0; v1_uv = 1;  // bottom-left
+                u2 = 1; v2_uv = 1;  // top-left
+                u3 = 1; v3_uv = 0;  // top-right
+                u4 = 0; v4_uv = 0;  // bottom-right
+                break;
+            case 2: // 180°
+                u1 = 1; v1_uv = 1;  // bottom-left
+                u2 = 1; v2_uv = 0;  // top-left
+                u3 = 0; v3_uv = 0;  // top-right
+                u4 = 0; v4_uv = 1;  // bottom-right
+                break;
+            case 3: // 270° clockwise
+                u1 = 1; v1_uv = 0;  // bottom-left
+                u2 = 0; v2_uv = 0;  // top-left
+                u3 = 0; v3_uv = 1;  // top-right
+                u4 = 1; v4_uv = 1;  // bottom-right
+                break;
+            default:
+                u1 = 0; v1_uv = 0;
+                u2 = 0; v2_uv = 1;
+                u3 = 1; v3_uv = 1;
+                u4 = 1; v4_uv = 0;
+                break;
+        }
+
+        // Set positions with calculated UV coordinates
+        v1.setPos(-halfSize, 0, -halfSize).setNor(0, 1, 0).setUV(u1, v1_uv);  // bottom-left
+        v2.setPos(-halfSize, 0, halfSize).setNor(0, 1, 0).setUV(u2, v2_uv);   // top-left
+        v3.setPos(halfSize, 0, halfSize).setNor(0, 1, 0).setUV(u3, v3_uv);    // top-right
+        v4.setPos(halfSize, 0, -halfSize).setNor(0, 1, 0).setUV(u4, v4_uv);   // bottom-right
+
+        com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder builder = modelBuilder.part(
+            "floor",
+            GL20.GL_TRIANGLES,
+            VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal | VertexAttributes.Usage.TextureCoordinates,
+            material
+        );
+
+        // Create two triangles for the quad (counter-clockwise winding)
+        builder.rect(v1, v2, v3, v4);
+
+        return modelBuilder.end();
+    }
+
+    /**
      * Creates a flat horizontal plane mesh with rotated UVs for walls.
      * This makes the texture appear correctly oriented when the mesh is rotated vertical.
      * @param texture The texture to apply
@@ -310,6 +428,10 @@ public class TileMesh3D {
             model.dispose();
         }
         tileModels.clear();
+        for (Model model : floorModels.values()) {
+            model.dispose();
+        }
+        floorModels.clear();
         for (Model model : wallModels.values()) {
             model.dispose();
         }

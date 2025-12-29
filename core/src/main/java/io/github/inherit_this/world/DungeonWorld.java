@@ -104,13 +104,13 @@ public class DungeonWorld implements WorldProvider {
                     // Random rotation for granite and marble to break up patterns
                     int rotation = 0;
                     if (floorType == TileType.MARBLE_TILE || floorType == TileType.DARK_GRANITE) {
-                        int[] rotations = {0, 90, 180, 270};
-                        rotation = rotations[chunkRand.nextInt(rotations.length)];
+                        // Rotation in 90° increments: 0 = 0°, 1 = 90°, 2 = 180°, 3 = 270°
+                        rotation = chunkRand.nextInt(4);
                     }
 
-                    // Floor tile
+                    // Floor tile with texture rotation (9-parameter constructor)
                     tiles[localX][localY] = new Tile(floorTexture, false, floorType,
-                        TileLayer.GROUND, -1f, 0, rotation);
+                        TileLayer.GROUND, -1f, 0, 0, false, rotation);
                 }
             }
         }

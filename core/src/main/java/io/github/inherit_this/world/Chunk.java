@@ -133,7 +133,8 @@ public class Chunk {
                     tile.getTexture(),
                     tileWorldX,
                     tileWorldY,
-                    0f  // z = 0 for flat terrain
+                    0f,  // z = 0 for flat terrain
+                    tile.getTextureRotation()  // Apply texture rotation if specified
                 );
 
                 cachedModels.add(tileInstance);

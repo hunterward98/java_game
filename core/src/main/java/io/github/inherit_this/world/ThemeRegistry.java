@@ -130,13 +130,17 @@ public class ThemeRegistry {
 
     /**
      * Get all dark brick texture variant paths.
-     * User mentioned 1 variant currently (plans to expand).
+     * 5 variants available for wall variety.
      *
      * @return Array of texture paths for dark brick variants
      */
     private static String[] getDarkBrickVariants() {
         return new String[]{
-                "tiles/dark_brick_1.png"
+                "tiles/dark_brick_1.png",
+                "tiles/dark_brick_2.png",
+                "tiles/dark_brick_3.png",
+                "tiles/dark_brick_4.png",
+                "tiles/dark_brick_5.png"
         };
     }
 

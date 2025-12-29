@@ -39,6 +39,9 @@ import io.github.inherit_this.util.FontManager;
 import io.github.inherit_this.debug.*;
 import io.github.inherit_this.save.SaveManager;
 
+import java.util.List;
+import java.util.Random;
+
 public class GameScreen extends ScreenAdapter {
 
     private final Main game;
@@ -81,6 +84,9 @@ public class GameScreen extends ScreenAdapter {
     // Interactable objects (chests, workbenches, anvils, shrines)
     private java.util.List<InteractableObject> interactableObjects;
     private InteractableObject nearbyInteractable;
+
+    // Dropped items (loot on the ground)
+    private java.util.List<io.github.inherit_this.entities.DroppedItem> droppedItems;
 
     // Particle system for visual effects
     private io.github.inherit_this.particles.ParticleSystem particleSystem;
@@ -218,6 +224,9 @@ public class GameScreen extends ScreenAdapter {
         // Initialize interactable objects list
         interactableObjects = new java.util.ArrayList<>();
 
+        // Initialize dropped items list
+        droppedItems = new java.util.ArrayList<>();
+
         // Initialize particle system
         particleSystem = new io.github.inherit_this.particles.ParticleSystem(camera);
 
@@ -247,6 +256,7 @@ public class GameScreen extends ScreenAdapter {
         gameRenderer.setWorld(world);
         gameRenderer.setBreakableObjects(breakableObjects);
         gameRenderer.setInteractableObjects(interactableObjects);
+        gameRenderer.setDroppedItems(droppedItems);
         gameRenderer.setMapEditor(mapEditor);
 
         // Set up map editor object placement callback
@@ -387,6 +397,9 @@ public class GameScreen extends ScreenAdapter {
         // Render NPC tooltips (if hovering over an NPC)
         gameRenderer.renderNPCTooltip(batch, mouseX, mouseY);
 
+        // Render dropped items (coins, loot)
+        gameRenderer.renderDroppedItems(batch);
+
         // Render player sprite with perspective scaling
         // Scale inversely with camera distance for proper perspective
         // Base scale multiplied by 1.15 to make player 15% larger relative to tiles
@@ -510,8 +523,9 @@ public class GameScreen extends ScreenAdapter {
             world.dispose();
         }
 
-        // Clear breakable objects (they're world-specific)
+        // Clear breakable objects and dropped items (they're world-specific)
         breakableObjects.clear();
+        droppedItems.clear();
 
         // Create new world
         if (worldType.equalsIgnoreCase("static")) {
@@ -556,8 +570,9 @@ public class GameScreen extends ScreenAdapter {
             world.dispose();
         }
 
-        // Clear breakable objects (they're world-specific)
+        // Clear breakable objects and dropped items (they're world-specific)
         breakableObjects.clear();
+        droppedItems.clear();
 
         // Set new world
         world = dungeon;
@@ -575,8 +590,118 @@ public class GameScreen extends ScreenAdapter {
         // Preload chunks
         world.preloadChunks(20);
 
+        // Spawn loot in dungeon based on room loot values
+        spawnDungeonLoot(dungeon);
+
         Gdx.app.log("GameScreen", "Switched to dungeon level " + dungeon.getConfig().getDungeonLevel());
     }
+
+    /**
+     * Spawns loot (coins and items) in dungeon rooms and hallways based on loot values.
+     * Higher level dungeons have more valuable loot (more coins per location) rather than more items.
+     */
+    private void spawnDungeonLoot(io.github.inherit_this.world.DungeonWorld dungeon) {
+        io.github.inherit_this.world.DungeonGenerator generator = dungeon.getGenerator();
+
+        // Check if it's a procedural generator (has rooms)
+        if (!(generator instanceof io.github.inherit_this.world.ProceduralDungeonGenerator)) {
+            return;
+        }
+
+        io.github.inherit_this.world.ProceduralDungeonGenerator procGen =
+            (io.github.inherit_this.world.ProceduralDungeonGenerator) generator;
+        List<io.github.inherit_this.world.DungeonRoom> rooms = procGen.getRooms();
+
+        // Get coins item from registry
+        io.github.inherit_this.items.Item coins = io.github.inherit_this.items.ItemRegistry.getInstance().getItem("coins");
+        if (coins == null) {
+            Gdx.app.error("GameScreen", "Could not find coins item for loot spawning!");
+            return;
+        }
+
+        Random random = new Random();
+        int dungeonLevel = dungeon.getConfig().getDungeonLevel();
+        int totalLootSpawned = 0;
+
+        // Spawn loot in rooms based on lootValue
+        // Higher dungeon levels = more coins clustered at each spawn point (not more spawn points)
+        for (io.github.inherit_this.world.DungeonRoom room : rooms) {
+            int lootValue = room.lootValue;
+
+            // Number of spawn locations based on loot value (not affected by dungeon level)
+            // This keeps the number of items consistent, just makes them more valuable
+            int numSpawnPoints = Math.max(1, lootValue / 2 + random.nextInt(Math.max(1, lootValue / 2)));
+
+            for (int i = 0; i < numSpawnPoints; i++) {
+                // Find a random floor tile within the room (avoiding edges)
+                int margin = 2; // Stay away from walls
+                int rx = (int) room.x + margin + random.nextInt(Math.max(1, room.width - margin * 2));
+                int ry = (int) room.y + margin + random.nextInt(Math.max(1, room.height - margin * 2));
+
+                // Make sure it's not a wall
+                if (!generator.isWall(rx, ry)) {
+                    // Spawn multiple coins at this location based on dungeon level
+                    // Level 1: 1-3 coins, Level 10: 1-12 coins, Level 50: 1-52 coins
+                    int coinsAtLocation = 1 + random.nextInt(dungeonLevel + 2);
+
+                    for (int c = 0; c < coinsAtLocation; c++) {
+                        // Slight position variation so coins don't overlap exactly
+                        float offsetX = (random.nextFloat() - 0.5f) * 0.3f;
+                        float offsetY = (random.nextFloat() - 0.5f) * 0.3f;
+
+                        io.github.inherit_this.entities.DroppedItem droppedItem =
+                            new io.github.inherit_this.entities.DroppedItem(coins, rx + offsetX, ry + offsetY);
+                        droppedItems.add(droppedItem);
+                        totalLootSpawned++;
+                    }
+                }
+            }
+        }
+
+        // Spawn scattered loot in hallways (less dense than rooms but still visible)
+        // Sample 5-10% of floor tiles for hallway loot
+        int width = generator.getWidthInTiles();
+        int height = generator.getHeightInTiles();
+        int hallwaySamples = (width * height) / 15; // Check about 6-7% of tiles
+
+        for (int i = 0; i < hallwaySamples; i++) {
+            int x = 10 + random.nextInt(width - 20);  // Stay away from borders
+            int y = 10 + random.nextInt(height - 20);
+
+            // Check if it's a floor tile (not wall) and not in any room
+            if (!generator.isWall(x, y) && !isInAnyRoom(rooms, x, y)) {
+                // Hallways have about half the loot of rooms
+                // Level 1: 1-2 coins, Level 10: 1-6 coins, Level 50: 1-26 coins
+                int coinsAtLocation = 1 + random.nextInt(Math.max(2, (dungeonLevel + 1) / 2));
+
+                for (int c = 0; c < coinsAtLocation; c++) {
+                    float offsetX = (random.nextFloat() - 0.5f) * 0.3f;
+                    float offsetY = (random.nextFloat() - 0.5f) * 0.3f;
+
+                    io.github.inherit_this.entities.DroppedItem droppedItem =
+                        new io.github.inherit_this.entities.DroppedItem(coins, x + offsetX, y + offsetY);
+                    droppedItems.add(droppedItem);
+                    totalLootSpawned++;
+                }
+            }
+        }
+
+        Gdx.app.log("GameScreen", "Spawned " + totalLootSpawned + " coins in dungeon (level " + dungeonLevel + ")");
+    }
+
+    /**
+     * Check if a tile position is inside any room.
+     */
+    private boolean isInAnyRoom(List<io.github.inherit_this.world.DungeonRoom> rooms, int x, int y) {
+        for (io.github.inherit_this.world.DungeonRoom room : rooms) {
+            if (x >= room.x && x < room.x + room.width &&
+                y >= room.y && y < room.y + room.height) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void handleInput() {
         if (Gdx.input.isKeyJustPressed(Input.Keys.GRAVE)) {
             debugConsole.toggle();

@@ -97,7 +97,15 @@ public class ItemRegistry {
             loadTexture("items/iron_sword.png", 1, 2),
             1, 2, // 1 wide, 2 tall
             1,    // Not stackable
-            100   // Worth 100 gold
+            100,  // Worth 100 gold
+            2.0f, // weight
+            ItemStats.weapon(
+                10,    // damage
+                100,   // durability
+                1.0f   // attack speed (normal)
+            ),
+            null,  // enchantments
+            EquipmentSlot.MAIN_HAND
         ));
 
         register(new Item(
@@ -109,7 +117,15 @@ public class ItemRegistry {
             loadTexture("items/steel_axe.png", 1, 2),
             1, 2,
             1,
-            250
+            250,  // Worth 250 gold
+            3.0f, // weight (heavier than sword)
+            ItemStats.weapon(
+                15,    // damage (more than sword)
+                120,   // durability
+                0.8f   // attack speed (slower than sword)
+            ),
+            null,  // enchantments
+            EquipmentSlot.MAIN_HAND
         ));
 
         // Test weapons with special effects

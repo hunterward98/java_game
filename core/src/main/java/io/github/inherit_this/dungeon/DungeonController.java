@@ -96,11 +96,26 @@ public class DungeonController {
         // Create return portal at spawn
         dungeonTownReturn = Portal.createTownReturn(spawnPos[0] + 64, spawnPos[1]);
 
-        // Clear existing NPCs and spawn test enemies
+        // Clear existing NPCs and spawn dungeon enemies
         combatManager.clearAll();
+
+        // Load enemy texture (character.png as fallback until specific textures are implemented)
         Texture enemyTexture = new Texture("character.png");
         enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-        combatManager.spawnTestEnemies(spawnPos, currentWorld, enemyTexture);
+
+        // Spawn enemies throughout the dungeon
+        Gdx.app.log("DungeonController", "=== ENTERING DUNGEON LEVEL " + level + " ===");
+        DungeonGenerator generator = dungeon.getGenerator();
+
+        // Spawn enemies on all dungeon types (not just procedural)
+        if (generator instanceof ProceduralDungeonGenerator) {
+            ProceduralDungeonGenerator procGen = (ProceduralDungeonGenerator) generator;
+            int dungeonLevel = dungeon.getConfig().getDungeonLevel();
+            int playerLevel = player.getStats().getLevel();
+            combatManager.spawnDungeonEnemies(procGen, dungeonLevel, playerLevel, currentWorld, enemyTexture);
+        } else {
+            Gdx.app.log("DungeonController", "WARNING: Non-procedural dungeon, enemy spawning may not work!");
+        }
 
         // Preload nearby chunks
         dungeon.preloadChunks(3);

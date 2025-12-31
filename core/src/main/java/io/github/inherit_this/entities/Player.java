@@ -315,10 +315,16 @@ public class Player extends Entity {
             targetEnemy = target;
 
             // Calculate total damage (base stats + equipment)
-            int totalDamage = stats.getTotalDamage();
+            int baseDamage = stats.getTotalDamage();
 
             // Get weapon stats from equipped weapon
             ItemStats weaponStats = equipment.getWeaponStats();
+
+            // Add weapon damage to base damage
+            int totalDamage = baseDamage;
+            if (weaponStats != null) {
+                totalDamage += weaponStats.getDamage();
+            }
 
             // Create damage info with weapon effects
             DamageInfo damageInfo = DamageInfo.attackWithEffects(totalDamage, weaponStats);

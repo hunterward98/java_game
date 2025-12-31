@@ -77,7 +77,7 @@ public class NPCTemplate {
     );
 
     public static final NPCTemplate CURSED_MUSHROOM = new NPCTemplate(
-        "Cursed_Mushroom", 80, 0, 0f, 0f, 0f, 0f, 12, 20, 0.0f
+        "Cursed_Mushroom", 80, 10, 1.5f, 6f, 1.0f, 1.8f, 12, 20, 0.1f
     );
 
     /**

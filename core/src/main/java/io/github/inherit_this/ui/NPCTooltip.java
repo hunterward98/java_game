@@ -1,34 +1,45 @@
 package io.github.inherit_this.ui;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import io.github.inherit_this.entities.NPC;
 import io.github.inherit_this.util.FontManager;
 
 /**
  * Renders a tooltip showing NPC name and health information.
+ * Uses only SpriteBatch for rendering to avoid batch state issues.
  */
 public class NPCTooltip {
-    private final ShapeRenderer shapeRenderer;
+    private final Texture whitePixel;
     private final BitmapFont font;
     private final com.badlogic.gdx.graphics.g2d.GlyphLayout layout = new com.badlogic.gdx.graphics.g2d.GlyphLayout();
 
     private static final int PADDING = 8;
     private static final int LINE_HEIGHT = 16;
+    private static final int BORDER_WIDTH = 2;
     private static final Color BACKGROUND_COLOR = new Color(0.1f, 0.1f, 0.1f, 0.95f);
     private static final Color BORDER_COLOR = new Color(0.4f, 0.4f, 0.4f, 1.0f);
     private static final Color NAME_COLOR = new Color(1.0f, 1.0f, 0.6f, 1.0f); // Light yellow
     private static final Color HEALTH_COLOR = new Color(0.9f, 0.3f, 0.3f, 1.0f); // Red
 
     public NPCTooltip() {
-        this.shapeRenderer = new ShapeRenderer();
         this.font = FontManager.getInstance().getTooltipFont();
+
+        // Create a 1x1 white pixel texture for drawing rectangles
+        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pixmap.setColor(Color.WHITE);
+        pixmap.fill();
+        this.whitePixel = new Texture(pixmap);
+        pixmap.dispose();
     }
 
     /**
      * Render tooltip for an NPC at mouse position.
+     * Uses only SpriteBatch - no ShapeRenderer needed.
      */
     public void render(SpriteBatch batch, NPC npc, float mouseX, float mouseY) {
         if (npc == null || npc.isDead()) return;
@@ -50,39 +61,45 @@ public class NPCTooltip {
         float tooltipY = mouseY - tooltipHeight;
 
         // Adjust if off-screen
-        if (tooltipX + tooltipWidth > com.badlogic.gdx.Gdx.graphics.getWidth()) {
+        if (tooltipX + tooltipWidth > Gdx.graphics.getWidth()) {
             tooltipX = mouseX - tooltipWidth - 5;
         }
         if (tooltipY < 0) {
             tooltipY = 0;
         }
 
-        batch.end(); // End sprite batch to draw shapes
+        // Draw background (filled rectangle)
+        batch.setColor(BACKGROUND_COLOR);
+        batch.draw(whitePixel, tooltipX, tooltipY, tooltipWidth, tooltipHeight);
 
-        // Draw background
-        shapeRenderer.setProjectionMatrix(batch.getProjectionMatrix());
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(BACKGROUND_COLOR);
-        shapeRenderer.rect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
-        shapeRenderer.end();
+        // Draw border (4 lines forming a rectangle)
+        batch.setColor(BORDER_COLOR);
+        // Top border
+        batch.draw(whitePixel, tooltipX, tooltipY + tooltipHeight - BORDER_WIDTH, tooltipWidth, BORDER_WIDTH);
+        // Bottom border
+        batch.draw(whitePixel, tooltipX, tooltipY, tooltipWidth, BORDER_WIDTH);
+        // Left border
+        batch.draw(whitePixel, tooltipX, tooltipY, BORDER_WIDTH, tooltipHeight);
+        // Right border
+        batch.draw(whitePixel, tooltipX + tooltipWidth - BORDER_WIDTH, tooltipY, BORDER_WIDTH, tooltipHeight);
 
-        // Draw border
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-        shapeRenderer.setColor(BORDER_COLOR);
-        shapeRenderer.rect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
-        shapeRenderer.end();
+        // Reset batch color to white for text rendering
+        batch.setColor(Color.WHITE);
 
-        batch.begin(); // Resume sprite batch for text
-
-        // Draw NPC name
-        float textY = tooltipY + tooltipHeight - PADDING - (LINE_HEIGHT / 2f) - (font.getCapHeight() / 2f);
+        // Draw NPC name (vertically centered in first line)
+        float centerY = tooltipY + tooltipHeight - PADDING - (LINE_HEIGHT / 2f);
+        float textY = centerY + (font.getCapHeight() / 2f);
         font.setColor(NAME_COLOR);
         font.draw(batch, displayName, tooltipX + PADDING, textY);
 
-        // Draw health
-        textY -= LINE_HEIGHT;
+        // Draw health (vertically centered in second line)
+        centerY -= LINE_HEIGHT;
+        textY = centerY + (font.getCapHeight() / 2f);
         font.setColor(HEALTH_COLOR);
         font.draw(batch, healthText, tooltipX + PADDING, textY);
+
+        // Reset font color to white
+        font.setColor(Color.WHITE);
     }
 
     private float getTextWidth(String text) {
@@ -91,7 +108,7 @@ public class NPCTooltip {
     }
 
     public void dispose() {
-        shapeRenderer.dispose();
+        whitePixel.dispose();
         // Don't dispose font - it's owned by FontManager singleton
     }
 }

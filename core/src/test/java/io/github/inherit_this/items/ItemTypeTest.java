@@ -23,13 +23,14 @@ class ItemTypeTest {
         void testAllValues() {
             ItemType[] types = ItemType.values();
 
-            assertEquals(7, types.length, "Should have exactly 7 item types");
+            assertEquals(8, types.length, "Should have exactly 8 item types");
             assertTrue(containsType(types, ItemType.WEAPON));
             assertTrue(containsType(types, ItemType.ARMOR));
             assertTrue(containsType(types, ItemType.CONSUMABLE));
             assertTrue(containsType(types, ItemType.MATERIAL));
             assertTrue(containsType(types, ItemType.TOOL));
             assertTrue(containsType(types, ItemType.QUEST));
+            assertTrue(containsType(types, ItemType.CURRENCY));
             assertTrue(containsType(types, ItemType.MISC));
         }
 
@@ -42,6 +43,7 @@ class ItemTypeTest {
             assertEquals(ItemType.MATERIAL, ItemType.valueOf("MATERIAL"));
             assertEquals(ItemType.TOOL, ItemType.valueOf("TOOL"));
             assertEquals(ItemType.QUEST, ItemType.valueOf("QUEST"));
+            assertEquals(ItemType.CURRENCY, ItemType.valueOf("CURRENCY"));
             assertEquals(ItemType.MISC, ItemType.valueOf("MISC"));
         }
 
@@ -206,6 +208,9 @@ class ItemTypeTest {
                         break;
                     case QUEST:
                         category = "Quest Item";
+                        break;
+                    case CURRENCY:
+                        category = "Currency";
                         break;
                     case MISC:
                         category = "Other";

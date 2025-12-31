@@ -627,6 +627,9 @@ public class GameScreen extends ScreenAdapter {
         // Spawn loot in dungeon based on room loot values
         spawnDungeonLoot(dungeon);
 
+        // Spawn enemies in dungeon
+        spawnDungeonEnemies(dungeon);
+
         Gdx.app.log("GameScreen", "Switched to dungeon level " + dungeon.getConfig().getDungeonLevel());
     }
 
@@ -721,6 +724,39 @@ public class GameScreen extends ScreenAdapter {
         int objectsSpawned = spawnBreakableObjectsInRooms(rooms, generator, dungeonLevel, random);
 
         Gdx.app.log("GameScreen", "Spawned " + totalLootSpawned + " coins and " + objectsSpawned + " breakable objects in dungeon (level " + dungeonLevel + ")");
+    }
+
+    /**
+     * Spawns enemies throughout the dungeon (rooms and hallways).
+     * For now, spawns only Goblins and Cursed Mushrooms for testing.
+     */
+    private void spawnDungeonEnemies(io.github.inherit_this.world.DungeonWorld dungeon) {
+        io.github.inherit_this.world.DungeonGenerator generator = dungeon.getGenerator();
+
+        Gdx.app.log("GameScreen", "=== SPAWNING ENEMIES ===");
+
+        // Check if it's a procedural generator (has rooms)
+        if (!(generator instanceof io.github.inherit_this.world.ProceduralDungeonGenerator)) {
+            Gdx.app.log("GameScreen", "Not a procedural dungeon, skipping enemy spawn");
+            return;
+        }
+
+        io.github.inherit_this.world.ProceduralDungeonGenerator procGen =
+            (io.github.inherit_this.world.ProceduralDungeonGenerator) generator;
+
+        int dungeonLevel = dungeon.getConfig().getDungeonLevel();
+        int playerLevel = player.getStats().getLevel();
+
+        Gdx.app.log("GameScreen", "Dungeon Level: " + dungeonLevel + ", Player Level: " + playerLevel);
+
+        // Load enemy texture
+        Texture enemyTexture = new Texture("character.png");
+        enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+
+        // Use CombatManager to spawn enemies
+        combatManager.spawnDungeonEnemies(procGen, dungeonLevel, playerLevel, world, enemyTexture);
+
+        Gdx.app.log("GameScreen", "=== ENEMY SPAWN COMPLETE === " + combatManager.getNPCCount() + " enemies spawned");
     }
 
     /**

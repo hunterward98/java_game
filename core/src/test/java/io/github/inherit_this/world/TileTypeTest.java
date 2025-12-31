@@ -23,13 +23,16 @@ class TileTypeTest {
         void testAllValues() {
             TileType[] types = TileType.values();
 
-            assertEquals(6, types.length, "Should have exactly 6 tile types");
+            assertEquals(9, types.length, "Should have exactly 9 tile types");
             assertTrue(containsType(types, TileType.GRASS));
             assertTrue(containsType(types, TileType.STONE));
             assertTrue(containsType(types, TileType.SAND));
             assertTrue(containsType(types, TileType.PATH));
             assertTrue(containsType(types, TileType.WATER));
             assertTrue(containsType(types, TileType.VOID));
+            assertTrue(containsType(types, TileType.MARBLE_TILE));
+            assertTrue(containsType(types, TileType.DARK_GRANITE));
+            assertTrue(containsType(types, TileType.DARK_BRICK));
         }
 
         @Test
@@ -41,6 +44,9 @@ class TileTypeTest {
             assertEquals(TileType.PATH, TileType.valueOf("PATH"));
             assertEquals(TileType.WATER, TileType.valueOf("WATER"));
             assertEquals(TileType.VOID, TileType.valueOf("VOID"));
+            assertEquals(TileType.MARBLE_TILE, TileType.valueOf("MARBLE_TILE"));
+            assertEquals(TileType.DARK_GRANITE, TileType.valueOf("DARK_GRANITE"));
+            assertEquals(TileType.DARK_BRICK, TileType.valueOf("DARK_BRICK"));
         }
 
         @Test
@@ -200,6 +206,15 @@ class TileTypeTest {
                         break;
                     case VOID:
                         category = "Special";
+                        break;
+                    case MARBLE_TILE:
+                        category = "Dungeon";
+                        break;
+                    case DARK_GRANITE:
+                        category = "Dungeon";
+                        break;
+                    case DARK_BRICK:
+                        category = "Dungeon";
                         break;
                     default:
                         category = null;
@@ -380,7 +395,10 @@ class TileTypeTest {
                                           type == TileType.SAND ||
                                           type == TileType.PATH ||
                                           type == TileType.WATER ||
-                                          type == TileType.VOID;
+                                          type == TileType.VOID ||
+                                          type == TileType.MARBLE_TILE ||
+                                          type == TileType.DARK_GRANITE ||
+                                          type == TileType.DARK_BRICK;
                 assertTrue(validEnvironment, type + " should be valid environment type");
             }
         }

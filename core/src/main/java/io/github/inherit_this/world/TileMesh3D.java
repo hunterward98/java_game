@@ -356,10 +356,16 @@ public class TileMesh3D {
         float size = Constants.TILE_SIZE;
         float halfSize = size / 2f;
 
-        // Create a horizontal plane with rotated UV coordinates
-        // When this plane is rotated 90° around X to make it vertical,
-        // the texture will appear correctly oriented
+        // Create a thick wall with front face, back face, and top face
+        // The wall is one tile thick (extends one tile backward from the front face)
         modelBuilder.begin();
+
+        com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder builder = modelBuilder.part(
+            "wall",
+            GL20.GL_TRIANGLES,
+            VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal | VertexAttributes.Usage.TextureCoordinates,
+            material
+        );
 
         // Build mesh manually to control UV coordinates
         com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo v1 = new com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo();
@@ -367,10 +373,9 @@ public class TileMesh3D {
         com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo v3 = new com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo();
         com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo v4 = new com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo();
 
-        // Base UV coordinates (already rotated 90° to fix wall orientation)
+        // Calculate UV coordinates based on texture rotation
         float u1, v1_uv, u2, v2_uv, u3, v3_uv, u4, v4_uv;
 
-        // Apply additional texture rotation by rotating UVs
         switch (textureRotation) {
             case 0: // No additional rotation
                 u1 = 0; v1_uv = 1;  // bottom-left
@@ -404,20 +409,23 @@ public class TileMesh3D {
                 break;
         }
 
-        // Set positions with calculated UV coordinates
-        v1.setPos(-halfSize, 0, -halfSize).setNor(0, 1, 0).setUV(u1, v1_uv);  // bottom-left
-        v2.setPos(-halfSize, 0, halfSize).setNor(0, 1, 0).setUV(u2, v2_uv);   // top-left
-        v3.setPos(halfSize, 0, halfSize).setNor(0, 1, 0).setUV(u3, v3_uv);    // top-right
-        v4.setPos(halfSize, 0, -halfSize).setNor(0, 1, 0).setUV(u4, v4_uv);   // bottom-right
+        // FRONT FACE (exterior wall, 2 tiles tall)
+        // Before rotation: horizontal plane at Y=0, Z from 0 to size*2 (2 tiles in model space)
+        // After rotation: vertical plane facing outward, 2 tiles tall
+        v1.setPos(-halfSize, 0, 0).setNor(0, 1, 0).setUV(u1, v1_uv);              // bottom-left (ground)
+        v2.setPos(-halfSize, 0, size * 2).setNor(0, 1, 0).setUV(u2, v2_uv);       // top-left (2 tiles up)
+        v3.setPos(halfSize, 0, size * 2).setNor(0, 1, 0).setUV(u3, v3_uv);        // top-right (2 tiles up)
+        v4.setPos(halfSize, 0, 0).setNor(0, 1, 0).setUV(u4, v4_uv);               // bottom-right (ground)
+        builder.rect(v1, v2, v3, v4);
 
-        com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder builder = modelBuilder.part(
-            "wall",
-            GL20.GL_TRIANGLES,
-            VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal | VertexAttributes.Usage.TextureCoordinates,
-            material
-        );
-
-        // Create two triangles for the quad (counter-clockwise winding)
+        // TOP FACE (horizontal tile on top of wall)
+        // Before rotation: vertical plane at Z=size*2 (top of wall in model space, 2 tiles up)
+        // After rotation: horizontal plane on top of wall at 2 tiles height
+        // Extends backward by 'size' to create wall thickness
+        v1.setPos(-halfSize, 0, 2).setNor(0, 0, 2).setUV(0, 0);        // front-left
+        v2.setPos(-halfSize, -size, 2).setNor(0, 0, 2).setUV(0, 1);    // back-left (one tile back)
+        v3.setPos(halfSize, -size, 2).setNor(0, 0, 2).setUV(1, 1);     // back-right (one tile back)
+        v4.setPos(halfSize, 0, 2).setNor(0, 0, 2).setUV(1, 0);         // front-right
         builder.rect(v1, v2, v3, v4);
 
         return modelBuilder.end();

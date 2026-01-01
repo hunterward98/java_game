@@ -159,16 +159,5 @@ public class Chunk {
             cachedModels = null;
         }
     }
-    // reload idea
-    // public void reloadChunk(int chunkX, int chunkY) {
-    //     ChunkKey key = new ChunkKey(chunkX, chunkY);
-
-    //     // Remove old chunk
-    //     chunks.remove(key);
-
-    //     // Generate and insert new one
-    //     Chunk newChunk = chunkGenerator.generateChunk(chunkX, chunkY);
-    //     chunks.put(key, newChunk);
-    // }
 
 }

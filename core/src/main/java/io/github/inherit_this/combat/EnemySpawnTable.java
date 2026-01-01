@@ -18,16 +18,15 @@ public class EnemySpawnTable {
         Map<NPCTemplate, Integer> weights = new HashMap<>();
 
         if (dungeonLevel <= 5) {
-            // LEVEL 1-5: Early Dungeon - TESTING: Only Goblin and Cursed Mushroom
-            //weights.put(NPCTemplate.SLIME, 25);
-            weights.put(NPCTemplate.GOBLIN, 50);
-            //weights.put(NPCTemplate.SKELETON, 15);
-            //weights.put(NPCTemplate.WOLF, 15);
-            weights.put(NPCTemplate.CURSED_MUSHROOM, 50);
-            //weights.put(NPCTemplate.ORC, 7);
-            //weights.put(NPCTemplate.VAMPIRE, 2);
-            //weights.put(NPCTemplate.TROLL, 1);
-            // Dragon not yet available
+            // LEVEL 1-5: Early Dungeon
+            weights.put(NPCTemplate.SLIME, 25);
+            weights.put(NPCTemplate.GOBLIN, 20);
+            weights.put(NPCTemplate.SKELETON, 15);
+            weights.put(NPCTemplate.WOLF, 15);
+            weights.put(NPCTemplate.CURSED_MUSHROOM, 15);
+            weights.put(NPCTemplate.ORC, 7);
+            weights.put(NPCTemplate.VAMPIRE, 2);
+            weights.put(NPCTemplate.TROLL, 1);
 
         } else if (dungeonLevel <= 15) {
             // LEVEL 6-15: Mid Dungeon - 9 types

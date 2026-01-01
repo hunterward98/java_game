@@ -345,10 +345,6 @@ public class PlayerStats {
         // Level 50 = 105 damage
         int baseDamage = 5 + (level * 2);
 
-        // TODO: Add equipment bonuses from equipped weapon
-        // Equipment equipment = player.getEquipment();
-        // baseDamage += equipment.getTotalStats().getDamage();
-
         return baseDamage;
     }
 }

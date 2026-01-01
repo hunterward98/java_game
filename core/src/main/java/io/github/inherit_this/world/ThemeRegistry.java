@@ -69,21 +69,6 @@ public class ThemeRegistry {
     }
 
     /**
-     * Get the appropriate theme for a given dungeon level.
-     * DEPRECATED: Use getThemeForSeed() for random theme selection.
-     * Kept for backward compatibility.
-     *
-     * @param level The dungeon level (1-based)
-     * @return A randomly selected theme (now ignores level)
-     * @deprecated Use getThemeForSeed(long seed) instead
-     */
-    @Deprecated
-    public static DungeonTheme getThemeForLevel(int level) {
-        // For backward compatibility, use level as seed
-        return getThemeForSeed(level);
-    }
-
-    /**
      * Get all marble tile texture variant paths.
      * User mentioned 12 variants available.
      *

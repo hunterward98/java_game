@@ -6,12 +6,14 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Generates L-shaped corridors between rooms for dungeon layouts.
- * Hallways can be horizontal-then-vertical or vertical-then-horizontal.
+ * Generates corridors between rooms for dungeon layouts.
+ * Supports both L-shaped (legacy) and curvy A*-based hallways.
  */
 public class HallwayGenerator {
     private final int corridorWidth;
     private final Random random;
+    private final AStarPathfinder pathfinder;
+    private final PathSmoother smoother;
 
     /**
      * Create a hallway generator with specified corridor width.
@@ -22,6 +24,8 @@ public class HallwayGenerator {
     public HallwayGenerator(int corridorWidth, Random random) {
         this.corridorWidth = Math.max(1, corridorWidth);
         this.random = random;
+        this.pathfinder = new AStarPathfinder();
+        this.smoother = new PathSmoother();
     }
 
     /**
@@ -108,6 +112,85 @@ public class HallwayGenerator {
                     y >= 1 && y < walls[0].length - 1) {
                     walls[corridorX][y] = false;
                 }
+            }
+        }
+    }
+
+    /**
+     * Carve a curvy hallway using A* pathfinding and Catmull-Rom smoothing.
+     * Routes around obstacles and creates organic, flowing corridors.
+     *
+     * @param walls The dungeon walls array to modify
+     * @param start Start point (entrance on room perimeter)
+     * @param end End point (entrance on room perimeter)
+     * @return true if path was carved, false if A* failed (fallback needed)
+     */
+    public boolean carveCurvyHallway(boolean[][] walls, Vector2 start, Vector2 end) {
+        // Find path using A*
+        List<Vector2> rawPath = pathfinder.findPath(start, end, walls, corridorWidth);
+
+        if (rawPath == null || rawPath.size() < 2) {
+            // A* failed - caller should fall back to L-shaped hallway
+            return false;
+        }
+
+        // Smooth path to create curves
+        List<Vector2> smoothPath = smoother.smoothPath(rawPath, 0.4f);
+
+        // Carve corridor along smooth path
+        for (int i = 0; i < smoothPath.size() - 1; i++) {
+            Vector2 p1 = smoothPath.get(i);
+            Vector2 p2 = smoothPath.get(i + 1);
+            carveSegment(walls, p1, p2);
+        }
+
+        return true;
+    }
+
+    /**
+     * Carve a corridor segment between two adjacent points.
+     */
+    private void carveSegment(boolean[][] walls, Vector2 p1, Vector2 p2) {
+        int x1 = Math.round(p1.x);
+        int y1 = Math.round(p1.y);
+        int x2 = Math.round(p2.x);
+        int y2 = Math.round(p2.y);
+
+        // Bresenham's line algorithm for segment
+        int dx = Math.abs(x2 - x1);
+        int dy = Math.abs(y2 - y1);
+        int sx = x1 < x2 ? 1 : -1;
+        int sy = y1 < y2 ? 1 : -1;
+        int err = dx - dy;
+
+        int x = x1;
+        int y = y1;
+
+        while (true) {
+            // Carve corridor at current position with width
+            for (int i = -corridorWidth / 2; i <= corridorWidth / 2; i++) {
+                for (int j = -corridorWidth / 2; j <= corridorWidth / 2; j++) {
+                    int cx = x + i;
+                    int cy = y + j;
+                    if (cx >= 1 && cx < walls.length - 1 &&
+                        cy >= 1 && cy < walls[0].length - 1) {
+                        walls[cx][cy] = false;
+                    }
+                }
+            }
+
+            if (x == x2 && y == y2) {
+                break;
+            }
+
+            int e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y += sy;
             }
         }
     }

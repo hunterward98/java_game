@@ -29,8 +29,6 @@ public class Entity {
         return texture;
     }
 
-    // public abstract void update(float delta);
-
     public void dispose() {
         texture.dispose();
     }

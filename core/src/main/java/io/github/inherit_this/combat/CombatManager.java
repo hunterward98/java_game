@@ -51,16 +51,6 @@ public class CombatManager {
         return particleSystem;
     }
 
-    /**
-     * Spawn test enemies at specific positions.
-     * @deprecated Use spawnDungeonEnemies for proper dungeon spawning
-     */
-    @Deprecated
-    public void spawnTestEnemies(int[] spawnPos, WorldProvider world, Texture enemyTexture) {
-        npcs.add(new Enemy(enemyTexture, spawnPos[0] + 100, spawnPos[1], "Skeleton", world));
-        npcs.add(new Enemy(enemyTexture, spawnPos[0] - 100, spawnPos[1] + 50, "Zombie", world));
-        npcs.add(new Enemy(enemyTexture, spawnPos[0], spawnPos[1] + 150, "Ghost", world));
-    }
 
     /**
      * Spawn enemies throughout a dungeon (rooms and hallways).

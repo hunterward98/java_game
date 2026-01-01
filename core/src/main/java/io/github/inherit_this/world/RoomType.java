@@ -8,17 +8,17 @@ import java.util.Random;
 /**
  * Types of dungeon rooms with constrained size categories.
  * Each room type can only be certain sizes to maintain dungeon logic
- * (e.g., a plaza cannot be SMALL, a shrine cannot be MASSIVE).
+ * (e.g., a plaza cannot be SMALL).
  */
 public enum RoomType {
     STANDARD(RoomSize.SMALL, RoomSize.MEDIUM),              // Normal rooms
     BARRACKS(RoomSize.LARGE, RoomSize.HUGE),                // Military quarters - must be large
     TREASURE(RoomSize.SMALL, RoomSize.MEDIUM),              // Treasure rooms - small to medium
-    BOSS(RoomSize.HUGE, RoomSize.MASSIVE),                  // Boss arenas - must be huge
+    BOSS(RoomSize.HUGE),                                    // Boss arenas - must be huge
     LIBRARY(RoomSize.MEDIUM, RoomSize.LARGE),               // Libraries - medium to large
     ARMORY(RoomSize.MEDIUM, RoomSize.LARGE),                // Weapon storage - medium to large
     SHRINE(RoomSize.SMALL),                                 // Small shrines only
-    PLAZA(RoomSize.LARGE, RoomSize.HUGE, RoomSize.MASSIVE), // Open areas - must be large
+    PLAZA(RoomSize.LARGE, RoomSize.HUGE),                   // Open areas - must be large
     SECRET(RoomSize.SMALL, RoomSize.MEDIUM);                // Hidden rooms - small to medium
 
     private final List<RoomSize> allowedSizes;

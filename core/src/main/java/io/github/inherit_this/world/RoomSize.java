@@ -7,9 +7,8 @@ package io.github.inherit_this.world;
 public enum RoomSize {
     SMALL(12, 24),      // Standard small rooms
     MEDIUM(24, 40),     // Medium rooms
-    LARGE(40, 70),      // Large multi-chunk rooms
-    HUGE(70, 100),      // Very large rooms (boss arenas, grand halls)
-    MASSIVE(100, 160);  // Massive special rooms (throne rooms, plazas)
+    LARGE(40, 60),      // Large rooms (reduced from 70)
+    HUGE(50, 70);       // Very large rooms (reduced from 100, removed MASSIVE)
 
     private final int min;
     private final int max;

@@ -24,6 +24,7 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
     private List<DungeonRoom> rooms;
     private List<DungeonRoom> mainRooms;
     private List<DelaunayTriangulator.Edge> hallwayEdges;
+    private RoomShapeFactory shapeFactory;  // For organic room shapes
 
     // Configuration
     private static final int TARGET_ROOM_COUNT = 300;        // Rooms for 384×384 dungeon
@@ -43,6 +44,7 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
         this.rooms = new ArrayList<>();
         this.mainRooms = new ArrayList<>();
         this.hallwayEdges = new ArrayList<>();
+        this.shapeFactory = new RoomShapeFactory(random);
     }
 
     @Override
@@ -91,7 +93,7 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
         float ellipseWidth = widthInTiles * 0.9f;
         float ellipseHeight = heightInTiles * 0.9f;
 
-        // 1. Generate 2-3 BOSS rooms (guaranteed, HUGE or MASSIVE)
+        // 1. Generate 2-3 BOSS rooms (guaranteed, HUGE)
         generateRoomsByType(RoomType.BOSS, 3, centerX, centerY, ellipseWidth, ellipseHeight);
 
         // 2. Generate LARGE special rooms (BARRACKS, PLAZAS)
@@ -134,6 +136,13 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
 
             // Create room with dungeon level for loot scaling
             DungeonRoom room = new DungeonRoom(x, y, width, height, type, sizeCategory, config.getDungeonLevel());
+
+            // Assign organic shape if enabled
+            if (config.isOrganicShapesEnabled()) {
+                RoomShape shape = shapeFactory.createShape(x, y, width, height, type, sizeCategory);
+                room.setShape(shape);
+            }
+
             rooms.add(room);
         }
     }
@@ -239,8 +248,7 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
             case SMALL: return RoomSize.MEDIUM;
             case MEDIUM: return RoomSize.LARGE;
             case LARGE: return RoomSize.HUGE;
-            case HUGE: return RoomSize.MASSIVE;
-            case MASSIVE: return null;
+            case HUGE: return null;
             default: return null;
         }
     }
@@ -250,7 +258,6 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
      */
     private RoomSize getNextSmallerSize(RoomSize current) {
         switch (current) {
-            case MASSIVE: return RoomSize.HUGE;
             case HUGE: return RoomSize.LARGE;
             case LARGE: return RoomSize.MEDIUM;
             case MEDIUM: return RoomSize.SMALL;
@@ -369,6 +376,7 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
     /**
      * Carve all rooms and hallways into the walls array.
      * Uses variable hallway widths (3, 5, or 7) based on connected room types.
+     * Supports organic shapes and curvy hallways when enabled.
      */
     private void carveRoomsAndHallways() {
         // Carve all rooms (not just main rooms)
@@ -377,19 +385,45 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
         }
 
         // Carve hallways with variable widths based on room types
+        boolean useCurvyHallways = config.isCurvyHallwaysEnabled();
+
         for (DelaunayTriangulator.Edge edge : hallwayEdges) {
             // Find rooms connected by this edge
             DungeonRoom room1 = findRoomByCenter(edge.a);
             DungeonRoom room2 = findRoomByCenter(edge.b);
 
-            // Determine hallway width (use max of both rooms for grand corridors)
-            int width1 = room1 != null ? room1.getHallwayWidth() : 3;
-            int width2 = room2 != null ? room2.getHallwayWidth() : 3;
-            int hallwayWidth = Math.max(width1, width2);
+            if (room1 == null || room2 == null) continue;
 
-            // Carve hallway with appropriate width
+            // Determine hallway width (use max of both rooms for grand corridors)
+            int hallwayWidth = Math.max(room1.getHallwayWidth(), room2.getHallwayWidth());
+
+            // Determine connection points (entrance selection if organic shapes enabled)
+            Vector2 start, end;
+            if (config.isOrganicShapesEnabled()) {
+                // Use random perimeter points as entrances
+                start = room1.selectEntranceToward(room2, random);
+                end = room2.selectEntranceToward(room1, random);
+            } else {
+                // Use room centers (legacy behavior)
+                start = edge.a;
+                end = edge.b;
+            }
+
+            // Carve hallway
             HallwayGenerator hallwayGen = new HallwayGenerator(hallwayWidth, random);
-            hallwayGen.carveHallway(walls, edge.a, edge.b);
+
+            if (useCurvyHallways) {
+                // Try A* pathfinding for curvy hallways
+                boolean success = hallwayGen.carveCurvyHallway(walls, start, end);
+
+                // Fallback to L-shaped if A* fails
+                if (!success) {
+                    hallwayGen.carveHallway(walls, start, end);
+                }
+            } else {
+                // Legacy L-shaped hallways
+                hallwayGen.carveHallway(walls, start, end);
+            }
         }
     }
 
@@ -410,19 +444,28 @@ public class ProceduralDungeonGenerator extends DungeonGenerator {
 
     /**
      * Carve a single room into the walls array.
+     * Uses room's shape if available, otherwise carves rectangular.
      */
     private void carveRoom(DungeonRoom room) {
-        int startX = Math.round(room.x);
-        int startY = Math.round(room.y);
+        RoomShape shape = room.getShape();
 
-        for (int dx = 0; dx < room.width; dx++) {
-            for (int dy = 0; dy < room.height; dy++) {
-                int x = startX + dx;
-                int y = startY + dy;
+        if (shape != null) {
+            // Use shape's carving method
+            shape.carve(walls, 0, 0);
+        } else {
+            // Legacy rectangular carving
+            int startX = Math.round(room.x);
+            int startY = Math.round(room.y);
 
-                // Ensure within bounds (leave 1-tile border)
-                if (x >= 1 && x < widthInTiles - 1 && y >= 1 && y < heightInTiles - 1) {
-                    walls[x][y] = false;
+            for (int dx = 0; dx < room.width; dx++) {
+                for (int dy = 0; dy < room.height; dy++) {
+                    int x = startX + dx;
+                    int y = startY + dy;
+
+                    // Ensure within bounds (leave 1-tile border)
+                    if (x >= 1 && x < widthInTiles - 1 && y >= 1 && y < heightInTiles - 1) {
+                        walls[x][y] = false;
+                    }
                 }
             }
         }

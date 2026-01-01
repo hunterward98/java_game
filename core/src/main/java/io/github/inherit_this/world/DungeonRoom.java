@@ -2,16 +2,23 @@ package io.github.inherit_this.world;
 
 import com.badlogic.gdx.math.Vector2;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
 /**
  * Represents a room in the procedural dungeon generation algorithm.
  * Supports physics-based separation with position, velocity, and collision detection.
+ * Now supports multiple room shapes via composition (RoomShape interface).
  */
 public class DungeonRoom {
     // Position in tiles (can be float during physics separation)
     public float x;
     public float y;
 
-    // Size in tiles
+    // Size in tiles (bounding box for physics)
     public int width;
     public int height;
 
@@ -31,6 +38,12 @@ public class DungeonRoom {
 
     // Dungeon level (for scaling loot)
     private int dungeonLevel;
+
+    // Room shape (null = legacy rectangular behavior for backward compatibility)
+    private RoomShape shape;
+
+    // Entrance points for hallway connections (maps connected room to entrance point)
+    private final Map<DungeonRoom, Vector2> entrances = new HashMap<>();
 
     /**
      * Create a new dungeon room.
@@ -115,23 +128,50 @@ public class DungeonRoom {
     }
 
     /**
+     * Set the shape of this room.
+     * If null, uses legacy rectangular behavior.
+     *
+     * @param shape The room shape
+     */
+    public void setShape(RoomShape shape) {
+        this.shape = shape;
+    }
+
+    /**
+     * Get the room shape (may be null for legacy rooms).
+     */
+    public RoomShape getShape() {
+        return shape;
+    }
+
+    /**
      * Get the center point of this room.
+     * Delegates to shape if available, otherwise uses bounding box.
      *
      * @return Vector2 containing the center coordinates in tiles
      */
     public Vector2 center() {
+        if (shape != null) {
+            return shape.getCenter();
+        }
         return new Vector2(x + width / 2f, y + height / 2f);
     }
 
     /**
      * Check if this room intersects with another room.
      * Includes a small margin (1 tile) to prevent rooms from touching.
+     * Uses detailed shape collision if shapes available, otherwise bounding box.
      *
      * @param other The other room to check
      * @return true if rooms intersect or are too close
      */
     public boolean intersects(DungeonRoom other) {
-        // Add 1 tile margin on each side to prevent touching
+        // If both rooms have shapes, use detailed collision
+        if (shape != null && other.shape != null) {
+            return shape.intersects(other.shape, 1.0f);
+        }
+
+        // Fall back to bounding box collision with 1 tile margin
         return !(x + width + 1 < other.x ||
                  other.x + other.width + 1 < x ||
                  y + height + 1 < other.y ||
@@ -151,12 +191,58 @@ public class DungeonRoom {
     }
 
     /**
-     * Get the bounding box area of this room.
+     * Get the area of this room.
+     * Delegates to shape if available, otherwise uses bounding box.
      *
-     * @return Area in tiles (width × height)
+     * @return Area in tiles
      */
     public int getArea() {
+        if (shape != null) {
+            return shape.getArea();
+        }
         return width * height;
+    }
+
+    /**
+     * Get perimeter points for this room (for entrance placement).
+     * Delegates to shape if available, otherwise generates rectangle perimeter.
+     *
+     * @return List of points along the room's perimeter
+     */
+    public List<Vector2> getPerimeterPoints() {
+        if (shape != null) {
+            return shape.getPerimeterPoints();
+        }
+
+        // Legacy: Generate rectangular perimeter
+        List<Vector2> points = new ArrayList<>();
+        int samplesPerSide = Math.max(3, Math.max(width, height) / 4);
+
+        // Top edge
+        for (int i = 0; i < samplesPerSide; i++) {
+            float t = i / (float) (samplesPerSide - 1);
+            points.add(new Vector2(x + t * width, y + height));
+        }
+
+        // Right edge (skip corner)
+        for (int i = 1; i < samplesPerSide; i++) {
+            float t = i / (float) (samplesPerSide - 1);
+            points.add(new Vector2(x + width, y + height - t * height));
+        }
+
+        // Bottom edge (skip corner)
+        for (int i = 1; i < samplesPerSide; i++) {
+            float t = i / (float) (samplesPerSide - 1);
+            points.add(new Vector2(x + width - t * width, y));
+        }
+
+        // Left edge (skip both corners)
+        for (int i = 1; i < samplesPerSide - 1; i++) {
+            float t = i / (float) (samplesPerSide - 1);
+            points.add(new Vector2(x, y + t * height));
+        }
+
+        return points;
     }
 
     /**
@@ -197,9 +283,78 @@ public class DungeonRoom {
         return type != null ? type.getHallwayWidth() : 3;
     }
 
+    /**
+     * Select an entrance point on this room's perimeter toward another room.
+     * Finds the perimeter point closest to the other room's center, then adds random jitter.
+     *
+     * @param other The room to connect to
+     * @param random Random generator for jitter
+     * @return Entrance point in tile coordinates
+     */
+    public Vector2 selectEntranceToward(DungeonRoom other, Random random) {
+        // Return cached entrance if already selected
+        if (entrances.containsKey(other)) {
+            return entrances.get(other);
+        }
+
+        // Get perimeter points from shape
+        List<Vector2> perimeter = getPerimeterPoints();
+
+        if (perimeter.isEmpty()) {
+            // Fallback: use room center
+            return center();
+        }
+
+        // Find perimeter point closest to other room's center
+        Vector2 otherCenter = other.center();
+        Vector2 bestPoint = perimeter.get(0);
+        float bestDist = Float.MAX_VALUE;
+
+        for (Vector2 p : perimeter) {
+            float dist = p.dst(otherCenter);
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestPoint = p;
+            }
+        }
+
+        // Add random jitter along perimeter (±20% of perimeter length)
+        Vector2 entrance = addPerimeterJitter(bestPoint, perimeter, 0.2f, random);
+
+        // Cache and return
+        entrances.put(other, entrance);
+        return entrance;
+    }
+
+    /**
+     * Add random jitter to a perimeter point by moving along the perimeter.
+     */
+    private Vector2 addPerimeterJitter(Vector2 point, List<Vector2> perimeter, float jitterRatio, Random random) {
+        // Find closest perimeter point (in case point isn't exactly on perimeter)
+        int closestIndex = 0;
+        float closestDist = Float.MAX_VALUE;
+
+        for (int i = 0; i < perimeter.size(); i++) {
+            float dist = point.dst(perimeter.get(i));
+            if (dist < closestDist) {
+                closestDist = dist;
+                closestIndex = i;
+            }
+        }
+
+        // Calculate jitter range
+        int maxJitter = (int) (perimeter.size() * jitterRatio);
+        int jitter = -maxJitter + random.nextInt(maxJitter * 2 + 1);
+
+        // Apply jitter
+        int newIndex = (closestIndex + jitter + perimeter.size()) % perimeter.size();
+        return perimeter.get(newIndex).cpy();
+    }
+
     @Override
     public String toString() {
-        return String.format("Room[x=%.1f, y=%.1f, w=%d, h=%d, type=%s, size=%s, main=%b]",
-                x, y, width, height, type, sizeCategory, isMainRoom);
+        return String.format("Room[x=%.1f, y=%.1f, w=%d, h=%d, type=%s, size=%s, main=%b, shape=%s]",
+                x, y, width, height, type, sizeCategory, isMainRoom,
+                shape != null ? shape.getShapeType() : "legacy_rect");
     }
 }

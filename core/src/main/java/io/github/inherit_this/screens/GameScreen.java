@@ -280,10 +280,6 @@ public class GameScreen extends ScreenAdapter {
             }
         });
 
-        // Spawn persistent town objects (these regenerate on world reload/return from dungeon)
-        // TEMPORARILY DISABLED FOR DEBUGGING
-        // spawnTownObjects();
-
         // Add test interactable objects (press E to interact)
         interactableObjects.add(InteractableObjectFactory.createChest(0, 5));
         interactableObjects.add(InteractableObjectFactory.createWorkbench(-3, 0));
@@ -440,13 +436,6 @@ public class GameScreen extends ScreenAdapter {
         fpsFont.draw(batch, "Zoom: " + (int)inputHandler.getCameraDistance(), 10, Gdx.graphics.getHeight() - 50);
         // Display tile coordinates with 2 decimal places for precision
         fpsFont.draw(batch, "Tile: (" + String.format("%.2f", player.getPosition().x) + ", " + String.format("%.2f", player.getPosition().y) + ")", 10, Gdx.graphics.getHeight() - 70);
-
-        // Calculate render radius (matches renderVisibleChunks3D calculation) (this is for speed improvements)
-        // int renderRadius = (int) Math.ceil(inputHandler.getCameraDistance() / 100f);
-        // renderRadius = Math.max(6, Math.min(renderRadius, 10));
-        // int totalInRadius = (renderRadius * 2 + 1) * (renderRadius * 2 + 1);
-        // fpsFont.draw(batch, "Chunks: " + chunksRenderedLastFrame + "/" + totalInRadius + " (R:" + renderRadius + ")", 10, Gdx.graphics.getHeight() - 90);
-        // fpsFont.draw(batch, "Culled: " + chunksCulledLastFrame + " | Loaded: " + world.getLoadedChunkCount(), 10, Gdx.graphics.getHeight() - 110);
 
         // Render map editor UI
         mapEditor.render(batch);

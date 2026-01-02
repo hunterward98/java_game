@@ -77,14 +77,9 @@ public class DungeonChunk extends Chunk {
                     // Use the texture from the actual tile (themed texture)
                     com.badlogic.gdx.graphics.Texture wallTexture = tile.getTexture();
 
-                    // ALL walls are 2 tiles tall
-                    // Level 0 (ground level)
+                    // Walls are 2 tiles tall - only create once (not at multiple levels)
                     createWallModels(models, tileMesh, wallTexture, tileWorldX, tileWorldY,
-                                   worldTileX, worldTileY, 0);
-
-                    // Level 1 (one tile up)
-                    createWallModels(models, tileMesh, wallTexture, tileWorldX, tileWorldY,
-                                   worldTileX, worldTileY, 1);
+                                   worldTileX, worldTileY);
                 } else {
                     // Floor tile - use the texture from the actual tile (themed texture)
                     com.badlogic.gdx.graphics.Texture floorTexture = tile.getTexture();
@@ -106,15 +101,15 @@ public class DungeonChunk extends Chunk {
 
     /**
      * Create wall model instances for a tile, checking all 4 directions.
-     * Creates double-sided walls by adding both front and back faces.
+     * The new wall geometry includes both exterior and interior faces in a single model.
      */
     private void createWallModels(List<ModelInstance> models, TileMesh3D tileMesh,
                                  com.badlogic.gdx.graphics.Texture texture,
                                  float tileWorldX, float tileWorldY,
-                                 int worldTileX, int worldTileY, int level) {
+                                 int worldTileX, int worldTileY) {
 
-        float wallHeight = Constants.TILE_SIZE;
-        float yOffset = level * wallHeight;
+        float wallHeight = Constants.TILE_SIZE * 2;  // Walls are 2 tiles tall
+        float yOffset = 0;  // Always start at ground level
 
         // Check all 4 directions for adjacent floor tiles
         // If there's a floor adjacent, create a wall facing that direction
@@ -146,8 +141,8 @@ public class DungeonChunk extends Chunk {
             }
 
             if (createWall) {
-                // Create front face (facing outward from wall)
-                ModelInstance wallFront = tileMesh.createWallInstance(
+                // Create wall (already includes both exterior and interior faces)
+                ModelInstance wall = tileMesh.createWallInstance(
                     texture,
                     tileWorldX,
                     tileWorldY,
@@ -157,21 +152,7 @@ public class DungeonChunk extends Chunk {
                     false,  // not flipped
                     1       // 90° texture rotation
                 );
-                models.add(wallFront);
-
-                // Create back face (facing inward, visible from inside the wall)
-                // We flip it to make the wall double-sided
-                ModelInstance wallBack = tileMesh.createWallInstance(
-                    texture,
-                    tileWorldX,
-                    tileWorldY,
-                    yOffset,
-                    direction,
-                    wallHeight,
-                    true,   // flipped to face opposite direction
-                    1       // 90° texture rotation
-                );
-                models.add(wallBack);
+                models.add(wall);
             }
         }
     }

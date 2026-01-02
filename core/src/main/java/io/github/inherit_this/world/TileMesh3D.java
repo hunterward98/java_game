@@ -409,23 +409,35 @@ public class TileMesh3D {
                 break;
         }
 
-        // FRONT FACE (exterior wall, 2 tiles tall)
-        // Before rotation: horizontal plane at Y=0, Z from 0 to size*2 (2 tiles in model space)
-        // After rotation: vertical plane facing outward, 2 tiles tall
-        v1.setPos(-halfSize, 0, 0).setNor(0, 1, 0).setUV(u1, v1_uv);              // bottom-left (ground)
-        v2.setPos(-halfSize, 0, size * 2).setNor(0, 1, 0).setUV(u2, v2_uv);       // top-left (2 tiles up)
-        v3.setPos(halfSize, 0, size * 2).setNor(0, 1, 0).setUV(u3, v3_uv);        // top-right (2 tiles up)
-        v4.setPos(halfSize, 0, 0).setNor(0, 1, 0).setUV(u4, v4_uv);               // bottom-right (ground)
+        // EXTERIOR FACE (facing away from dungeon, 2 tiles tall)
+        // Offset outward (Y=-size) to be 1 tile from floor edge
+        // Before rotation: at Y=-size, Z from -size to size (2 tiles tall)
+        // After rotation: vertical face 2 tiles tall, facing outward into void
+        // Uses reversed winding order to face outward
+        v1.setPos(-halfSize, -size, -size).setNor(0, 1, 0).setUV(u1, v1_uv);          // top-left
+        v2.setPos(-halfSize, -size, size).setNor(0, 1, 0).setUV(u2, v2_uv);           // bottom-left
+        v3.setPos(halfSize, -size, size).setNor(0, 1, 0).setUV(u3, v3_uv);            // bottom-right
+        v4.setPos(halfSize, -size, -size).setNor(0, 1, 0).setUV(u4, v4_uv);           // top-right
+        builder.rect(v4, v3, v2, v1);  // Reversed winding order
+
+        // INTERIOR FACE (facing into dungeon, 2 tiles tall)
+        // At Y=0 (at floor edge)
+        // Before rotation: at Y=0, Z from -size to size (2 tiles tall)
+        // After rotation: vertical face 2 tiles tall, facing inward to dungeon
+        v1.setPos(-halfSize, 0, -size).setNor(0, -1, 0).setUV(u1, v1_uv);             // top-left
+        v2.setPos(-halfSize, 0, size).setNor(0, -1, 0).setUV(u2, v2_uv);              // bottom-left
+        v3.setPos(halfSize, 0, size).setNor(0, -1, 0).setUV(u3, v3_uv);               // bottom-right
+        v4.setPos(halfSize, 0, -size).setNor(0, -1, 0).setUV(u4, v4_uv);              // top-right
         builder.rect(v1, v2, v3, v4);
 
-        // TOP FACE (horizontal tile on top of wall)
-        // Before rotation: vertical plane at Z=size*2 (top of wall in model space, 2 tiles up)
-        // After rotation: horizontal plane on top of wall at 2 tiles height
-        // Extends backward by 'size' to create wall thickness
-        v1.setPos(-halfSize, 0, 2).setNor(0, 0, 2).setUV(0, 0);        // front-left
-        v2.setPos(-halfSize, -size, 2).setNor(0, 0, 2).setUV(0, 1);    // back-left (one tile back)
-        v3.setPos(halfSize, -size, 2).setNor(0, 0, 2).setUV(1, 1);     // back-right (one tile back)
-        v4.setPos(halfSize, 0, 2).setNor(0, 0, 2).setUV(1, 0);         // front-right
+        // TOP FACE (horizontal tile connecting the two vertical faces)
+        // At Z=-size (top of wall before rotation)
+        // Before rotation: horizontal plane at Z=-size, spanning 1 tile from exterior to interior
+        // After rotation: horizontal top at wall top
+        v1.setPos(-halfSize, -size, -size).setNor(0, 0, -1).setUV(0, 0);              // exterior edge
+        v2.setPos(-halfSize, 0, -size).setNor(0, 0, -1).setUV(0, 1);                  // interior edge
+        v3.setPos(halfSize, 0, -size).setNor(0, 0, -1).setUV(1, 1);                   // interior edge
+        v4.setPos(halfSize, -size, -size).setNor(0, 0, -1).setUV(1, 0);               // exterior edge
         builder.rect(v1, v2, v3, v4);
 
         return modelBuilder.end();

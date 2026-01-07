@@ -1,0 +1,39 @@
+<!-- Settings Screen Template -->
+<vis-table fillParent="true" background="menu/pause_menu_background.png">
+    <vis-label style="title">Settings</vis-label>
+    <row padBottom="20" />
+
+    <!-- Sound Settings Panel -->
+    <vis-table pad="20" background="vis-window">
+        <vis-label style="subtitle">Sound Settings</vis-label>
+        <row />
+
+        <!-- Master Volume -->
+        <vis-label>Master Volume:</vis-label>
+        <vis-slider id="masterVolumeSlider" min="0" max="100" stepSize="1" width="300" />
+        <vis-label id="masterVolumeLabel">100</vis-label>
+        <row />
+
+        <!-- Area SFX Volume -->
+        <vis-label>Area SFX:</vis-label>
+        <vis-slider id="areaVolumeSlider" min="0" max="100" stepSize="1" width="300" />
+        <vis-label id="areaVolumeLabel">100</vis-label>
+        <row />
+
+        <!-- UI SFX Volume -->
+        <vis-label>UI SFX:</vis-label>
+        <vis-slider id="uiVolumeSlider" min="0" max="100" stepSize="1" width="300" />
+        <vis-label id="uiVolumeLabel">100</vis-label>
+        <row />
+
+        <!-- Primary SFX Volume -->
+        <vis-label>Primary SFX:</vis-label>
+        <vis-slider id="primaryVolumeSlider" min="0" max="100" stepSize="1" width="300" />
+        <vis-label id="primaryVolumeLabel">100</vis-label>
+    </vis-table>
+
+    <row padTop="20" />
+
+    <!-- Back Button -->
+    <vis-textButton onClick="onBack">Back</vis-textButton>
+</vis-table>

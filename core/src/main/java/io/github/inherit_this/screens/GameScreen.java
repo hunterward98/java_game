@@ -961,7 +961,7 @@ public class GameScreen extends ScreenAdapter {
         }
 
         if (!debugConsole.isOpen() && !inventoryOpen && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            game.setScreen(new PauseScreen(game, this));
+            game.setScreen(new PauseScreenLML(game, this));
         }
     }
 

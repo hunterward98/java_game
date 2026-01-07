@@ -1,0 +1,13 @@
+<!-- Pause Menu Template -->
+<vis-table fillParent="true" background="menu/pause_menu_background.png">
+    <vis-label style="title">Paused</vis-label>
+    <row />
+
+    <vis-table pad="15">
+        <vis-textButton onClick="onResume">Resume</vis-textButton>
+        <row />
+        <vis-textButton onClick="onSettings">Settings</vis-textButton>
+        <row />
+        <vis-textButton onClick="onSaveExit">Save &amp; Exit</vis-textButton>
+    </vis-table>
+</vis-table>

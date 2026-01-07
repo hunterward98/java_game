@@ -1,0 +1,56 @@
+<!-- Main Menu Template -->
+<vis-table fillParent="true" background="background.jpg">
+    <!-- Title/Logo Area -->
+    <vis-label style="title">Inherit This</vis-label>
+    <row />
+
+    <!-- Main Menu Buttons (shown by default) -->
+    <vis-table id="mainMenuButtons" pad="15">
+        <vis-textButton id="newGameButton" onClick="onNewGame">New Game</vis-textButton>
+        <row />
+        <vis-textButton id="loadGameButton" onClick="onLoadGame">Load Game</vis-textButton>
+        <row />
+        <vis-textButton id="exitButton" onClick="onExit">Exit</vis-textButton>
+    </vis-table>
+
+    <!-- Save Slot Selection (hidden by default) -->
+    <vis-table id="saveSlotMenu" pad="15" visible="false">
+        <vis-label style="subtitle">Select Save Slot</vis-label>
+        <row />
+
+        <!-- Slot 1 -->
+        <vis-table>
+            <vis-textButton id="slot1Button" onClick="onLoadSlot" userData="0">Slot 1: Empty</vis-textButton>
+            <vis-textButton id="deleteSlot1Button" onClick="onDeleteSlot" userData="0" visible="false">Delete</vis-textButton>
+        </vis-table>
+        <row />
+
+        <!-- Slot 2 -->
+        <vis-table>
+            <vis-textButton id="slot2Button" onClick="onLoadSlot" userData="1">Slot 2: Empty</vis-textButton>
+            <vis-textButton id="deleteSlot2Button" onClick="onDeleteSlot" userData="1" visible="false">Delete</vis-textButton>
+        </vis-table>
+        <row />
+
+        <!-- Slot 3 -->
+        <vis-table>
+            <vis-textButton id="slot3Button" onClick="onLoadSlot" userData="2">Slot 3: Empty</vis-textButton>
+            <vis-textButton id="deleteSlot3Button" onClick="onDeleteSlot" userData="2" visible="false">Delete</vis-textButton>
+        </vis-table>
+        <row />
+
+        <vis-textButton id="backButton" onClick="onBack">Back</vis-textButton>
+    </vis-table>
+
+    <!-- Delete Confirmation Dialog (hidden by default) -->
+    <vis-table id="deleteConfirmDialog" pad="20" visible="false">
+        <vis-label id="deleteWarningLabel">Delete save in slot 1?</vis-label>
+        <row />
+        <vis-label>This action cannot be undone!</vis-label>
+        <row />
+
+        <vis-textButton id="confirmDeleteButton" onClick="onConfirmDelete">Confirm Delete</vis-textButton>
+        <row />
+        <vis-textButton id="cancelDeleteButton" onClick="onCancelDelete">Cancel</vis-textButton>
+    </vis-table>
+</vis-table>

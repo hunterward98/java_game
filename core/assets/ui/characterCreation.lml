@@ -1,0 +1,21 @@
+<!-- Character Creation Template -->
+<vis-table fillParent="true" background="background.jpg">
+    <vis-label style="title">Create Your Character</vis-label>
+    <row padBottom="20" />
+
+    <!-- Name input section -->
+    <vis-table pad="10">
+        <vis-label>Character Name:</vis-label>
+        <row />
+        <vis-textField id="nameInput" maxLength="20" messageText="Enter name..." width="300" height="50" />
+    </vis-table>
+
+    <row padTop="20" />
+
+    <!-- Buttons -->
+    <vis-table pad="15">
+        <vis-textButton id="startGameButton" onClick="onStartGame" disabled="true">Start Game</vis-textButton>
+        <row />
+        <vis-textButton onClick="onBack">Back</vis-textButton>
+    </vis-table>
+</vis-table>

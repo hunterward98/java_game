@@ -155,5 +155,67 @@ public class DungeonChunk extends Chunk {
                 models.add(wall);
             }
         }
+
+        // Check for corners (90-degree interior corners where two walls meet)
+        // These need corner pieces to fill the gaps
+        // Check if adjacent tiles are FLOOR (creating a corner)
+        boolean hasFloorNorth = isFloorOrOutOfBounds(worldTileX, worldTileY + 1);
+        boolean hasFloorEast = isFloorOrOutOfBounds(worldTileX + 1, worldTileY);
+        boolean hasFloorSouth = isFloorOrOutOfBounds(worldTileX, worldTileY - 1);
+        boolean hasFloorWest = isFloorOrOutOfBounds(worldTileX - 1, worldTileY);
+
+        // NE corner: floor to North AND East (interior corner)
+        if (hasFloorNorth && hasFloorEast) {
+            createCornerWall(models, tileMesh, texture, tileWorldX, tileWorldY, yOffset, wallHeight, 0);
+        }
+        // SE corner: floor to South AND East (interior corner)
+        if (hasFloorSouth && hasFloorEast) {
+            createCornerWall(models, tileMesh, texture, tileWorldX, tileWorldY, yOffset, wallHeight, 1);
+        }
+        // SW corner: floor to South AND West (interior corner)
+        if (hasFloorSouth && hasFloorWest) {
+            createCornerWall(models, tileMesh, texture, tileWorldX, tileWorldY, yOffset, wallHeight, 2);
+        }
+        // NW corner: floor to North AND West (interior corner)
+        if (hasFloorNorth && hasFloorWest) {
+            createCornerWall(models, tileMesh, texture, tileWorldX, tileWorldY, yOffset, wallHeight, 3);
+        }
+    }
+
+    /**
+     * Helper method to check if a tile is floor or out of bounds
+     */
+    private boolean isFloorOrOutOfBounds(int x, int y) {
+        if (x < 0 || x >= generator.getWidthInTiles() ||
+            y < 0 || y >= generator.getHeightInTiles()) {
+            return true;  // Treat out of bounds as floor for corner detection
+        }
+        return !generator.isWall(x, y);
+    }
+
+    /**
+     * Creates a corner wall piece to fill 90-degree interior corners
+     * @param cornerType 0=NE, 1=SE, 2=SW, 3=NW
+     */
+    private void createCornerWall(List<ModelInstance> models, TileMesh3D tileMesh,
+                                 com.badlogic.gdx.graphics.Texture texture,
+                                 float tileWorldX, float tileWorldY,
+                                 float yOffset, float wallHeight, int cornerType) {
+        // For now, create a wall facing the corner direction
+        // Corner type maps to: 0=NE(45°), 1=SE(135°), 2=SW(225°), 3=NW(315°)
+        // We'll use the same wall instance but position it at the corner
+        int direction = cornerType;  // Use corner type as direction for now
+
+        ModelInstance cornerWall = tileMesh.createWallInstance(
+            texture,
+            tileWorldX,
+            tileWorldY,
+            yOffset,
+            direction,
+            wallHeight,
+            false,
+            1
+        );
+        models.add(cornerWall);
     }
 }

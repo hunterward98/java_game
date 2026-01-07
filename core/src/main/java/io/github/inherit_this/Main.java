@@ -2,7 +2,7 @@ package io.github.inherit_this;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import io.github.inherit_this.screens.MainMenuScreen;
+import io.github.inherit_this.screens.MainMenuScreenLML;
 
 public class Main extends Game {
     public SpriteBatch batch;
@@ -10,7 +10,7 @@ public class Main extends Game {
     @Override
     public void create() {
         batch = new SpriteBatch();
-        setScreen(new MainMenuScreen(this));
+        setScreen(new MainMenuScreenLML(this));
     }
 
     public SpriteBatch getBatch() {

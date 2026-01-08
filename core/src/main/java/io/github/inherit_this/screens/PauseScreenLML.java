@@ -4,11 +4,11 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
-import com.github.czyzby.lml.annotation.LmlAction;
-import com.github.czyzby.lml.parser.LmlParser;
-import com.github.czyzby.lml.parser.action.ActionContainer;
-import com.github.czyzby.lml.vis.util.VisLml;
+import com.kotcrab.vis.ui.widget.VisLabel;
+import com.kotcrab.vis.ui.widget.VisTable;
+import com.kotcrab.vis.ui.widget.VisTextButton;
 import io.github.inherit_this.Main;
 import io.github.inherit_this.audio.SoundManager;
 import io.github.inherit_this.audio.SoundType;
@@ -16,9 +16,9 @@ import io.github.inherit_this.save.SaveManager;
 import io.github.inherit_this.ui.CustomSkin;
 
 /**
- * Pause menu using LML - much cleaner than manual button positioning!
+ * Pause menu using direct VisUI - clean and modern!
  */
-public class PauseScreenLML extends BaseScreen implements ActionContainer {
+public class PauseScreenLML extends BaseScreen {
 
     private Stage stage;
     private GameScreen gameScreen;
@@ -27,20 +27,67 @@ public class PauseScreenLML extends BaseScreen implements ActionContainer {
         super(game);
         this.gameScreen = gameScreen;
 
-        // Initialize VisUI if not already done
+        // Initialize VisUI with custom font
         CustomSkin.initialize();
 
-        // Create stage
+        // Create stage with viewport
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
 
-        // Create LML parser
-        LmlParser parser = VisLml.parser().build();
-        parser.getData().addActionContainer("controller", this);
+        // Build UI
+        buildUI();
+    }
 
-        // Parse template
-        Actor root = parser.parseTemplate(Gdx.files.internal("ui/pauseMenu.lml")).first();
+    private void buildUI() {
+        // Root table that fills the screen
+        VisTable root = new VisTable();
+        root.setFillParent(true);
         stage.addActor(root);
+
+        // Title
+        VisLabel titleLabel = new VisLabel("Paused", "title");
+        root.add(titleLabel).padBottom(20).row();
+
+        // Menu buttons
+        VisTable buttonsSection = createButtons();
+        root.add(buttonsSection).pad(15).row();
+    }
+
+    private VisTable createButtons() {
+        VisTable table = new VisTable();
+        table.pad(15);
+
+        // Resume button
+        VisTextButton resumeButton = new VisTextButton("Resume");
+        resumeButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                onResume();
+            }
+        });
+        table.add(resumeButton).fillX().row();
+
+        // Settings button
+        VisTextButton settingsButton = new VisTextButton("Settings");
+        settingsButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                onSettings();
+            }
+        });
+        table.add(settingsButton).fillX().padTop(10).row();
+
+        // Save & Exit button
+        VisTextButton saveExitButton = new VisTextButton("Save & Exit");
+        saveExitButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                onSaveExit();
+            }
+        });
+        table.add(saveExitButton).fillX().padTop(10).row();
+
+        return table;
     }
 
     @Override
@@ -60,22 +107,19 @@ public class PauseScreenLML extends BaseScreen implements ActionContainer {
         stage.getViewport().update(width, height, true);
     }
 
-    // ===== LML Actions =====
+    // ===== Action Methods =====
 
-    @LmlAction("onResume")
-    public void onResume() {
+    private void onResume() {
         SoundManager.getInstance().play(SoundType.UI_CLICK);
         game.setScreen(gameScreen);
     }
 
-    @LmlAction("onSettings")
-    public void onSettings() {
+    private void onSettings() {
         SoundManager.getInstance().play(SoundType.UI_CLICK);
         game.setScreen(new SettingsScreenLML(game, this));
     }
 
-    @LmlAction("onSaveExit")
-    public void onSaveExit() {
+    private void onSaveExit() {
         SoundManager.getInstance().play(SoundType.UI_CLICK);
 
         // Auto-select appropriate save slot

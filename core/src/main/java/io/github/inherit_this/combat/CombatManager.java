@@ -242,4 +242,44 @@ public class CombatManager {
     public int getNPCCount() {
         return npcs.size();
     }
+
+    /**
+     * Spawn test enemies for unit testing.
+     * Creates 3 enemies (Skeleton, Zombie, Ghost) at predefined positions.
+     *
+     * @param spawnPos The spawn position [x, y]
+     * @param world The world provider for enemy AI
+     * @param texture The texture to use for enemies
+     */
+    public void spawnTestEnemies(int[] spawnPos, WorldProvider world, Texture texture) {
+        // Skeleton: spawn + (100, 0)
+        Enemy skeleton = new Enemy(
+            texture,
+            spawnPos[0] + 100,
+            spawnPos[1],
+            "Skeleton",
+            world
+        );
+        npcs.add(skeleton);
+
+        // Zombie: spawn + (-100, 50)
+        Enemy zombie = new Enemy(
+            texture,
+            spawnPos[0] - 100,
+            spawnPos[1] + 50,
+            "Zombie",
+            world
+        );
+        npcs.add(zombie);
+
+        // Ghost: spawn + (0, 150)
+        Enemy ghost = new Enemy(
+            texture,
+            spawnPos[0],
+            spawnPos[1] + 150,
+            "Ghost",
+            world
+        );
+        npcs.add(ghost);
+    }
 }

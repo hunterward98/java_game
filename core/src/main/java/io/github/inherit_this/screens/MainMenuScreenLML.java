@@ -12,13 +12,15 @@ import io.github.inherit_this.Main;
 import io.github.inherit_this.save.SaveData;
 import io.github.inherit_this.save.SaveManager;
 import io.github.inherit_this.ui.CustomSkin;
+import io.github.inherit_this.ui.MenuBackgroundRenderer;
 
 /**
- * Main menu using direct VisUI - clean and modern!
+ * Main menu using direct VisUI with live dungeon background!
  */
 public class MainMenuScreenLML extends BaseScreen {
 
     private Stage stage;
+    private MenuBackgroundRenderer backgroundRenderer;
 
     // UI Elements
     private VisTable mainMenuButtons;
@@ -42,6 +44,9 @@ public class MainMenuScreenLML extends BaseScreen {
         // Initialize VisUI with custom font
         CustomSkin.initialize();
 
+        // Create live dungeon background
+        backgroundRenderer = new MenuBackgroundRenderer(game);
+
         // Create stage with viewport
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
@@ -54,28 +59,36 @@ public class MainMenuScreenLML extends BaseScreen {
     }
 
     private void buildUI() {
-        // Root table that fills the screen
+        // Root table that fills the screen, aligned to left
         VisTable root = new VisTable();
         root.setFillParent(true);
+        root.align(com.badlogic.gdx.utils.Align.left | com.badlogic.gdx.utils.Align.top);
         stage.addActor(root);
+
+        // Container for menu UI (left side, takes 1/3 of screen width)
+        VisTable menuContainer = new VisTable();
+        menuContainer.pad(40);
 
         // Title
         VisLabel titleLabel = new VisLabel("Inherit This", "title");
-        root.add(titleLabel).padBottom(20).row();
+        menuContainer.add(titleLabel).padBottom(20).row();
 
         // Main menu buttons (visible by default)
         mainMenuButtons = createMainMenuButtons();
-        root.add(mainMenuButtons).pad(15).row();
+        menuContainer.add(mainMenuButtons).pad(15).row();
 
         // Save slot menu (hidden by default)
         saveSlotMenu = createSaveSlotMenu();
         saveSlotMenu.setVisible(false);
-        root.add(saveSlotMenu).pad(15).row();
+        menuContainer.add(saveSlotMenu).pad(15).row();
 
         // Delete confirmation dialog (hidden by default)
         deleteConfirmDialog = createDeleteConfirmDialog();
         deleteConfirmDialog.setVisible(false);
-        root.add(deleteConfirmDialog).pad(20).row();
+        menuContainer.add(deleteConfirmDialog).pad(20).row();
+
+        // Add menu container to root (left side)
+        root.add(menuContainer).width(Gdx.graphics.getWidth() / 3f).expandY().top();
     }
 
     private VisTable createMainMenuButtons() {
@@ -242,6 +255,22 @@ public class MainMenuScreenLML extends BaseScreen {
             updateSaveSlotLabels();
         }
 
+        // Update background dungeon demo
+        backgroundRenderer.update(delta);
+
+        // Clear screen
+        com.badlogic.gdx.utils.ScreenUtils.clear(0.1f, 0.1f, 0.12f, 1f);
+
+        // Render live dungeon background on right 2/3 of screen
+        int screenWidth = Gdx.graphics.getWidth();
+        int screenHeight = Gdx.graphics.getHeight();
+        int menuWidth = screenWidth / 3;
+        int backgroundX = menuWidth;
+        int backgroundWidth = screenWidth - menuWidth;
+
+        backgroundRenderer.render(backgroundX, 0, backgroundWidth, screenHeight);
+
+        // Render UI on top (left side)
         stage.act(delta);
         stage.draw();
     }
@@ -249,6 +278,7 @@ public class MainMenuScreenLML extends BaseScreen {
     @Override
     public void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
+        backgroundRenderer.resize(width, height);
     }
 
     // ===== Action Methods =====
@@ -350,5 +380,6 @@ public class MainMenuScreenLML extends BaseScreen {
     @Override
     public void dispose() {
         stage.dispose();
+        backgroundRenderer.dispose();
     }
 }

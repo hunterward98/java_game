@@ -48,6 +48,7 @@ public class GameScreen extends ScreenAdapter {
     private String characterName;
     private long playTimeMillis = 0;
     private long sessionStartTime;
+    private boolean demoMode = false; // Demo mode for menu background
 
     private PerspectiveCamera camera;
     private Viewport viewport;
@@ -106,6 +107,28 @@ public class GameScreen extends ScreenAdapter {
     private int frameCount = 0;
     private float fpsTimer = 0f;
     private int currentFPS = 0;
+
+    // Demo mode auto-play
+    private Random demoRandom;
+    private float demoTargetUpdateTimer = 0f;
+    private static final float DEMO_TARGET_UPDATE_INTERVAL = 5f;
+    private float demoCameraAngle = 45f;
+    private static final float DEMO_CAMERA_ROTATION_SPEED = 5f;
+
+    /**
+     * Constructor for demo mode (menu background).
+     * Creates a minimal game instance with AI auto-play.
+     */
+    public GameScreen(Main game, boolean demoMode) {
+        this.game = game;
+        this.characterName = "Demo";
+        this.sessionStartTime = System.currentTimeMillis();
+        this.batch = game.getBatch();
+        this.demoMode = demoMode;
+        this.demoRandom = new Random();
+
+        initializeMinimalGameForDemo();
+    }
 
     public GameScreen(Main game, String characterName) {
         this.game = game;
@@ -290,6 +313,86 @@ public class GameScreen extends ScreenAdapter {
         Gdx.graphics.setVSync(true);
     }
 
+    /**
+     * Initialize minimal game systems for demo mode (menu background).
+     * Skips UI elements and enables AI auto-play.
+     */
+    private void initializeMinimalGameForDemo() {
+        // Preload textures
+        TileTextureManager.getInstance().preloadCommonTextures();
+
+        // Set up camera
+        camera = new PerspectiveCamera(67, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        camera.near = 1f;
+        camera.far = 2000f;
+        viewport = new ScreenViewport(camera);
+        viewport.apply();
+
+        // Initialize 3D rendering
+        modelBatch = new ModelBatch();
+
+        // Set up lighting (darker for dungeon)
+        environment = new Environment();
+        environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.4f, 0.4f, 0.5f, 1f));
+        environment.add(new DirectionalLight().set(0.6f, 0.6f, 0.7f, -1f, -0.8f, -0.2f));
+
+        // Load player texture
+        playerTex = new Texture("character.png");
+        playerTex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+
+        // Create level 3 dungeon (more loot, enemies, and objects for demo)
+        io.github.inherit_this.world.DungeonConfig config = io.github.inherit_this.world.DungeonConfig.createProcedural(3);
+        world = new io.github.inherit_this.world.DungeonWorld(config);
+        world.preloadChunks(20);
+
+        // Create player at spawn position
+        int[] spawnPos = ((io.github.inherit_this.world.DungeonWorld) world).getSpawnPosition();
+        float spawnTileX = spawnPos[0] / Constants.TILE_SIZE;
+        float spawnTileY = spawnPos[1] / Constants.TILE_SIZE;
+        player = new Player(spawnTileX, spawnTileY, playerTex, world);
+        player.getStats().setLevel(3);
+
+        // Initialize input handler
+        inputHandler = new io.github.inherit_this.input.InputHandler(camera, player);
+
+        // Initialize lists
+        breakableObjects = new java.util.ArrayList<>();
+        interactableObjects = new java.util.ArrayList<>();
+        droppedItems = new java.util.ArrayList<>();
+
+        // Initialize particle system
+        particleSystem = new io.github.inherit_this.particles.ParticleSystem(camera);
+        player.setBreakableObjects(breakableObjects);
+        player.setParticleSystem(particleSystem);
+
+        // Initialize combat manager
+        combatManager = new io.github.inherit_this.combat.CombatManager(player, particleSystem);
+
+        // Spawn enemies using the dungeon's enemy spawn system
+        io.github.inherit_this.world.DungeonWorld dungeonWorld = (io.github.inherit_this.world.DungeonWorld) world;
+        io.github.inherit_this.world.ProceduralDungeonGenerator generator =
+            (io.github.inherit_this.world.ProceduralDungeonGenerator) dungeonWorld.getGenerator();
+
+        Texture enemyTex = new Texture("character.png");
+        enemyTex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+        combatManager.spawnDungeonEnemies(generator, 3, 3, world, enemyTex);
+
+        // Spawn dungeon loot with 5x spawn multiplier for demo mode (more visually interesting)
+        spawnDungeonLoot(dungeonWorld, 5.0f);
+
+        // Initialize rendering system
+        gameRenderer = new io.github.inherit_this.rendering.GameRenderer(
+            camera, modelBatch, environment, player, inputHandler, combatManager
+        );
+        gameRenderer.setWorld(world);
+        gameRenderer.setBreakableObjects(breakableObjects);
+        gameRenderer.setInteractableObjects(interactableObjects);
+        gameRenderer.setDroppedItems(droppedItems);
+
+        // Position camera
+        updateDemoCameraPosition();
+    }
+
     @Override
     public void render(float delta) {
         // Clear screen - sky blue for overworld, dark for dungeons
@@ -312,12 +415,23 @@ public class GameScreen extends ScreenAdapter {
 
         updateFPSCounter(delta);
 
-        handleInput();
+        // Skip input handling in demo mode
+        if (!demoMode) {
+            handleInput();
+        }
 
         // Only allow camera rotation when console is closed
-        if (!debugConsole.isOpen()) {
+        if (!demoMode && !debugConsole.isOpen()) {
             inputHandler.checkRotationKeys();
             inputHandler.updateCameraRotation(delta);
+        }
+
+        // Demo mode: rotate camera automatically
+        if (demoMode) {
+            demoCameraAngle += DEMO_CAMERA_ROTATION_SPEED * delta;
+            if (demoCameraAngle >= 360f) {
+                demoCameraAngle -= 360f;
+            }
         }
 
         // Fixed time step for consistent game logic
@@ -325,7 +439,12 @@ public class GameScreen extends ScreenAdapter {
 
         while (accumulator >= FIXED_TIME_STEP) {
             // Update game logic at fixed rate
-            if (!debugConsole.isOpen() && !inventoryOpen) {
+            if (demoMode) {
+                // Demo mode: AI auto-play
+                player.update(FIXED_TIME_STEP);
+                updateDemoAutoPlay();
+                combatManager.update(FIXED_TIME_STEP);
+            } else if (!debugConsole.isOpen() && !inventoryOpen) {
                 player.update(FIXED_TIME_STEP);
                 combatManager.update(FIXED_TIME_STEP);
             }
@@ -334,7 +453,11 @@ public class GameScreen extends ScreenAdapter {
             accumulator -= FIXED_TIME_STEP;
         }
 
-        inputHandler.updateCameraPosition();
+        if (demoMode) {
+            updateDemoCameraPosition();
+        } else {
+            inputHandler.updateCameraPosition();
+        }
 
         // Enable depth testing for 3D rendering
         Gdx.gl.glEnable(GL20.GL_DEPTH_TEST);
@@ -350,7 +473,7 @@ public class GameScreen extends ScreenAdapter {
         gameRenderer.render3DInteractableObjects();
 
         // Render map editor tile preview
-        if (mapEditor.isActive() && mapEditor.hasHoveredTile()) {
+        if (!demoMode && mapEditor.isActive() && mapEditor.hasHoveredTile()) {
             gameRenderer.renderTilePreview();
         }
 
@@ -362,8 +485,8 @@ public class GameScreen extends ScreenAdapter {
         // Begin batch for UI rendering (all UIs will use their own screen-space cameras)
         batch.begin();
 
-        // Render inventory and equipment UI if open (they use screen-space cameras)
-        if (inventoryOpen) {
+        // Render inventory and equipment UI if open (skip in demo mode)
+        if (!demoMode && inventoryOpen) {
             // Calculate total width of both UIs side by side
             float spacing = 20; // Space between inventory and equipment
             float totalWidth = inventoryUI.getWidth() + spacing + equipmentUI.getWidth();
@@ -384,11 +507,13 @@ public class GameScreen extends ScreenAdapter {
             equipmentUI.render(batch);
         }
 
-        hotbarUI.updatePosition(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        hotbarUI.render(batch);
+        if (!demoMode) {
+            hotbarUI.updatePosition(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+            hotbarUI.render(batch);
 
-        // Render dungeon UI (level display and portal prompts)
-        dungeonUI.render();
+            // Render dungeon UI (level display and portal prompts)
+            dungeonUI.render();
+        }
 
         // Render breakable objects (world to screen projection)
         gameRenderer.renderBreakableObjects(batch);
@@ -430,18 +555,22 @@ public class GameScreen extends ScreenAdapter {
             scaledWidth, scaledHeight
         );
 
-        // Render performance info
-        fpsFont.draw(batch, "FPS: " + currentFPS, 10, Gdx.graphics.getHeight() - 10);
-        fpsFont.draw(batch, "Frame Time: " + String.format("%.2f", delta * 1000) + "ms", 10, Gdx.graphics.getHeight() - 30);
-        fpsFont.draw(batch, "Zoom: " + (int)inputHandler.getCameraDistance(), 10, Gdx.graphics.getHeight() - 50);
-        // Display tile coordinates with 2 decimal places for precision
-        fpsFont.draw(batch, "Tile: (" + String.format("%.2f", player.getPosition().x) + ", " + String.format("%.2f", player.getPosition().y) + ")", 10, Gdx.graphics.getHeight() - 70);
+        // Render performance info (skip in demo mode)
+        if (!demoMode && fpsFont != null) {
+            fpsFont.draw(batch, "FPS: " + currentFPS, 10, Gdx.graphics.getHeight() - 10);
+            fpsFont.draw(batch, "Frame Time: " + String.format("%.2f", delta * 1000) + "ms", 10, Gdx.graphics.getHeight() - 30);
+            fpsFont.draw(batch, "Zoom: " + (int)inputHandler.getCameraDistance(), 10, Gdx.graphics.getHeight() - 50);
+            // Display tile coordinates with 2 decimal places for precision
+            fpsFont.draw(batch, "Tile: (" + String.format("%.2f", player.getPosition().x) + ", " + String.format("%.2f", player.getPosition().y) + ")", 10, Gdx.graphics.getHeight() - 70);
+        }
 
-        // Render map editor UI
-        mapEditor.render(batch);
+        // Render map editor UI (skip in demo mode)
+        if (!demoMode && mapEditor != null) {
+            mapEditor.render(batch);
+        }
 
-        // Render breakable object tooltip if hovering
-        if (!debugConsole.isOpen() && !inventoryOpen) {
+        // Render breakable object tooltip if hovering (skip in demo mode)
+        if (!demoMode && !debugConsole.isOpen() && !inventoryOpen) {
             renderBreakableObjectTooltip(batch);
             renderDroppedItemTooltip(batch);
         }
@@ -449,7 +578,9 @@ public class GameScreen extends ScreenAdapter {
         // Render particle effects (projected from 3D world to 2D screen, like player)
         particleSystem.render(batch);
 
-        debugConsole.render();
+        if (!demoMode && debugConsole != null) {
+            debugConsole.render();
+        }
         batch.end();
 
     }
@@ -519,6 +650,253 @@ public class GameScreen extends ScreenAdapter {
      */
     public String getCharacterName() {
         return characterName;
+    }
+
+    /**
+     * Demo mode: AI auto-play logic.
+     * Automatically attack nearby enemies or explore.
+     */
+    private void updateDemoAutoPlay() {
+        // Priority 1: Auto-attack nearby enemies
+        NPC currentTarget = player.getTargetEnemy();
+
+        if (currentTarget != null && !currentTarget.isDead()) {
+            // Continue attacking current target
+            if (player.isInAttackRange(currentTarget)) {
+                player.attack(currentTarget);
+                player.stopMoving();
+            } else {
+                player.setTargetPosition(currentTarget.getPosition().x, currentTarget.getPosition().y);
+            }
+            return;
+        }
+
+        // Find nearest enemy
+        NPC nearestEnemy = null;
+        float nearestDistance = Float.MAX_VALUE;
+        float detectionRange = 8f;
+
+        com.badlogic.gdx.math.Vector2 playerPos = player.getPosition();
+
+        for (NPC npc : combatManager.getAllNPCs()) {
+            if (npc.isDead()) continue;
+
+            com.badlogic.gdx.math.Vector2 enemyPos = npc.getPosition();
+            float dx = enemyPos.x - playerPos.x;
+            float dy = enemyPos.y - playerPos.y;
+            float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < detectionRange && distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestEnemy = npc;
+            }
+        }
+
+        if (nearestEnemy != null) {
+            player.setTargetEnemy(nearestEnemy);
+            return;
+        }
+
+        // Priority 2: Pick up nearby coins
+        DroppedItem nearestCoin = findNearestDroppedItem(playerPos, 6f);
+        if (nearestCoin != null) {
+            float dx = nearestCoin.getPosition().x - playerPos.x;
+            float dy = nearestCoin.getPosition().y - playerPos.y;
+            float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+            // If in pickup range, pick it up
+            if (distance <= 2.0f) {
+                autoPickupItem(nearestCoin);
+            } else {
+                // Move toward the coin
+                player.setTargetPosition(nearestCoin.getPosition().x, nearestCoin.getPosition().y);
+            }
+            return;
+        }
+
+        // Priority 3: Break nearby pots/crates
+        BreakableObject nearestObject = findNearestBreakableObject(playerPos, 6f);
+        if (nearestObject != null) {
+            float dx = nearestObject.getPosition().x - playerPos.x;
+            float dy = nearestObject.getPosition().y - playerPos.y;
+            float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+            // If in range, break it
+            if (distance <= 1.5f) {
+                autoBreakObject(nearestObject);
+            } else {
+                // Move toward the object
+                player.setTargetPosition(nearestObject.getPosition().x, nearestObject.getPosition().y);
+            }
+            return;
+        }
+
+        // Priority 4: No enemies, coins, or objects nearby - explore randomly
+        demoTargetUpdateTimer += FIXED_TIME_STEP;
+        if (demoTargetUpdateTimer >= DEMO_TARGET_UPDATE_INTERVAL) {
+            setDemoRandomTarget();
+            demoTargetUpdateTimer = 0f;
+        }
+    }
+
+    /**
+     * Demo mode: Set random movement target.
+     */
+    private void setDemoRandomTarget() {
+        com.badlogic.gdx.math.Vector2 pos = player.getPosition();
+        float currentX = pos.x;
+        float currentY = pos.y;
+
+        for (int attempt = 0; attempt < 20; attempt++) {
+            float angle = demoRandom.nextFloat() * 360f;
+            float distance = 8f + demoRandom.nextFloat() * 8f;
+
+            float targetX = currentX + (float)(Math.cos(Math.toRadians(angle)) * distance);
+            float targetY = currentY + (float)(Math.sin(Math.toRadians(angle)) * distance);
+
+            // Check if valid (not a wall)
+            float worldX = targetX * Constants.TILE_SIZE;
+            float worldY = targetY * Constants.TILE_SIZE;
+            if (!world.isSolidAtPosition(worldX, worldY)) {
+                player.setTargetPosition(targetX, targetY);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Demo mode: Find nearest dropped item within detection range.
+     */
+    private DroppedItem findNearestDroppedItem(com.badlogic.gdx.math.Vector2 playerPos, float detectionRange) {
+        DroppedItem nearest = null;
+        float nearestDistance = Float.MAX_VALUE;
+
+        for (DroppedItem item : droppedItems) {
+            if (item.isPickedUp()) continue;
+
+            float dx = item.getPosition().x - playerPos.x;
+            float dy = item.getPosition().y - playerPos.y;
+            float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < detectionRange && distance < nearestDistance) {
+                nearestDistance = distance;
+                nearest = item;
+            }
+        }
+
+        return nearest;
+    }
+
+    /**
+     * Demo mode: Automatically pick up an item.
+     */
+    private void autoPickupItem(DroppedItem item) {
+        if (item == null || item.isPickedUp()) return;
+
+        // Check if it's currency (coins) - add to coin counter
+        if (item.getItem().getType() == io.github.inherit_this.items.ItemType.CURRENCY) {
+            int coinAmount = item.getQuantity();
+            item.pickup(); // Mark as picked up
+            player.getStats().addCoins(coinAmount);
+            SoundManager.getInstance().play(SoundType.INVENTORY_PICKUP, 0.6f);
+        } else {
+            // Other items go to inventory
+            boolean added = player.getInventory().addItem(item.getItem(), item.getQuantity());
+            if (added) {
+                item.pickup(); // Mark as picked up
+                SoundManager.getInstance().play(SoundType.INVENTORY_PICKUP, 0.7f);
+            }
+        }
+    }
+
+    /**
+     * Demo mode: Find nearest breakable object within detection range.
+     */
+    private BreakableObject findNearestBreakableObject(com.badlogic.gdx.math.Vector2 playerPos, float detectionRange) {
+        BreakableObject nearest = null;
+        float nearestDistance = Float.MAX_VALUE;
+
+        for (BreakableObject obj : breakableObjects) {
+            float dx = obj.getPosition().x - playerPos.x;
+            float dy = obj.getPosition().y - playerPos.y;
+            float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < detectionRange && distance < nearestDistance) {
+                nearestDistance = distance;
+                nearest = obj;
+            }
+        }
+
+        return nearest;
+    }
+
+    /**
+     * Demo mode: Automatically break an object.
+     */
+    private void autoBreakObject(BreakableObject obj) {
+        if (obj == null) return;
+
+        // Play attack sound
+        SoundManager.getInstance().playWithVariation(SoundType.ATTACK_SWING, 0.6f);
+
+        // Damage the object
+        boolean destroyed = obj.damage(1);
+
+        if (destroyed) {
+            // Play break sound
+            SoundManager.getInstance().playWithVariation(SoundType.OBJECT_BREAK_WOOD, 0.8f);
+
+            // Spawn break particles
+            float pixelX = (obj.getPosition().x + 0.5f) * Constants.TILE_SIZE;
+            float pixelZ = (obj.getPosition().y + 0.5f) * Constants.TILE_SIZE;
+            float pixelY = Constants.TILE_SIZE / 2f;
+            particleSystem.createBreakEffect(obj, pixelX, pixelY, pixelZ, 12, 100f, 250f);
+
+            // Generate and give loot to player
+            java.util.List<BreakableObject.LootResult> loot = obj.generateLoot();
+            for (BreakableObject.LootResult result : loot) {
+                if (result.isCoins()) {
+                    player.getStats().addCoins(result.coins);
+                    SoundManager.getInstance().playWithVariation(SoundType.LOOT_GOLD, 0.7f);
+                } else if (result.isXP()) {
+                    player.getStats().addXP(result.xp);
+                } else if (result.isItem()) {
+                    player.getInventory().addItem(result.item, result.quantity);
+                    SoundManager.getInstance().play(SoundType.LOOT_ITEM, 0.7f);
+                }
+            }
+
+            // Remove destroyed object from the list
+            breakableObjects.remove(obj);
+        } else {
+            // Play hit sound for damaged but not destroyed
+            SoundManager.getInstance().playWithVariation(SoundType.ATTACK_HIT, 0.5f);
+        }
+    }
+
+    /**
+     * Demo mode: Update camera to follow player with rotation.
+     */
+    private void updateDemoCameraPosition() {
+        com.badlogic.gdx.math.Vector2 pos = player.getPosition();
+        float playerWorldX = pos.x * Constants.TILE_SIZE;
+        float playerWorldZ = pos.y * Constants.TILE_SIZE;
+
+        float cameraDistance = 300f;
+        float cameraHeight = 250f;
+
+        float angleRad = (float) Math.toRadians(demoCameraAngle);
+        float offsetX = (float) (Math.sin(angleRad) * cameraDistance);
+        float offsetZ = (float) (Math.cos(angleRad) * cameraDistance);
+
+        camera.position.set(
+            playerWorldX + offsetX,
+            cameraHeight,
+            playerWorldZ + offsetZ
+        );
+        camera.lookAt(playerWorldX, 0, playerWorldZ);
+        camera.up.set(0, 1, 0);
+        camera.update();
     }
 
     /**
@@ -627,6 +1005,15 @@ public class GameScreen extends ScreenAdapter {
      * Higher level dungeons have more valuable loot (more coins per location) rather than more items.
      */
     private void spawnDungeonLoot(io.github.inherit_this.world.DungeonWorld dungeon) {
+        spawnDungeonLoot(dungeon, 1.0f);
+    }
+
+    /**
+     * Spawns loot (coins and items) with a spawn density multiplier.
+     * @param dungeon The dungeon world to spawn loot in
+     * @param spawnMultiplier Multiplier for spawn density (1.0 = normal, 5.0 = 5x items for demo mode)
+     */
+    private void spawnDungeonLoot(io.github.inherit_this.world.DungeonWorld dungeon, float spawnMultiplier) {
         io.github.inherit_this.world.DungeonGenerator generator = dungeon.getGenerator();
 
         // Check if it's a procedural generator (has rooms)
@@ -655,9 +1042,9 @@ public class GameScreen extends ScreenAdapter {
         for (io.github.inherit_this.world.DungeonRoom room : rooms) {
             int lootValue = room.lootValue;
 
-            // Reduced spawn points by 80% (multiply by 0.2)
+            // Reduced spawn points by 80% (multiply by 0.2), but apply spawn multiplier for demo mode
             int baseSpawnPoints = Math.max(1, lootValue / 2 + random.nextInt(Math.max(1, lootValue / 2)));
-            int numSpawnPoints = Math.max(1, (int)(baseSpawnPoints * 0.2));
+            int numSpawnPoints = Math.max(1, (int)(baseSpawnPoints * 0.2 * spawnMultiplier));
 
             for (int i = 0; i < numSpawnPoints; i++) {
                 // Find a random floor tile within the room (avoiding edges)
@@ -684,11 +1071,11 @@ public class GameScreen extends ScreenAdapter {
         }
 
         // Spawn scattered loot in hallways (less dense than rooms but still visible)
-        // Reduced hallway samples by 80% (multiply by 0.2)
+        // Reduced hallway samples by 80% (multiply by 0.2), but apply spawn multiplier for demo mode
         int width = generator.getWidthInTiles();
         int height = generator.getHeightInTiles();
         int baseHallwaySamples = (width * height) / 15; // Check about 6-7% of tiles
-        int hallwaySamples = Math.max(1, (int)(baseHallwaySamples * 0.2)); // Reduced by 80%
+        int hallwaySamples = Math.max(1, (int)(baseHallwaySamples * 0.2 * spawnMultiplier)); // Reduced by 80%, then multiplied
 
         for (int i = 0; i < hallwaySamples; i++) {
             int x = 10 + random.nextInt(width - 20);  // Stay away from borders
@@ -710,7 +1097,7 @@ public class GameScreen extends ScreenAdapter {
         }
 
         // Spawn breakable objects (pots and crates) in rooms
-        int objectsSpawned = spawnBreakableObjectsInRooms(rooms, generator, dungeonLevel, random);
+        int objectsSpawned = spawnBreakableObjectsInRooms(rooms, generator, dungeonLevel, random, spawnMultiplier);
 
         Gdx.app.log("GameScreen", "Spawned " + totalLootSpawned + " coins and " + objectsSpawned + " breakable objects in dungeon (level " + dungeonLevel + ")");
     }
@@ -768,18 +1155,19 @@ public class GameScreen extends ScreenAdapter {
      */
     private int spawnBreakableObjectsInRooms(List<io.github.inherit_this.world.DungeonRoom> rooms,
                                               io.github.inherit_this.world.DungeonGenerator generator,
-                                              int dungeonLevel, Random random) {
+                                              int dungeonLevel, Random random, float spawnMultiplier) {
         int objectsSpawned = 0;
         int playerLevel = player.getStats().getLevel(); // Get current player level for loot scaling
 
         for (io.github.inherit_this.world.DungeonRoom room : rooms) {
             int lootValue = room.lootValue;
 
-            // Number of breakable objects based on room loot value
+            // Number of breakable objects based on room loot value (with spawn multiplier for demo mode)
             // Small rooms (lootValue ~3): 1-2 objects
             // Medium rooms (lootValue ~5): 2-3 objects
             // Large rooms (lootValue ~8): 3-5 objects
-            int numObjects = Math.max(1, lootValue / 3 + random.nextInt(Math.max(1, lootValue / 3)));
+            int baseObjects = lootValue / 3 + random.nextInt(Math.max(1, lootValue / 3));
+            int numObjects = Math.max(1, (int)(baseObjects * spawnMultiplier));
 
             for (int i = 0; i < numObjects; i++) {
                 // Find a random floor tile within the room (avoiding edges)
@@ -1330,12 +1718,14 @@ public class GameScreen extends ScreenAdapter {
         // FitViewport will maintain aspect ratio and add black bars if needed
         viewport.update(width, height);
 
-        // Update UI cameras to prevent stretching
-        debugConsole.updateCamera();
-        hotbarUI.updateCamera();
-        inventoryUI.updateCamera();
-        equipmentUI.updateCamera();
-        dungeonUI.updateCamera();
+        // Update UI cameras to prevent stretching (skip in demo mode)
+        if (!demoMode) {
+            debugConsole.updateCamera();
+            hotbarUI.updateCamera();
+            inventoryUI.updateCamera();
+            equipmentUI.updateCamera();
+            dungeonUI.updateCamera();
+        }
     }
 
     @Override
@@ -1351,12 +1741,17 @@ public class GameScreen extends ScreenAdapter {
         ItemRegistry.getInstance().dispose();
         FontManager.getInstance().dispose();
         SoundManager.getInstance().dispose();
-        inventoryUI.dispose();
-        equipmentUI.dispose();
-        hotbarUI.dispose();
-        dungeonUI.dispose();
+
+        // Only dispose UI elements if not in demo mode
+        if (!demoMode) {
+            inventoryUI.dispose();
+            equipmentUI.dispose();
+            hotbarUI.dispose();
+            dungeonUI.dispose();
+            mapEditor.dispose();
+        }
+
         dungeonController.getDungeonManager().dispose();
-        mapEditor.dispose();
         world.dispose();
     }
 }

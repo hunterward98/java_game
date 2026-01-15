@@ -361,9 +361,16 @@ public class GameRenderer {
                 screenPos.y >= 0 && screenPos.y <= Gdx.graphics.getHeight() &&
                 screenPos.z >= 0 && screenPos.z <= 1) {
 
-                // Calculate distance-based scale (match player scaling formula)
-                float cameraDistance = inputHandler.getCameraDistance();
-                float scale = (300f / cameraDistance) * 1.15f;
+                // Calculate distance-based scale using horizontal distance to NPC
+                // Only use X and Z (not camera height Y) for more reasonable scaling
+                // Sprites farther from camera should be smaller (proper perspective)
+                float dx = worldPos.x - camera.position.x;
+                float dz = worldPos.z - camera.position.z;
+                float distanceToNPC = (float) Math.sqrt(dx * dx + dz * dz);
+
+                // Clamp distance to avoid extreme scaling
+                distanceToNPC = Math.max(100f, Math.min(distanceToNPC, 600f));
+                float scale = (300f / distanceToNPC) * 1.15f;
 
                 // Draw the sprite centered at the screen position
                 Texture tex = npc.getTexture();
